@@ -7,8 +7,8 @@ verify_ssl = true
 pycodestyle = "*"
 
 [packages]
-telethon = "==1.21.1"
+telethon = "==1.24.0"
 keyboard = "==0.13.5"
 
 [requires]
-python_version = "3.7"
+python_version = "3.10"
