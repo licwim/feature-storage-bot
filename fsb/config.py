@@ -1,8 +1,9 @@
 # !/usr/bin/env python
+import os
 
 
 class Config:
-    CONFIG_FILE = 'C:\\acode\\feature-storage-bot\\config.json'
+    CONFIG_FILE = os.getenv('FSB_CONFIG_FILE')
 
     bot_username = str()
     bot_token = str()
