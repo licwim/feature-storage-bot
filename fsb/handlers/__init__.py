@@ -57,4 +57,8 @@ class MessageHandler(Handler):
         if self.entity and not event.message.out:
             return True
         else:
+            if not self.entity:
+                logger.error(f"Entity not found by chat id: {event.chat_id}")
+            elif event.message.out:
+                logger.info(f"Out message")
             return False

@@ -32,6 +32,7 @@ class MentionWatcher(BaseWatcher):
 
             members = await self._client.get_dialog_members(self.entity)
             members_usernames = [member.username for member in members]
+            members_usernames.remove(event.sender.username)
             mention = re.search(r"(\s+|^)@([^\s]+)(\s+|$)", event.message.text).group(2)
 
             if mention == 'all':
