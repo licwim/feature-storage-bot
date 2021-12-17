@@ -1,38 +1,25 @@
 # !/usr/bin/env python
 
 
-class BaseTamException(Exception):
+class BaseException(Exception):
 
     def __init__(self, message):
         super().__init__()
         self.message = message
 
 
-class UserIsAuthorizedException(BaseTamException):
-
-    def __init__(self):
-        super().__init__("User is already authorized")
-
-
-class LoginFailedError(BaseTamException):
-
-    def __init__(self):
-        super().__init__("Login isn't success")
-
-
-class DisconnectFailedError(BaseTamException):
+class DisconnectFailedError(BaseException):
 
     def __init__(self):
         super().__init__("Disconnect error")
 
 
-class EmptyDialogError(BaseTamException):
+class ExitHandlerException(BaseException):
 
-    def __init__(self):
-        super().__init__("Empty dialog")
-
-
-class EmptyMessageError(BaseTamException):
-
-    def __init__(self):
-        super().__init__("Empty message")
+    def __init__(self, handler_class: str = None, reason: str = None):
+        message = f"Exit from {handler_class if handler_class else 'Handler'}"
+        if reason:
+            message += f". Reason: {reason}"
+        super().__init__(message)
+        self.reason = reason
+        self.handler_class = handler_class

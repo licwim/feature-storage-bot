@@ -9,6 +9,7 @@ pycodestyle = "*"
 [packages]
 telethon = "==1.24.0"
 keyboard = "==0.13.5"
+pyyaml = "==6.0"
 
 [requires]
 python_version = "3.10"
