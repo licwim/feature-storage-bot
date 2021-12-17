@@ -1,8 +1,8 @@
 # !/usr/bin/env python
 
 from .handlers import Handler
+from .handlers.commands import StartCommand, EchoCommand, EntityInfoCommand
 from .handlers.watchers import MentionWatcher
-from .handlers.commands import StartCommand, EchoCommand
 from .telegram.client import TelegramApiClient
 
 
@@ -11,6 +11,7 @@ class HandlersController:
         StartCommand,
         EchoCommand,
         MentionWatcher,
+        EntityInfoCommand,
     ]
 
     def __init__(self, client: TelegramApiClient):

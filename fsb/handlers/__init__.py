@@ -2,6 +2,7 @@
 import json
 
 from fsb import logger
+from fsb.error import ExitHandlerException
 from fsb.telegram.client import TelegramApiClient
 
 
@@ -11,12 +12,26 @@ class Handler:
         self._client = client
         self._loop = client.loop
         self.entity = None
+        self._handler_name = self.__class__.__name__
 
     def listen(self):
-        logger.info(f"Add handler: {self.__class__.__name__}")
+        logger.info(f"Add handler: {self._handler_name}")
 
     async def handle(self, event):
-        logger.info(f"Start handle {self.__class__.__name__}")
+        logger.info(f"Start handle {self._handler_name}")
+
+    def handle_decorator(callback: callable):
+        async def handle(self, event):
+            try:
+                await callback(self, event)
+            except ExitHandlerException as ex:
+                # @todo Раскоментить этот лог, когда в переменные окружения будет добавлен dev_mode.
+                # logger.warning(ex.message)
+                pass
+            except AttributeError as ex:
+                logger.exception(ex.args)
+        return handle
+    handle_decorator = staticmethod(handle_decorator)
 
 
 class MessageHandler(Handler):
@@ -54,7 +69,8 @@ class MessageHandler(Handler):
         }
         logger.info(f"Message event:\n{json.dumps(data_info, sort_keys=False, indent=2)}")
         self.entity = await self._client.get_entity(event.chat_id)
-        if self.entity and not event.message.out:
-            return True
-        else:
-            return False
+
+        if not self.entity:
+            raise ExitHandlerException(self._handler_name, f"Entity not found by chat id: {event.chat_id}")
+        elif event.message.out:
+            raise ExitHandlerException(self._handler_name, "Out message")
