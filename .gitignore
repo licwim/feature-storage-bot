@@ -130,3 +130,6 @@ config.json
 
 # Sessions
 *.session
+
+# Debug files
+test.py

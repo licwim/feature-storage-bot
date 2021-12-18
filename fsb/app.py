@@ -13,13 +13,13 @@ class FeatureStorageBot:
     STOP_TIMEOUT = 60
 
     def __init__(self):
-        self.client = TelegramApiClient(Config.bot_username, Config.api_id, Config.api_hash)
+        self.client = TelegramApiClient(Config.bot_username)
         self.loop = self.client.loop
         self.handlers_controller = HandlersController(self.client)
         self.input_listener = InputListener()
 
     def run(self):
-        self.loop.run_until_complete(self.client.connect(Config.bot_token))
+        self.loop.run_until_complete(self.client.connect(True))
         self.input_listener.add_event('exit', self.stop)
 
         try:

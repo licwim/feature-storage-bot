@@ -1,25 +1,30 @@
 # !/usr/bin/env python
 
 from time import sleep
-from typing import Union, Any
+from typing import Any
+from typing import Union
 
 from telethon import TelegramClient
-from telethon import errors, events
+from telethon import errors
+from telethon import events
 from telethon.tl.types import Message
 
+from .. import FSB_DEV_MODE
 from .. import logger
+from ..config import Config
 from ..error import (
     DisconnectFailedError
 )
+from ..helpers import InfoBuilder
 
 
 class TelegramApiClient:
     MAX_RELOGIN_COUNT = 3
     DISCONNECT_TIMEOUT = 15
 
-    def __init__(self, name: str, api_id: int, api_hash: str):
+    def __init__(self, name: str = None):
         self.name = name
-        self._client = TelegramClient(name, api_id, api_hash)
+        self._client = TelegramClient(name, Config.api_id, Config.api_hash)
         self.loop = self._client.loop
         self._relogin_count = 0
         self._current_user = None
@@ -27,13 +32,12 @@ class TelegramApiClient:
     def start(self):
         self._client.run_until_disconnected()
 
-    async def connect(self, bot_token: str = None):
+    async def connect(self, is_bot: bool = False):
         await self._client.connect()
-        if await self._client.is_user_authorized():
-            bot_token = None
+        bot_token = None if await self._client.is_user_authorized() or not is_bot else Config.bot_token
         await self._client.start(bot_token=bot_token)
-        await self.get_info()
-        logger.info("Telegram Client is connected")
+        self._current_user = await self._client.get_me()
+        logger.info(f"Welcome, {self.name}! Telegram Client is connected")
 
     async def exit(self, logout: bool = False):
         try:
@@ -50,14 +54,11 @@ class TelegramApiClient:
             logger.info("Connection error")
         logger.info("Logout")
 
-    async def get_info(self):
-        self._current_user = await self._client.get_me()
-        logger.info(f"Welcome, {self.name}!")
-
-        return self._current_user
-
-    async def send_message(self, entity, message: Any, reply_to: Message = None):
+    async def send_message(self, entity, message: Any, reply_to: Message = None, force: bool = False):
         try:
+            if not force and FSB_DEV_MODE:
+                await self._send_debug_message(entity, message, reply_to)
+                return
             if isinstance(message, str):
                 message = message.rstrip('\t \n')
                 if message:
@@ -75,21 +76,18 @@ class TelegramApiClient:
             logger.info(f"{entity}: ValueError")
             raise e
 
-    async def check_username(self, username: str) -> bool:
-        result = True
-        try:
-            await self._client.get_entity(username)
-        except errors.UsernameInvalidError as e:
-            logger.info(f"{username}: UsernameInvalidError")
-            result = False
-        except ValueError as e:
-            logger.info(f"{username}: ValueError")
-            result = False
-        return result
+    async def _send_debug_message(self, entity, message: Any, reply_to: Message = None):
+        logger.debug(InfoBuilder.build_debug_message_info(entity, message, reply_to))
+        if Config.developer:
+            await self.send_message(await self.get_entity(Config.developer), message, reply_to, True)
 
     async def get_entity(self, uid: Union[str, int]):
-        return await self._client.get_entity(uid)
-
+        try:
+            if not uid:
+                raise ValueError
+            return await self._client.get_entity(uid)
+        except ValueError:
+            return None
 
     def add_messages_handler(self, handler: callable, *args, **kwargs):
         self._client.add_event_handler(

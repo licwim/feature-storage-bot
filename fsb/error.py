@@ -3,7 +3,7 @@
 
 class BaseException(Exception):
 
-    def __init__(self, message):
+    def __init__(self, message: str = None):
         super().__init__()
         self.message = message
 
@@ -23,3 +23,11 @@ class ExitHandlerException(BaseException):
         super().__init__(message)
         self.reason = reason
         self.handler_class = handler_class
+
+
+class RequiredAttributeError(BaseException, AttributeError):
+    pass
+
+
+class OptionalAttributeError(BaseException, AttributeError):
+    pass
