@@ -1,7 +1,8 @@
 # !/usr/bin/env python
 
 from fsb.telegram.client import TelegramApiClient
-from . import MessageHandler, Handler
+from . import Handler
+from . import MessageHandler
 from ..error import ExitHandlerException
 from ..helpers import InfoBuilder
 
@@ -16,7 +17,7 @@ class BaseCommand(MessageHandler):
     async def handle(self, event):
         args = event.message.text.split(' ')
         if args[0] != f"/{self.name}":
-            raise ExitHandlerException(self._handler_name, "Unsuited command")
+            raise ExitHandlerException
         args.pop(0)
         self.args = args
         await super().handle(event)
@@ -50,12 +51,19 @@ class EntityInfoCommand(BaseCommand):
 
     def __init__(self, client: TelegramApiClient):
         super().__init__(client, 'entity-info')
+        self._debug = True
 
     @Handler.handle_decorator
     async def handle(self, event):
         await super().handle(event)
         self.args = ['this'] if not self.args else self.args
-        for entity_uid in self.args:
-            entity_uid = int(entity_uid) if entity_uid.isnumeric() else entity_uid
-            entity = event.chat if entity_uid == 'this' else await self._client.get_entity(entity_uid)
-            await self._client.send_message(self.entity, InfoBuilder.build_entity_info(entity))
+        entity_uid = ' '.join(self.args)
+        try:
+            entity_uid = int(entity_uid)
+        except ValueError:
+            pass
+        entity = event.chat if entity_uid == 'this' else await self._client.get_entity(entity_uid)
+        await self._client.send_message(
+            self.entity,
+            InfoBuilder.build_entity_info(entity, view_type=InfoBuilder.YAML)
+        )
