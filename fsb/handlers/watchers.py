@@ -53,8 +53,14 @@ class MentionWatcher(BaseWatcher):
     def _all(members, rank_mention: bool = False):
         mentions = []
         for member in members:
-            if rank_mention and member.participant.rank:
-                mentions.append(f"[{member.participant.rank}](tg://user?id={str(member.id)})")
+            rank = None
+            if rank_mention:
+                try:
+                    rank = member.participant.rank
+                except AttributeError:
+                    pass
+            if rank:
+                mentions.append(f"[{rank}](tg://user?id={str(member.id)})")
             elif member.username:
                 mentions.append('@' + member.username)
             else:
