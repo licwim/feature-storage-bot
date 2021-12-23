@@ -5,7 +5,6 @@ from . import logger
 from .config import Config
 from .controllers import HandlersController
 from .telegram.client import TelegramApiClient
-from .utils.inputlistener import InputListener
 
 
 class FeatureStorageBot:
@@ -16,11 +15,9 @@ class FeatureStorageBot:
         self.client = TelegramApiClient(Config.bot_username)
         self.loop = self.client.loop
         self.handlers_controller = HandlersController(self.client)
-        self.input_listener = InputListener()
 
     def run(self):
         self.loop.run_until_complete(self.client.connect(True))
-        self.input_listener.add_event('exit', self.stop)
 
         try:
             self.client.start()
@@ -46,4 +43,3 @@ class FeatureStorageBot:
             self.loop.stop()
         if not self.loop.is_closed():
             self.loop.close()
-        self.input_listener.stop()
