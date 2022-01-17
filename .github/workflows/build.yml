@@ -15,16 +15,19 @@ jobs:
     env:
       IMAGE_NAME: ${{ github.repository }}:${{ github.sha }}
       CONTAINER_NAME: feature-storage-bot-app
-      BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-      API_ID: ${{ secrets.TELEGRAM_API_ID }}
-      API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
     steps:
-    - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag "$IMAGE_NAME"
-    - name: Re-Run Docker container
-      run: |
-        pwd
-        ls -la
-        docker stop "$CONTAINER_NAME"
-        docker rm "$CONTAINER_NAME"
-        docker run -e BOT_TOKEN="$BOT_TOKEN" -e API_ID="$API_ID" -e API_HASH="$API_HASH" -d --name "$$CONTAINER_NAME" "$IMAGE_NAME"
+    - name: Test
+      run: echo "check" && echo "$IMAGE_NAME" && pwd && ls -la
+#       BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+#       API_ID: ${{ secrets.TELEGRAM_API_ID }}
+#       API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+#     steps:
+#     - name: Build the Docker image
+#       run: docker build . --file Dockerfile --tag "$IMAGE_NAME"
+#     - name: Re-Run Docker container
+#       run: |
+#         pwd
+#         ls -la
+#         docker stop "$CONTAINER_NAME"
+#         docker rm "$CONTAINER_NAME"
+#         docker run -e BOT_TOKEN="$BOT_TOKEN" -e API_ID="$API_ID" -e API_HASH="$API_HASH" -d --name "$$CONTAINER_NAME" "$IMAGE_NAME"
