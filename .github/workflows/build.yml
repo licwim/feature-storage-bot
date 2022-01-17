@@ -15,11 +15,20 @@ jobs:
     env:
       IMAGE_NAME: ${{ github.repository }}:${{ github.sha }}
       CONTAINER_NAME: feature-storage-bot-app
+      WORK_DIR: /var/apps/feature_storage_bot
       BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       API_ID: ${{ secrets.TELEGRAM_API_ID }}
       API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
     steps:
+    - uses: actions/checkout@v2
     - name: Place check
+      run: pwd && ls -la && cd "$WORK_DIR" && pwd
+    - name: Actualize repository
+      run: |
+        git reset --hard
+        git checkout dev
+        git pull
+    - name: Place check 2
       run: pwd && ls -la
     - name: Build the Docker image
       run: docker build . --file Dockerfile --tag "$IMAGE_NAME"
