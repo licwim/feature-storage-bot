@@ -19,6 +19,8 @@ jobs:
       API_ID: ${{ secrets.TELEGRAM_API_ID }}
       API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
     steps:
+    - name: Place check
+      run: pwd && ls -la
     - name: Build the Docker image
       run: docker build . --file Dockerfile --tag "$IMAGE_NAME"
     - name: Re-Run Docker container
