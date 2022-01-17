@@ -16,18 +16,20 @@ def init_config():
         with open(Config.CONFIG_FILE, 'r', encoding='utf8') as fp:
             configs_by_json = json.load(fp)
 
+        unknown_configs_check = configs_by_json.copy()
+        for key in configs_by_json.copy():
+            if key in Config.get_attributes().keys():
+                setattr(Config, key, configs_by_json[key])
+                unknown_configs_check.pop(key)
+        if unknown_configs_check:
+            raise OptionalAttributeError(f"Unknown config parameters: {', '.join(unknown_configs_check.keys())}")
+
         missing_attributes = []
         for key in Config.REQUIRED_ATTRIBUTES:
-            if key not in configs_by_json.keys():
+            if getattr(Config, key) is None:
                 missing_attributes.append(key)
         if missing_attributes:
             raise RequiredAttributeError(f"Missing required config parameter: {', '.join(missing_attributes)}")
-
-        for key in configs_by_json.copy():
-            if key in Config.get_attributes().keys():
-                setattr(Config, key, configs_by_json.pop(key))
-        if configs_by_json:
-            raise OptionalAttributeError(f"Unknown config parameters: {', '.join(configs_by_json.keys())}")
 
     except FileNotFoundError:
         exit(f"All configs and secrets should be in the {Config.CONFIG_FILE}")
