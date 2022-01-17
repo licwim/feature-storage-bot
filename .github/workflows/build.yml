@@ -28,4 +28,11 @@ jobs:
       run: |
         docker stop "$CONTAINER_NAME" 2> /dev/null || true
         docker rm "$CONTAINER_NAME" 2> /dev/null || true
-        docker run -e BOT_TOKEN="$BOT_TOKEN" -e API_ID="$API_ID" -e API_HASH="$API_HASH" -d --name "$CONTAINER_NAME" "$IMAGE_NAME"
+        docker run \
+          --log-driver=journald \
+          -e BOT_TOKEN="$BOT_TOKEN" \
+          -e API_ID="$API_ID" \
+          -e API_HASH="$API_HASH" \
+          -d \
+          --name "$CONTAINER_NAME" \
+          "$IMAGE_NAME"

@@ -34,17 +34,15 @@ class StartCommand(BaseCommand):
         await self._client.send_message(self.entity, "Ну дарова!")
 
 
-class EchoCommand(BaseCommand):
+class PingCommand(BaseCommand):
 
     def __init__(self, client: TelegramApiClient):
-        super().__init__(client, 'echo')
+        super().__init__(client, 'ping')
 
     @Handler.handle_decorator
     async def handle(self, event):
         await super().handle(event)
-        text = ' '.join(self.args)
-        if text:
-            await self._client.send_message(self.entity, text)
+        await self._client.send_message(self.entity, 'pong')
 
 
 class EntityInfoCommand(BaseCommand):
