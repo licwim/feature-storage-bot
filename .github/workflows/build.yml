@@ -13,7 +13,7 @@ jobs:
     runs-on: self-hosted
     environment: production
     env:
-      IMAGE_NAME: ${GITHUB_REPOSITORY}:${GITHUB_SHA::8}
+      IMAGE_NAME: ${{ github.repository }}:${{ github.sha }}
       CONTAINER_NAME: feature-storage-bot-app
       WORK_DIR: /var/apps/feature_storage_bot
       BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
