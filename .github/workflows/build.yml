@@ -24,7 +24,7 @@ jobs:
     - name: Place check
       run: pwd && ls -la && git status
     - name: Move configs to project folder
-      run: cp -rf ../../admin/.* .
+      run: cp -rT ../../admin .
     - name: Build the Docker image
       run: docker build . --file Dockerfile --tag "$IMAGE_NAME"
     - name: Re-Run Docker container
