@@ -9,25 +9,23 @@ on:
       - master
 
 jobs:
-  build:
+  build_and_run:
     runs-on: self-hosted
     environment: production
     env:
       IMAGE_NAME: ${{ github.repository }}:${{ github.sha }}
       CONTAINER_NAME: feature-storage-bot-app
+      BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      API_ID: ${{ secrets.TELEGRAM_API_ID }}
+      API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
     steps:
-    - name: Test
-      run: echo "check" && echo "$IMAGE_NAME" && pwd && ls -la
-#       BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-#       API_ID: ${{ secrets.TELEGRAM_API_ID }}
-#       API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
-#     steps:
-#     - name: Build the Docker image
-#       run: docker build . --file Dockerfile --tag "$IMAGE_NAME"
-#     - name: Re-Run Docker container
-#       run: |
-#         pwd
-#         ls -la
-#         docker stop "$CONTAINER_NAME"
-#         docker rm "$CONTAINER_NAME"
-#         docker run -e BOT_TOKEN="$BOT_TOKEN" -e API_ID="$API_ID" -e API_HASH="$API_HASH" -d --name "$$CONTAINER_NAME" "$IMAGE_NAME"
+    - uses: actions/checkout@v2
+    - name: Move configs to project folder
+      run: cp -rT ../../admin .
+    - name: Build the Docker image
+      run: docker build . --file Dockerfile --tag "$IMAGE_NAME"
+    - name: Restart Docker container
+      run: |
+        docker stop "$CONTAINER_NAME" 2> /dev/null || true
+        docker rm "$CONTAINER_NAME" 2> /dev/null || true
+        docker run -e BOT_TOKEN="$BOT_TOKEN" -e API_ID="$API_ID" -e API_HASH="$API_HASH" -d --name "$CONTAINER_NAME" "$IMAGE_NAME"
