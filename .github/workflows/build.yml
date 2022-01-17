@@ -21,14 +21,12 @@ jobs:
       API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
     steps:
     - uses: actions/checkout@v2
-    - name: Place check
-      run: pwd && ls -la && git status
     - name: Move configs to project folder
       run: cp -rT ../../admin .
     - name: Build the Docker image
       run: docker build . --file Dockerfile --tag "$IMAGE_NAME"
-    - name: Re-Run Docker container
+    - name: Restart Docker container
       run: |
-        docker stop "$CONTAINER_NAME"
-        docker rm "$CONTAINER_NAME"
+        docker stop "$CONTAINER_NAME" 2> /dev/null || true
+        docker rm "$CONTAINER_NAME" 2> /dev/null || true
         docker run -e BOT_TOKEN="$BOT_TOKEN" -e API_ID="$API_ID" -e API_HASH="$API_HASH" -d --name "$CONTAINER_NAME" "$IMAGE_NAME"
