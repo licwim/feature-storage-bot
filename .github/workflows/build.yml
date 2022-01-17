@@ -11,6 +11,7 @@ on:
 jobs:
   build:
     runs-on: self-hosted
+    environment: production
     env:
       IMAGE_NAME: ${{ github.repository }}:${{ github.sha }}
       CONTAINER_NAME: feature-storage-bot-app
