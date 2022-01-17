@@ -13,7 +13,7 @@ jobs:
     runs-on: self-hosted
     environment: production
     env:
-      IMAGE_NAME: ${{ github.repository }}:${{ github.sha }}
+      IMAGE_NAME: ${GITHUB_REPOSITORY}:${GITHUB_SHA::8}
       CONTAINER_NAME: feature-storage-bot-app
       WORK_DIR: /var/apps/feature_storage_bot
       BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -22,18 +22,13 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Place check
-      run: pwd && ls -la && cd "$WORK_DIR" && pwd
-    - name: Actualize repository
-      run: |
-        git reset --hard
-        git checkout dev
-        git pull
-    - name: Place check 2
-      run: pwd && ls -la
+      run: pwd && ls -la && git status
+    - name: Move configs to project folder
+      run: cp -rf ../../admin/.* .
     - name: Build the Docker image
       run: docker build . --file Dockerfile --tag "$IMAGE_NAME"
     - name: Re-Run Docker container
       run: |
         docker stop "$CONTAINER_NAME"
         docker rm "$CONTAINER_NAME"
-        docker run -e BOT_TOKEN="$BOT_TOKEN" -e API_ID="$API_ID" -e API_HASH="$API_HASH" -d --name "$$CONTAINER_NAME" "$IMAGE_NAME"
+        docker run -e BOT_TOKEN="$BOT_TOKEN" -e API_ID="$API_ID" -e API_HASH="$API_HASH" -d --name "$CONTAINER_NAME" "$IMAGE_NAME"
