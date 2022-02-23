@@ -31,7 +31,7 @@ jobs:
           -e BOT_TOKEN="$BOT_TOKEN" \
           -e API_ID="$API_ID" \
           -e API_HASH="$API_HASH" \
-          -e DB_PASSWORD = "$DB_PASSWORD" \
+          -e DB_PASSWORD="$DB_PASSWORD" \
           -d \
           --name "$CONTAINER_NAME" \
           "$IMAGE_NAME"
