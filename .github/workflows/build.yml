@@ -12,6 +12,7 @@ jobs:
     env:
       IMAGE_NAME: ${{ github.repository }}:${{ github.sha }}
       CONTAINER_NAME: feature-storage-bot-app
+      NETWORK_NAME: feature-storage-bot-network
       BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       API_ID: ${{ secrets.TELEGRAM_API_ID }}
       API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
@@ -33,5 +34,6 @@ jobs:
           -e API_HASH="$API_HASH" \
           -e DB_PASSWORD="$DB_PASSWORD" \
           -d \
+          --network "$NETWORK_NAME" \
           --name "$CONTAINER_NAME" \
           "$IMAGE_NAME"
