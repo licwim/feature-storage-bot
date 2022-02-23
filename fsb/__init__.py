@@ -19,8 +19,9 @@
 import logging
 import os
 
+from .config import init_config
 
-FSB_DEV_MODE = bool(int(os.getenv('FSB_DEV_MODE')))
+FSB_DEV_MODE = bool(int(os.getenv('FSB_DEV_MODE'))) if os.getenv('FSB_DEV_MODE') else False
 
 logging.basicConfig(
     format='%(asctime)s::[%(name)s:%(levelname)s] %(message)s',
@@ -28,7 +29,10 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
+
 if FSB_DEV_MODE:
     logger.setLevel(logging.DEBUG)
 else:
     logger.setLevel(logging.INFO)
+
+init_config(logger)

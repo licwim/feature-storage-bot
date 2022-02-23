@@ -1,6 +1,7 @@
 # !/usr/bin/env python
 from time import sleep
 
+from . import FSB_DEV_MODE
 from . import logger
 from .config import Config
 from .controllers import HandlersController
@@ -17,6 +18,7 @@ class FeatureStorageBot:
         self.handlers_controller = HandlersController(self.client)
 
     def run(self):
+        logger.info(f"Development mode is {'ON' if FSB_DEV_MODE else 'OFF'}")
         self.loop.run_until_complete(self.client.connect(True))
 
         try:

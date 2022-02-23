@@ -15,6 +15,7 @@ jobs:
       BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       API_ID: ${{ secrets.TELEGRAM_API_ID }}
       API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+      DB_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
     steps:
     - uses: actions/checkout@v2
     - name: Move configs to project folder
@@ -30,6 +31,7 @@ jobs:
           -e BOT_TOKEN="$BOT_TOKEN" \
           -e API_ID="$API_ID" \
           -e API_HASH="$API_HASH" \
+          -e DB_PASSWORD = "$DB_PASSWORD" \
           -d \
           --name "$CONTAINER_NAME" \
           "$IMAGE_NAME"
