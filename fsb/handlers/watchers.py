@@ -2,8 +2,13 @@
 
 import re
 
+from peewee import DoesNotExist
+
 from . import Handler
 from . import MessageHandler
+from ..db.models import Chat
+from ..db.models import MemberRole
+from ..db.models import Role
 from ..error import ExitHandlerException
 from ..telegram.client import TelegramApiClient
 
@@ -32,26 +37,26 @@ class MentionWatcher(BaseWatcher):
         await super().handle(event)
         members = await self._client.get_dialog_members(self.entity)
         members.remove(event.sender)
-        mention = re.search(r"(\s+|^)@([^\s]+)(\s+|$)", event.message.text).group(2)
+        mentions = [matches[1] for matches in re.findall(r"(\s+|^)@([^\s@]+)", event.message.text)]
 
-        match mention:
-            case 'all':
-                result_mention = self._all(members)
-            case 'allkek' | 'allrank':
-                result_mention = self._all(members, True)
-            case _:
-                result_mention = None
+        mentions_strings = []
+        for mention in mentions:
+            mention_string, added_members = self._resolve_mention(mention, members)
+            if mention_string:
+                mentions_strings.append(mention_string)
 
-        if result_mention:
+            for member in added_members:
+                members.remove(member)
+
+        if mentions_strings:
             await self._client.send_message(
                 self.entity,
-                result_mention,
+                ' '.join(mentions_strings),
                 event.message
             )
 
-    @staticmethod
-    def _all(members, rank_mention: bool = False):
-        mentions = []
+    def _make_mention_string(self, members: list, rank_mention: bool = False):
+        result_mentions = []
         for member in members:
             rank = None
             if rank_mention:
@@ -60,23 +65,45 @@ class MentionWatcher(BaseWatcher):
                 except AttributeError:
                     pass
             if rank:
-                mentions.append(f"[{rank}](tg://user?id={str(member.id)})")
+                result_mentions.append(f"[{rank}](tg://user?id={str(member.id)})")
             elif member.username:
-                mentions.append('@' + member.username)
+                result_mentions.append('@' + member.username)
             else:
-                first_name = member.first_name if member.first_name else ''
-                last_name = member.last_name if member.first_name else ''
-                if first_name or last_name:
-                    member_name = f"{first_name} {last_name}"
-                else:
-                    member_name = MentionWatcher.UNKNOWN_NAME_REPLACEMENT
-                mentions.append(f"[{member_name}](tg://user?id={str(member.id)})")
+                member_name = member.first_name if member.first_name else MentionWatcher.UNKNOWN_NAME_REPLACEMENT
+                result_mentions.append(f"[{member_name}](tg://user?id={str(member.id)})")
 
-        return ' '.join(mentions)
+        return ' '.join(result_mentions)
+
+    def _resolve_mention(self, mention: str, members: list) -> tuple:
+        match mention:
+            case 'all':
+                rank = False
+            case 'allrank':
+                rank = True
+            case _:
+                return self._resolve_custom_mention(mention, members)
+
+        return self._make_mention_string(members, rank), members
+
+    def _resolve_custom_mention(self, mention: str, original_members: list) -> tuple:
+        try:
+            role_members = MemberRole.select().where(
+                MemberRole.role == Role.get(
+                    Role.chat == Chat.get(Chat.telegram_id == self.entity.id).get_id(),
+                    Role.nickname == mention
+                )
+            )
+
+            members_ids = [role_member.member.user.telegram_id for role_member in role_members]
+            members = [member for member in original_members if member.id in members_ids]
+        except DoesNotExist:
+            return None, []
+
+        return self._make_mention_string(members, False), members
 
     @staticmethod
     def filter(event):
-        if re.search(r"(\s+|^)@([^\s]+)(\s+|$)", event.message.text):
+        if re.search(r"(\s+|^)@([^\s]+)", event.message.text):
             return True
         else:
             return False
