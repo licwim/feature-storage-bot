@@ -48,7 +48,7 @@ class PingCommand(BaseCommand):
 class EntityInfoCommand(BaseCommand):
 
     def __init__(self, client: TelegramApiClient):
-        super().__init__(client, 'entity-info')
+        super().__init__(client, 'entityinfo')
         self._debug = True
 
     @Handler.handle_decorator
