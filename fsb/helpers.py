@@ -30,7 +30,7 @@ class InfoBuilder:
         match event.chat.__class__.__name__:
             case 'Chat' | 'Channel':
                 chat_info = {
-                    'id': event.chat_id,
+                    'id': event.chat.id,
                     'title': event.chat.title,
                     'type': event.chat.__class__.__name__,
                     'sender': {
@@ -40,7 +40,7 @@ class InfoBuilder:
                 }
             case 'User':
                 chat_info = {
-                    'id': event.chat_id,
+                    'id': event.chat.id,
                     'username': event.chat.username,
                     'type': event.chat.__class__.__name__,
                 }
