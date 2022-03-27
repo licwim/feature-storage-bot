@@ -29,22 +29,34 @@ class RoleQueryEvent(QueryEvent):
     CHANGE_ROLE = 5
     TRUNCATE_ROLE = 6
 
-    def __init__(self, role_id: int = None, member_id: int = None):
+    def __init__(self, sender: int = None, role_id: int = None, member_id: int = None):
         self.role_id = role_id
         self.role = None
         self.member_id = member_id
         self.member = None
-        super().__init__(self.to_dict())
+        super().__init__(sender, self.build_data_dict())
 
-    def to_dict(self):
+    def build_data_dict(self) -> dict:
         return {
             'role_id': self.role_id,
             'member_id': self.member_id,
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> QueryEvent:
-        return cls(role_id=data['role_id'], member_id=data['member_id'])
+    def normalize_data_dict(cls, data_dict: dict) -> dict:
+        data_dict = super().normalize_data_dict(data_dict)
+        if 'role_id' not in data_dict['data']:
+            data_dict['data']['role_id'] = None
+        if 'member_id' not in data_dict['data']:
+            data_dict['data']['member_id'] = None
+        return data_dict
+
+    @classmethod
+    def from_dict(cls, data_dict: dict) -> QueryEvent:
+        data_dict = cls.normalize_data_dict(data_dict)
+        sender = data_dict['sender']
+        data = data_dict['data']
+        return cls(sender=sender, role_id=data['role_id'], member_id=data['member_id'])
 
     def get_role(self) -> Union[Role, None]:
         if not self.role and self.role_id:
@@ -61,14 +73,14 @@ class RoleQueryEvent(QueryEvent):
 
 class GeneralMenuRoleEvent(RoleQueryEvent):
     @staticmethod
-    def get_message_and_buttons() -> tuple:
+    def get_message_and_buttons(sender) -> tuple:
         return "Меню ролей", [
             [
-                Button.inline('Список ролей', ListRoleEvent().save_get_id())
+                Button.inline('Список ролей', ListRoleEvent(sender).save_get_id())
             ],
             [
-                Button.inline('Создать роль', CreateRoleEvent().save_get_id()),
-                Button.inline('Удалить роль', DeleteMenuRoleEvent().save_get_id()),
+                Button.inline('Создать роль', CreateRoleEvent(sender).save_get_id()),
+                Button.inline('Удалить роль', DeleteMenuRoleEvent(sender).save_get_id()),
             ]
         ]
 
@@ -129,7 +141,7 @@ class RoleSettingsCommand(BaseCommand):
     @Handler.handle_decorator
     async def handle(self, event):
         await super().handle(event)
-        text, buttons = GeneralMenuRoleEvent.get_message_and_buttons()
+        text, buttons = GeneralMenuRoleEvent.get_message_and_buttons(event.message.sender.id)
         await self._client.send_message(self.entity, text, buttons=buttons)
 
 
@@ -140,20 +152,25 @@ class RoleSettingsQuery(CallbackQueryHandler):
         super().__init__(client)
         self._area = self.ONLY_CHAT
         self._menu_message = None
+        self._sender = None
 
     @Handler.handle_decorator
     async def handle(self, event):
         await super().handle(event)
         assert isinstance(self.query_event, RoleQueryEvent)
-        self._menu_message = await self._client._client.get_messages(self.entity, ids=event.query.msg_id)
 
+        self._sender = self.event.sender.id
+        if self.query_event.sender and self.query_event.sender != self._sender:
+            return
+
+        self._menu_message = await self._client._client.get_messages(self.entity, ids=event.query.msg_id)
         query_event_type = underscore(self.query_event.__class__.__name__.replace('RoleEvent', ''))
         action = getattr(self, 'action_' + query_event_type)
         if action:
             await action()
 
     async def action_general_menu(self):
-        text, buttons = GeneralMenuRoleEvent.get_message_and_buttons()
+        text, buttons = GeneralMenuRoleEvent.get_message_and_buttons(self._sender)
         await self._menu_message.edit(text, buttons=buttons)
 
     async def action_create(self):
@@ -204,14 +221,14 @@ class RoleSettingsQuery(CallbackQueryHandler):
         for role in roles:
             buttons_line.append(Button.inline(
                 f"{role.name} (@{role.nickname})",
-                MenuRoleEvent(role.id).save_get_id()
+                MenuRoleEvent(self._sender, role.id).save_get_id()
             ))
             if len(buttons_line) == 2:
                 buttons.append(buttons_line.copy())
                 buttons_line = []
         if buttons_line:
             buttons.append(buttons_line.copy())
-        buttons.append([Button.inline("<< К меню ролей", GeneralMenuRoleEvent().save_get_id())])
+        buttons.append([Button.inline("<< К меню ролей", GeneralMenuRoleEvent(self._sender).save_get_id())])
         text = "Список ролей:"
         if new_message:
             await self._client.send_message(self.entity, text, buttons=buttons)
@@ -232,7 +249,7 @@ class RoleSettingsQuery(CallbackQueryHandler):
         for role in roles:
             buttons_line.append(Button.inline(
                 f"{role.name} (@{role.nickname})",
-                DeleteRoleEvent(role.id).save_get_id()
+                DeleteRoleEvent(self._sender, role.id).save_get_id()
             ))
             if len(buttons_line) == 2:
                 buttons.append(buttons_line.copy())
@@ -240,21 +257,21 @@ class RoleSettingsQuery(CallbackQueryHandler):
         if buttons_line:
             buttons.append(buttons_line.copy())
 
-        buttons.append([Button.inline("<< К меню ролей", GeneralMenuRoleEvent().save_get_id())])
+        buttons.append([Button.inline("<< К меню ролей", GeneralMenuRoleEvent(self._sender).save_get_id())])
         await self._menu_message.edit("Удалить роль:", buttons=buttons)
 
     async def action_menu(self):
         role = self.query_event.get_role()
         await self._menu_message.edit(f"Меню роли **{role.name}** (@{role.nickname}):", buttons=[
             [
-                Button.inline('Участники', ListMembersRoleEvent(role.id).save_get_id()),
+                Button.inline('Участники', ListMembersRoleEvent(self._sender, role.id).save_get_id()),
             ],
             [
-                Button.inline('Изменить', ChangeRoleEvent(role.id).save_get_id()),
-                Button.inline('Удалить', DeleteRoleEvent(role.id).save_get_id()),
+                Button.inline('Изменить', ChangeRoleEvent(self._sender, role.id).save_get_id()),
+                Button.inline('Удалить', DeleteRoleEvent(self._sender, role.id).save_get_id()),
             ],
             [
-                Button.inline('<< К списку ролей', ListRoleEvent().save_get_id())
+                Button.inline('<< К списку ролей', ListRoleEvent(self._sender).save_get_id())
             ],
         ])
 
@@ -313,11 +330,11 @@ class RoleSettingsQuery(CallbackQueryHandler):
 
         buttons = [
             [
-                Button.inline('Добавить участника', AddMemberMenuRoleEvent(role.id).save_get_id()),
-                Button.inline('Удалить участника', RemoveMemberMenuRoleEvent(role.id).save_get_id()),
+                Button.inline('Добавить участника', AddMemberMenuRoleEvent(self._sender, role.id).save_get_id()),
+                Button.inline('Удалить участника', RemoveMemberMenuRoleEvent(self._sender, role.id).save_get_id()),
             ],
             [
-                Button.inline('<< К меню роли', MenuRoleEvent(role.id).save_get_id())
+                Button.inline('<< К меню роли', MenuRoleEvent(self._sender, role.id).save_get_id())
             ],
         ]
         if new_message:
@@ -349,14 +366,14 @@ class RoleSettingsQuery(CallbackQueryHandler):
 
             buttons_line.append(Button.inline(
                 self.get_username_string(tg_member.first_name, tg_member.username),
-                AddMemberRoleEvent(role_id=role.id, member_id=db_member.id).save_get_id()
+                AddMemberRoleEvent(sender=self._sender, role_id=role.id, member_id=db_member.id).save_get_id()
             ))
             if len(buttons_line) == 2:
                 buttons.append(buttons_line.copy())
                 buttons_line = []
         if buttons_line:
             buttons.append(buttons_line.copy())
-        buttons.append([Button.inline('<< Участники', ListMembersRoleEvent(role.id).save_get_id())])
+        buttons.append([Button.inline('<< Участники', ListMembersRoleEvent(self._sender, role.id).save_get_id())])
 
         text = f"Добавить участника к роли {role.name} (@{role.nickname}):"
         if new_message:
@@ -389,14 +406,14 @@ class RoleSettingsQuery(CallbackQueryHandler):
         for tg_member, db_member in await self.get_role_members(role):
             buttons_line.append(Button.inline(
                 self.get_username_string(tg_member.first_name, tg_member.username),
-                RemoveMemberRoleEvent(role_id=role.id, member_id=db_member.id).save_get_id()
+                RemoveMemberRoleEvent(sender=self._sender, role_id=role.id, member_id=db_member.id).save_get_id()
             ))
             if len(buttons_line) == 2:
                 buttons.append(buttons_line.copy())
                 buttons_line = []
         if buttons_line:
             buttons.append(buttons_line.copy())
-        buttons.append([Button.inline('<< Участники', ListMembersRoleEvent(role.id).save_get_id())])
+        buttons.append([Button.inline('<< Участники', ListMembersRoleEvent(self._sender, role.id).save_get_id())])
 
         text = f"Удалить участника из роли {role.name} (@{role.nickname}):"
         if new_message:

@@ -1,7 +1,9 @@
 # !/usr/bin/env python
+
 import json
 import sys
 from datetime import datetime
+from typing import Union
 
 from peewee import AutoField
 from peewee import CharField
@@ -145,35 +147,59 @@ class QueryEvent(BaseModel):
     data = TextField(null=True)
     created_at = DateTimeField(default=datetime.now())
 
-    def __init__(self, data_value=None, *args, **kwargs):
+    def __init__(self, sender: int = None, data_value=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.sender = sender
+        self._data_value = data_value
         if '__no_default__' not in kwargs:
             self.module_name = self.__class__.__module__
             self.class_name = self.__class__.__name__
-            self.data = json.dumps({'data': data_value})
+            self.data = json.dumps(self.to_dict())
 
-    def to_dict(self):
-        return {}
+    def build_data_dict(self) -> dict:
+        if isinstance(self._data_value, dict):
+            result = self._data_value
+        else:
+            result = {}
+        return result
+
+    def to_dict(self) -> dict:
+        return {
+            'sender': self.sender,
+            'data': self._data_value
+        }
 
     @classmethod
-    def from_dict(cls, data: dict):
-        return cls(data)
+    def normalize_data_dict(cls, data_dict: dict) -> dict:
+        if 'sender' not in data_dict:
+            data_dict['sender'] = None
+        if 'data' not in data_dict:
+            data_dict['data'] = None
+        return data_dict
 
     @classmethod
-    def find_and_create(cls, id: int):
+    def from_dict(cls, data_dict: dict) -> 'QueryEvent':
+        data_dict = cls.normalize_data_dict(data_dict)
+        return cls(data_dict['sender'], data_dict['data'])
+
+    @classmethod
+    def find_and_create(cls, id: int) -> Union['QueryEvent', None]:
         query_event = cls.get_by_id(id)
 
         if not query_event.module_name or not query_event.class_name:
-            return query_event
+            return None
 
-        data = None
+        data_dict = {}
         if query_event.data:
             data_dict = json.loads(query_event.data)
-            if 'data' in data_dict:
-                data = data_dict['data']
-        instance = getattr(
+        instance_class = getattr(
             sys.modules[query_event.module_name],
             query_event.class_name
-        ).from_dict(data)
-        assert isinstance(instance, QueryEvent)
+        )
+
+        if issubclass(instance_class, QueryEvent):
+            instance = instance_class.from_dict(data_dict)
+        else:
+            instance = None
+
         return instance
