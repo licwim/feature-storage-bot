@@ -54,32 +54,32 @@ class TelegramApiClient:
             logger.info("Connection error")
         logger.info("Logout")
 
-    async def send_message(self, entity, message: Any, reply_to: Message = None, force: bool = False):
+    async def send_message(self, entity, message: Any, reply_to: Message = None, force: bool = False, buttons=None):
         try:
             if not force and FSB_DEV_MODE:
-                await self._send_debug_message(entity, message, reply_to)
+                await self._send_debug_message(entity, message, reply_to, buttons)
                 return
             if isinstance(message, str):
                 message = message.rstrip('\t \n')
                 if message:
-                    await self._client.send_message(entity=entity, message=message, reply_to=reply_to)
+                    await self._client.send_message(entity=entity, message=message, reply_to=reply_to, buttons=buttons)
             else:
                 if message:
-                    await self._client.send_file(entity=entity, file=message, reply_to=reply_to)
+                    await self._client.send_file(entity=entity, file=message, reply_to=reply_to, buttons=buttons)
         except errors.PeerFloodError as e:
-            logger.info(f"{entity}: PeerFloodError")
+            logger.error(f"{entity}: PeerFloodError")
             raise e
         except errors.UsernameInvalidError as e:
-            logger.info(f"{entity}: UsernameInvalidError")
+            logger.error(f"{entity}: UsernameInvalidError")
             raise e
         except ValueError as e:
-            logger.info(f"{entity}: ValueError")
+            logger.error(f"{entity}: ValueError")
             raise e
 
-    async def _send_debug_message(self, entity, message: Any, reply_to: Message = None):
+    async def _send_debug_message(self, entity, message: Any, reply_to: Message = None, buttons=None):
         logger.debug(InfoBuilder.build_debug_message_info(entity, message, reply_to))
         if Config.developer:
-            await self.send_message(await self.get_entity(Config.developer), message, reply_to, True)
+            await self.send_message(await self.get_entity(Config.developer), message, reply_to, True, buttons)
 
     async def get_entity(self, uid: Union[str, int]):
         try:
@@ -89,10 +89,16 @@ class TelegramApiClient:
         except ValueError:
             return None
 
-    def add_messages_handler(self, handler: callable, *args, **kwargs):
+    def add_message_handler(self, handler: callable, *args, **kwargs):
         self._client.add_event_handler(
             handler,
-            events.NewMessage(*args, **kwargs)
+            events.NewMessage(forwards=False, *args, **kwargs)
+        )
+
+    def add_callback_query_handler(self, handler: callable, *args, **kwargs):
+        self._client.add_event_handler(
+            handler,
+            events.CallbackQuery(*args, **kwargs)
         )
 
     async def request(self, data):

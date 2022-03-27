@@ -5,6 +5,7 @@ from fsb.db import base_migrator
 from fsb.db.models import Chat
 from fsb.db.models import Member
 from fsb.db.models import MemberRole
+from fsb.db.models import QueryEvent
 from fsb.db.models import Rating
 from fsb.db.models import RatingMember
 from fsb.db.models import Role
@@ -51,3 +52,24 @@ class CreateMainTables(BaseMigration):
 
         base_migrator.database.drop_tables(tables)
         logger.info(f"Dropped tables: {', '.join([table.TABLE_NAME for table in tables])}")
+
+
+class CreateEventsTable(BaseMigration):
+
+    def up(self):
+        super().up()
+
+        if QueryEvent.table_exists():
+            raise RuntimeError(f"Table `{QueryEvent.TABLE_NAME}` already exist")
+
+        QueryEvent.create_table()
+        logger.info(f"Creating `{QueryEvent.TABLE_NAME}` is done")
+
+    def down(self):
+        super().down()
+
+        if not QueryEvent.table_exists():
+            raise RuntimeError(f"Table `{QueryEvent.TABLE_NAME}` already dropped")
+
+        QueryEvent.drop_table()
+        logger.info(f"Table `{QueryEvent.TABLE_NAME}` is dropped")
