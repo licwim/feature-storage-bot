@@ -3,7 +3,12 @@
 import json
 
 import yaml
+from telethon.events.callbackquery import CallbackQuery
+from telethon.events.messageedited import MessageEdited
+from telethon.events.newmessage import NewMessage
 from telethon.tl.patched import Message
+
+from fsb import VERSION
 
 
 class InfoBuilder:
@@ -26,11 +31,39 @@ class InfoBuilder:
 
     @staticmethod
     @builder_decorator
-    def build_message_info_by_event(event, view_type: int = None):
+    def build_message_info_by_message_event(event, view_type: int = None):
+        assert isinstance(event, NewMessage.Event) or isinstance(event, MessageEdited.Event)
+        chat_info = InfoBuilder.build_chat_info(event)
+
+        data_info = {
+            'chat': chat_info,
+            'message': event.message.text,
+        }
+
+        return data_info
+
+    @staticmethod
+    @builder_decorator
+    def build_message_info_by_query_event(event, query_event, view_type: int = None):
+        assert isinstance(event, CallbackQuery.Event)
+        chat_info = InfoBuilder.build_chat_info(event)
+
+        data_info = {
+            'chat': chat_info,
+            'event': {
+                'type': query_event.__class__.__name__,
+                'data': query_event.to_dict()
+            }
+        }
+
+        return data_info
+
+    @staticmethod
+    def build_chat_info(event):
         match event.chat.__class__.__name__:
             case 'Chat' | 'Channel':
                 chat_info = {
-                    'id': event.chat_id,
+                    'id': event.chat.id,
                     'title': event.chat.title,
                     'type': event.chat.__class__.__name__,
                     'sender': {
@@ -40,19 +73,14 @@ class InfoBuilder:
                 }
             case 'User':
                 chat_info = {
-                    'id': event.chat_id,
+                    'id': event.chat.id,
                     'username': event.chat.username,
                     'type': event.chat.__class__.__name__,
                 }
             case _:
                 chat_info = None
 
-        data_info = {
-            'chat': chat_info,
-            'text': event.message.text,
-        }
-
-        return data_info
+        return chat_info
 
     @staticmethod
     @builder_decorator
@@ -113,3 +141,9 @@ class InfoBuilder:
             'reply_to': reply_info
         }
         return data_info
+
+    @staticmethod
+    def build_about_info(bot):
+        return f"{bot.user.first_name} Bot (@{bot.user.username})\n" \
+               f"  {bot.about}\n" \
+               f"  Version: {VERSION}"

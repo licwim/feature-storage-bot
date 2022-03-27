@@ -1,14 +1,15 @@
 # !/usr/bin/env python
 
+from telethon.tl.functions.users import GetFullUserRequest
+
+from fsb.error import ExitHandlerException
+from fsb.handlers import Handler
+from fsb.handlers import MessageHandler
+from fsb.helpers import InfoBuilder
 from fsb.telegram.client import TelegramApiClient
-from . import Handler
-from . import MessageHandler
-from ..error import ExitHandlerException
-from ..helpers import InfoBuilder
 
 
 class BaseCommand(MessageHandler):
-
     def __init__(self, client: TelegramApiClient, name: str):
         super().__init__(client)
         self.name = name
@@ -24,7 +25,6 @@ class BaseCommand(MessageHandler):
 
 
 class StartCommand(BaseCommand):
-
     def __init__(self, client: TelegramApiClient):
         super().__init__(client, 'start')
 
@@ -35,7 +35,6 @@ class StartCommand(BaseCommand):
 
 
 class PingCommand(BaseCommand):
-
     def __init__(self, client: TelegramApiClient):
         super().__init__(client, 'ping')
 
@@ -46,9 +45,8 @@ class PingCommand(BaseCommand):
 
 
 class EntityInfoCommand(BaseCommand):
-
     def __init__(self, client: TelegramApiClient):
-        super().__init__(client, 'entity-info')
+        super().__init__(client, 'entityinfo')
         self._debug = True
 
     @Handler.handle_decorator
@@ -65,3 +63,15 @@ class EntityInfoCommand(BaseCommand):
             self.entity,
             InfoBuilder.build_entity_info(entity, view_type=InfoBuilder.YAML)
         )
+
+
+class AboutInfoCommand(BaseCommand):
+    def __init__(self, client: TelegramApiClient):
+        super().__init__(client, 'about')
+
+    @Handler.handle_decorator
+    async def handle(self, event):
+        await super().handle(event)
+
+        bot = await self._client.request(GetFullUserRequest(self._client._current_user))
+        await self._client.send_message(self.entity, InfoBuilder.build_about_info(bot))
