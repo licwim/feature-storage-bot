@@ -32,6 +32,7 @@ jobs:
           --format='{{.Config.Image}}' \
           "$CONTAINER_NAME" \
           | awk -F':' '{print $2}')
+        docker rename "$CONTAINER_NAME" "$ROLLBACK_NAME"
     - name: Start new Docker container
       run: |
         docker stop "$ROLLBACK_NAME" 2> /dev/null || true
