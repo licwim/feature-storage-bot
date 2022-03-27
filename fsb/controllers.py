@@ -1,13 +1,14 @@
 # !/usr/bin/env python
 
-from .handlers import Handler
-from .handlers.commands import EntityInfoCommand
-from .handlers.commands import PingCommand
-from .handlers.commands import StartCommand
-from .handlers.roles import RoleSettingsCommand
-from .handlers.roles import RoleSettingsQuery
-from .handlers.watchers import MentionWatcher
-from .telegram.client import TelegramApiClient
+from fsb.handlers import Handler
+from fsb.handlers.commands import AboutInfoCommand
+from fsb.handlers.commands import EntityInfoCommand
+from fsb.handlers.commands import PingCommand
+from fsb.handlers.commands import StartCommand
+from fsb.handlers.roles import RoleSettingsCommand
+from fsb.handlers.roles import RoleSettingsQuery
+from fsb.handlers.watchers import MentionWatcher
+from fsb.telegram.client import TelegramApiClient
 
 
 class HandlersController:
@@ -18,6 +19,7 @@ class HandlersController:
         EntityInfoCommand,
         RoleSettingsCommand,
         RoleSettingsQuery,
+        AboutInfoCommand,
     ]
 
     def __init__(self, client: TelegramApiClient):

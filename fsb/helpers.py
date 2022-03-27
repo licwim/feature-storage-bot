@@ -8,6 +8,8 @@ from telethon.events.messageedited import MessageEdited
 from telethon.events.newmessage import NewMessage
 from telethon.tl.patched import Message
 
+from fsb import VERSION
+
 
 class InfoBuilder:
 
@@ -139,3 +141,9 @@ class InfoBuilder:
             'reply_to': reply_info
         }
         return data_info
+
+    @staticmethod
+    def build_about_info(bot):
+        return f"{bot.user.first_name} Bot (@{bot.user.username})\n" \
+               f"  {bot.about}\n" \
+               f"  Version: {VERSION}"
