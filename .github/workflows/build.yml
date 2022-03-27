@@ -18,6 +18,7 @@ jobs:
       API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
       DB_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
       ROLLBACK_PREFIX: fsb_
+      ROLLBACK_NAME: ""
     steps:
     - uses: actions/checkout@v2
     - name: Move configs to project folder
@@ -35,7 +36,7 @@ jobs:
         docker rename "$CONTAINER_NAME" "$ROLLBACK_NAME"
     - name: Start new Docker container
       run: |
-        docker stop "$ROLLBACK_NAME" 2> /dev/null || true
+        docker stop "$ROLLBACK_NAME"
         docker run \
           --log-driver=journald \
           -e BOT_TOKEN="$BOT_TOKEN" \
