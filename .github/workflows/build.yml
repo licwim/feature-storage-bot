@@ -18,14 +18,13 @@ jobs:
       API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
       DB_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
       ROLLBACK_PREFIX: fsb_
-      ROLLBACK_NAME: ""
     steps:
     - uses: actions/checkout@v2
     - name: Move configs to project folder
       run: cp -rT ../../admin .
     - name: Build the Docker image
       run: docker build . --file Dockerfile --tag "$IMAGE_NAME"
-    - name: Rename for rollback Docker container
+    - name: Start Docker container
       run: |
         ROLLBACK_NAME=\
         "$ROLLBACK_PREFIX"\
@@ -34,8 +33,6 @@ jobs:
           "$CONTAINER_NAME" \
           | awk -F':' '{print $2}')
         docker rename "$CONTAINER_NAME" "$ROLLBACK_NAME"
-    - name: Start new Docker container
-      run: |
         docker stop "$ROLLBACK_NAME"
         docker run \
           --log-driver=journald \
