@@ -17,7 +17,11 @@ class BaseCommand(MessageHandler):
 
     async def handle(self, event):
         args = event.message.text.split(' ')
-        if args[0] != f"/{self.name}":
+        acceptable_commands = [
+            f"/{self.name}",
+            f"/{self.name}@{self._client._current_user.username}",
+        ]
+        if args[0] not in acceptable_commands:
             raise ExitHandlerException
         args.pop(0)
         self.args = args
