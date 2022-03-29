@@ -10,7 +10,6 @@ jobs:
     runs-on: self-hosted
     environment: production
     env:
-      IMAGE_NAME: ${{ github.repository }}:${{ github.sha }}
       CONTAINER_NAME: feature-storage-bot-app
       NETWORK_NAME: feature-storage-bot-network
       BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -20,11 +19,18 @@ jobs:
       ROLLBACK_PREFIX: fsb_
     steps:
     - uses: actions/checkout@v2
+    - uses: benjlevesque/short-sha@v1.2
+      id: short-sha
+      with:
+        length: 7
+      env:
+        IMAGE_NAME: ${{ github.repository }}:${{ steps.short-sha.outputs.sha }}
     - name: Move configs to project folder
       run: cp -rT ../../admin .
     - name: Build the Docker image
       run: docker build . --file Dockerfile --tag "$IMAGE_NAME"
-    - name: Start Docker container
+    - name: Rename rollback container
+      id: rollback
       run: |
         ROLLBACK_NAME=\
         "$ROLLBACK_PREFIX"\
@@ -33,6 +39,11 @@ jobs:
           "$CONTAINER_NAME" \
           | awk -F':' '{print $2}')
         docker rename "$CONTAINER_NAME" "$ROLLBACK_NAME"
+        echo "::set-output name=rollback_name::$ROLLBACK_NAME"
+      env:
+        ROLLBACK_NAME: ${{ steps.rollback.outputs.rollback_name }}
+    - name: Start new Docker container
+      run: |
         docker stop "$ROLLBACK_NAME"
         docker run \
           --log-driver=journald \
