@@ -44,7 +44,7 @@ jobs:
     - name: Start app Docker container
       env:
         IMAGE_NAME: ${{ env.IMAGE_NAME }}
-        ROLLBACK_NAME: ${{ env.rollback_name }}
+        ROLLBACK_NAME: ${{ env.ROLLBACK_NAME }}
       run: |
         docker stop "$ROLLBACK_NAME"
         docker run \
