@@ -10,7 +10,8 @@ pycodestyle = "*"
 telethon = "==1.24.0"
 pyyaml = "==6.0"
 peewee = "==3.14.9"
-pymysql = "==1.0.2"
+peewee-async = "==0.7.2"
+aiomysql = "==0.0.22"
 inflection = "==0.5.1"
 
 [requires]
