@@ -17,7 +17,8 @@ base_db = ReconnectedPooledDatabase(
     password=Config.db_password,
     host=Config.db_host,
     port=3306,
-    max_connections=Config.MAX_DB_CONNECTIONS
+    max_connections=Config.MAX_DB_CONNECTIONS,
+    charset='utf8mb4'
 )
 
 base_migrator = MySQLMigrator(base_db)

@@ -21,7 +21,7 @@ import os
 
 from .config import init_config
 
-VERSION = '1.1.3-beta'
+VERSION = '1.1.4-beta'
 FSB_DEV_MODE = bool(int(os.getenv('FSB_DEV_MODE'))) if os.getenv('FSB_DEV_MODE') else False
 
 logging.basicConfig(
