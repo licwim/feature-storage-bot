@@ -23,6 +23,7 @@ class Config:
     db_password = os.getenv('DB_PASSWORD')
     db_host: str = 'localhost'
     db_name: str = 'feature_storage'
+    MAX_DB_CONNECTIONS = 10
 
     REQUIRED_ATTRIBUTES = [
         'bot_token',
