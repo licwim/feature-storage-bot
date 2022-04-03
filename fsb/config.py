@@ -25,6 +25,8 @@ class Config:
     db_name: str = 'feature_storage'
     MAX_DB_CONNECTIONS = 10
 
+    dev_chats: list = []
+
     REQUIRED_ATTRIBUTES = [
         'bot_token',
         'api_id',
