@@ -5,8 +5,8 @@ from fsb.handlers.commands import AboutInfoCommand
 from fsb.handlers.commands import EntityInfoCommand
 from fsb.handlers.commands import PingCommand
 from fsb.handlers.commands import StartCommand
-from fsb.handlers.roles import RoleSettingsCommand
-from fsb.handlers.roles import RoleSettingsQuery
+from fsb.handlers.roles import RolesSettingsCommand
+from fsb.handlers.roles import RolesSettingsQuery
 from fsb.handlers.watchers import MentionWatcher
 from fsb.telegram.client import TelegramApiClient
 
@@ -17,8 +17,8 @@ class HandlersController:
         PingCommand,
         MentionWatcher,
         EntityInfoCommand,
-        RoleSettingsCommand,
-        RoleSettingsQuery,
+        RolesSettingsCommand,
+        RolesSettingsQuery,
         AboutInfoCommand,
     ]
 

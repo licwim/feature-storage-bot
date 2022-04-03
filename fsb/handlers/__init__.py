@@ -97,3 +97,21 @@ class CallbackQueryHandler(Handler):
             "Callback Query event:\n" +
             InfoBuilder.build_message_info_by_query_event(event, self.query_event)
         )
+
+
+class BaseMenu(CallbackQueryHandler):
+    INPUT_TIMEOUT = 60
+
+    def __init__(self, client: TelegramApiClient):
+        super().__init__(client)
+        self._menu_message = None
+        self._sender = None
+
+    async def handle(self, event):
+        await super().handle(event)
+
+        self._sender = self.event.sender.id
+        if self.query_event.sender and self.query_event.sender != self._sender:
+            return
+
+        self._menu_message = await self._client._client.get_messages(self.entity, ids=event.query.msg_id)

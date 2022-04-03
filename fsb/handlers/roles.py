@@ -15,20 +15,13 @@ from fsb.db.models import Role
 from fsb.db.models import User
 from fsb.error import ConversationTimeoutError
 from fsb.error import InputValueError
-from fsb.handlers import CallbackQueryHandler
+from fsb.handlers import BaseMenu
 from fsb.handlers import Handler
 from fsb.handlers.commands import BaseCommand
 from fsb.telegram.client import TelegramApiClient
 
 
 class RoleQueryEvent(QueryEvent):
-    CREATE_ROLE = 1
-    LIST_ROLES = 2
-    ROLE_MENU = 3
-    DELETE_ROLE = 4
-    CHANGE_ROLE = 5
-    TRUNCATE_ROLE = 6
-
     def __init__(self, sender: int = None, role_id: int = None, member_id: int = None):
         self.role_id = role_id
         self.role = None
@@ -45,10 +38,9 @@ class RoleQueryEvent(QueryEvent):
     @classmethod
     def normalize_data_dict(cls, data_dict: dict) -> dict:
         data_dict = super().normalize_data_dict(data_dict)
-        if 'role_id' not in data_dict['data']:
-            data_dict['data']['role_id'] = None
-        if 'member_id' not in data_dict['data']:
-            data_dict['data']['member_id'] = None
+        for key in ['role_id', 'member_id']:
+            if key not in data_dict['data']:
+                data_dict['data'][key] = None
         return data_dict
 
     @classmethod
@@ -133,7 +125,7 @@ class RemoveMemberRoleEvent(RoleQueryEvent):
     pass
 
 
-class RoleSettingsCommand(BaseCommand):
+class RolesSettingsCommand(BaseCommand):
     def __init__(self, client: TelegramApiClient):
         super().__init__(client, 'roles')
         self._area = self.ONLY_CHAT
@@ -145,25 +137,16 @@ class RoleSettingsCommand(BaseCommand):
         await self._client.send_message(self.entity, text, buttons=buttons)
 
 
-class RoleSettingsQuery(CallbackQueryHandler):
-    INPUT_TIMEOUT = 60
-
+class RolesSettingsQuery(BaseMenu):
     def __init__(self, client: TelegramApiClient):
         super().__init__(client)
         self._area = self.ONLY_CHAT
-        self._menu_message = None
-        self._sender = None
 
     @Handler.handle_decorator
     async def handle(self, event):
         await super().handle(event)
         assert isinstance(self.query_event, RoleQueryEvent)
 
-        self._sender = self.event.sender.id
-        if self.query_event.sender and self.query_event.sender != self._sender:
-            return
-
-        self._menu_message = await self._client._client.get_messages(self.entity, ids=event.query.msg_id)
         query_event_type = underscore(self.query_event.__class__.__name__.replace('RoleEvent', ''))
         action = getattr(self, 'action_' + query_event_type)
         if action:
