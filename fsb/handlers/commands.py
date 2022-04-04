@@ -1,5 +1,6 @@
 # !/usr/bin/env python
 
+from typing import Union
 from telethon.tl.functions.users import GetFullUserRequest
 
 from fsb.error import ExitHandlerException
@@ -10,21 +11,23 @@ from fsb.telegram.client import TelegramApiClient
 
 
 class BaseCommand(MessageHandler):
-    def __init__(self, client: TelegramApiClient, name: str):
+    def __init__(self, client: TelegramApiClient, names: Union[str, list]):
         super().__init__(client)
-        self.name = name
+        if isinstance(names, str):
+            self.names = [names]
+        else:
+            self.names = names
+        self.command = None
         self.args = []
 
     async def handle(self, event):
         args = event.message.text.split(' ')
-        acceptable_commands = [
-            f"/{self.name}",
-            f"/{self.name}@{self._client._current_user.username}",
-        ]
-        if args[0] not in acceptable_commands:
+        command = args[0].replace(f'@{self._client._current_user.username}', '')
+        if command not in self.names:
             raise ExitHandlerException
         args.pop(0)
         self.args = args
+        self.command = command
         await super().handle(event)
 
 

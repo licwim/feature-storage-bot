@@ -123,7 +123,7 @@ class Rating(BaseModel):
     TABLE_NAME = 'ratings'
 
     id = AutoField()
-    name = CharField(null=True)
+    name = CharField()
     command = CharField(null=True)
     chat = ForeignKeyField(Chat)
 

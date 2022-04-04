@@ -126,9 +126,18 @@ class RatingsSettingsCommand(BaseCommand):
 
 
 class RatingCommand(BaseCommand):
+    PIDOR_COMMAND = 'pidor'
+    CHAD_COMMAND = 'chad'
+
     def __init__(self, client: TelegramApiClient):
-        super().__init__(client, 'rating')
+        super().__init__(client, [self.PIDOR_COMMAND, self.CHAD_COMMAND])
         self._area = self.ONLY_CHAT
+
+    @Handler.handle_decorator
+    async def handle(self, event):
+        await super().handle(event)
+
+        members = await self._client.get_dialog_members(self.entity)
 
 
 class RatingsSettingsQuery(BaseMenu):
