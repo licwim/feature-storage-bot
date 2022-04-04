@@ -1,10 +1,11 @@
 # !/usr/bin/env python
 
+import random
 from typing import Union
-
 from inflection import underscore
 from telethon.tl.custom.button import Button
 
+from fsb.db.models import Chat
 from fsb.db.models import Member
 from fsb.db.models import QueryEvent
 from fsb.db.models import Rating
@@ -137,7 +138,46 @@ class RatingCommand(BaseCommand):
     async def handle(self, event):
         await super().handle(event)
 
-        members = await self._client.get_dialog_members(self.entity)
+        match self.command:
+            case self.PIDOR_COMMAND:
+                rating_name = 'pidor'
+                msg_name = 'ПИДОР'
+            case self.CHAD_COMMAND:
+                rating_name = 'chad'
+                msg_name = 'КРАСАВЧИК'
+            case _:
+                raise RuntimeError
+        rating = Rating.select().where(
+            Rating.name == rating_name,
+            Rating.chat == Chat.get(
+                Chat.telegram_id == self.entity.id
+            )
+        )
+        if rating.count() > 1:
+            raise RuntimeError
+        rating = rating.get()
+        rating_members = await self.get_rating_members(rating)
+
+        random.seed()
+        pos = random.randint(0, len(rating_members) - 1)
+        winner = rating_members[pos]
+        winner_tg_member = winner[0]
+        winner_db_member = winner[1]
+        winner_db_member.times += 1
+        winner_db_member.save()
+        await self._client.send_message(self.entity, f"Сегодня {msg_name} дня - {winner_tg_member.first_name} (@{winner_tg_member.username})")
+
+    async def get_rating_members(self, rating: Rating) -> list:
+        actual_members = await self._client.get_dialog_members(self.entity)
+        db_members = {}
+        for rating_member in RatingMember.select().where(RatingMember.rating == rating):
+            db_members[rating_member.member.user.telegram_id] = rating_member.member
+
+        result = []
+        for tg_member in actual_members:
+            if tg_member.id in db_members:
+                result.append((tg_member, db_members[tg_member.id]))
+        return result
 
 
 class RatingsSettingsQuery(BaseMenu):

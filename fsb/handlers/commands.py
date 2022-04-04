@@ -11,6 +11,7 @@ from fsb.telegram.client import TelegramApiClient
 
 
 class BaseCommand(MessageHandler):
+    PREFIX = '/'
     def __init__(self, client: TelegramApiClient, names: Union[str, list]):
         super().__init__(client)
         if isinstance(names, str):
@@ -22,13 +23,15 @@ class BaseCommand(MessageHandler):
 
     async def handle(self, event):
         args = event.message.text.split(' ')
-        command = args[0].replace(f'@{self._client._current_user.username}', '')
-        if command not in self.names:
+        command = args[0].replace(f'@{self._client._current_user.username}', '')[1:]
+        prefix = args[0][0]
+        if prefix == self.PREFIX and command in self.names:
+            args.pop(0)
+            self.args = args
+            self.command = command
+            await super().handle(event)
+        else:
             raise ExitHandlerException
-        args.pop(0)
-        self.args = args
-        self.command = command
-        await super().handle(event)
 
 
 class StartCommand(BaseCommand):
