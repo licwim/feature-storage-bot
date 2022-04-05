@@ -78,8 +78,9 @@ class TelegramApiClient:
 
     async def _send_debug_message(self, entity, message: Any, reply_to: Message = None, buttons=None):
         logger.debug(InfoBuilder.build_debug_message_info(entity, message, reply_to))
-        if Config.developer:
-            await self.send_message(await self.get_entity(Config.developer), message, reply_to, True, buttons)
+
+        if entity.id in Config.dev_chats:
+            await self.send_message(entity, message, reply_to, True, buttons)
 
     async def get_entity(self, uid: Union[str, int]):
         try:
@@ -90,15 +91,23 @@ class TelegramApiClient:
             return None
 
     def add_message_handler(self, handler: callable, *args, **kwargs):
+        if FSB_DEV_MODE:
+            blacklist_chats = False
+        else:
+            blacklist_chats = True
         self._client.add_event_handler(
             handler,
-            events.NewMessage(forwards=False, *args, **kwargs)
+            events.NewMessage(forwards=False, chats=Config.dev_chats, blacklist_chats=blacklist_chats, *args, **kwargs)
         )
 
     def add_callback_query_handler(self, handler: callable, *args, **kwargs):
+        if FSB_DEV_MODE:
+            blacklist_chats = False
+        else:
+            blacklist_chats = True
         self._client.add_event_handler(
             handler,
-            events.CallbackQuery(*args, **kwargs)
+            events.CallbackQuery(chats=Config.dev_chats, blacklist_chats=blacklist_chats, *args, **kwargs)
         )
 
     async def request(self, data):
