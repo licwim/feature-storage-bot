@@ -99,7 +99,7 @@ class Role(BaseModel):
             name = message[0].strip(' \n\t')
             nickname = message[1].strip('@ \n\t')
         elif len(message) >= 1:
-            name = nickname = message[0]
+            name = nickname = message[0].strip('@ \n\t')
         else:
             name = nickname = None
 
