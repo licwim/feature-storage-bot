@@ -156,37 +156,43 @@ class RolesSettingsQuery(BaseMenu):
         text, buttons = GeneralMenuRoleEvent.get_message_and_buttons(self._sender)
         await self._menu_message.edit(text, buttons=buttons)
 
+    async def get_role_params(self, conv):
+        response = conv.wait_event(
+            events.NewMessage(forwards=False, chats=self.entity, from_users=self.event.sender),
+            timeout=self.INPUT_TIMEOUT
+        )
+        await conv.send_message('Введи тег роли либо название и тег через запятую\n(Rolename, roletag)')
+        response_event = await response
+
+        name, nickname = Role.parse_from_message(response_event.message.text)
+
+        chat = Chat.get_or_create(
+            telegram_id=self.entity.id,
+            defaults={
+                'name': self.entity.title,
+                'type': Chat.get_chat_type(self.entity)
+            }
+        )[0]
+
+        if Role.get_or_none(Role.chat == chat, Role.nickname == nickname):
+            return None
+        else:
+            return name, nickname, chat
+
     async def action_create(self):
         async with self._client._client.conversation(self.entity) as conv:
             try:
-                response = conv.wait_event(
-                    events.NewMessage(forwards=False, chats=self.entity, from_users=self.event.sender),
-                    timeout=self.INPUT_TIMEOUT
-                )
-                await conv.send_message('Введи тег роли либо название и тег через запятую (Rolename, roletag):')
-                response_event = await response
-
-                name, nickname = Role.parse_from_message(response_event.message.text)
-
-                chat = Chat.get_or_create(
-                    telegram_id=self.entity.id,
-                    defaults={
-                        'name': self.entity.title,
-                        'type': Chat.get_chat_type(self.entity)
-                    }
-                )[0]
-
-                if Role.get_or_none(Role.chat == chat, Role.nickname == nickname):
-                    await self._client.send_message(self.entity, "Такая роль уже существует")
-                    return
+                params = await self.get_role_params(conv)
+                if params:
+                    Role.create(name=params[0], nickname=params[1], chat=params[2]).save()
+                    await conv.send_message(f"Создана роль: {params[0]} (@{params[1]})")
                 else:
-                    Role.create(name=name, nickname=nickname, chat=chat).save()
-                    await self._client.send_message(self.entity, f"Создана роль: {name} (@{nickname})")
-
+                    await conv.send_message("Такая роль уже существует")
+                    return
             except TimeoutError:
                 await conv.send_message(ConversationTimeoutError.message)
             except InputValueError as ex:
-                await conv.send_message(self.entity, ex.message)
+                await conv.send_message(ex.message)
 
         await self._client._client.send_message(entity=self.entity, message=self._menu_message)
 
@@ -269,21 +275,21 @@ class RolesSettingsQuery(BaseMenu):
 
         async with self._client._client.conversation(self.entity) as conv:
             try:
-                response = conv.wait_event(
-                    events.NewMessage(forwards=False, chats=self.entity, from_users=self.event.sender),
-                    timeout=self.INPUT_TIMEOUT
-                )
-                await conv.send_message('Введи тег роли либо название и тег через запятую (Rolename, roletag):')
-                response_event = await response
-
-                name, nickname = Role.parse_from_message(response_event.message.text)
-                role.name = name
-                role.nickname = nickname
-                role.save()
+                params = await self.get_role_params(conv)
+                if params:
+                    old_name = role.name
+                    old_nickname = role.nickname
+                    role.name = params[0]
+                    role.nickname = params[1]
+                    role.save()
+                    await conv.send_message(f"Изменена роль: {old_name} (@{old_nickname})")
+                else:
+                    await conv.send_message("Такая роль уже существует")
+                    return
             except TimeoutError:
                 await conv.send_message(ConversationTimeoutError.message)
             except InputValueError as ex:
-                await self._client.send_message(self.entity, ex.message)
+                await conv.send_message(ex.message)
 
         await self._client._client.send_message(entity=self.entity, message=self._menu_message)
 
