@@ -124,8 +124,10 @@ class Rating(BaseModel):
 
     id = AutoField()
     name = CharField()
-    command = CharField(null=True)
     chat = ForeignKeyField(Chat)
+    command = CharField(null=True)
+    last_run = DateTimeField(null=True)
+    last_winner = ForeignKeyField(Member, null=True)
 
 
 class RatingMember(BaseModel):

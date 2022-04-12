@@ -73,3 +73,32 @@ class CreateEventsTable(BaseMigration):
 
         QueryEvent.drop_table()
         logger.info(f"Table `{QueryEvent.TABLE_NAME}` is dropped")
+
+
+class CreateTablesForRatings(BaseMigration):
+        _tables = [
+            Rating,
+            RatingMember,
+        ]
+
+        def up(self):
+            super().up()
+            for table in self._tables:
+                if table.table_exists():
+                    raise RuntimeError(f"Table `{table.TABLE_NAME}` already exist")
+
+            base_migrator.database.create_tables(self._tables)
+            logger.info("Creating tables is done")
+
+        def down(self):
+            super().down()
+            tables = self._tables.copy()
+
+            for table in self._tables:
+                if not table.table_exists():
+                    tables.remove(table)
+            if not tables:
+                raise RuntimeError("All tables already dropped")
+
+            base_migrator.database.drop_tables(tables)
+            logger.info(f"Dropped tables: {', '.join([table.TABLE_NAME for table in tables])}")

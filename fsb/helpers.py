@@ -147,3 +147,15 @@ class InfoBuilder:
         return f"{bot.user.first_name} Bot (@{bot.user.username})\n" \
                f"  {bot.about}\n" \
                f"  Version: {VERSION}"
+
+
+class Helper:
+    @staticmethod
+    def make_member_name(member, with_username: bool = True, with_mention: bool = False):
+        first_name = member.first_name if member.first_name else ''
+        last_name = f" {member.last_name}" if member.last_name else ''
+        if with_username:
+            username = f" ({'@' if with_mention else ''}{member.username})" if member.username else ''
+        else:
+            username = ''
+        return f"{first_name}{last_name}{username}"

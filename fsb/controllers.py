@@ -5,6 +5,9 @@ from fsb.handlers.commands import AboutInfoCommand
 from fsb.handlers.commands import EntityInfoCommand
 from fsb.handlers.commands import PingCommand
 from fsb.handlers.commands import StartCommand
+from fsb.handlers.ratings import RatingCommand, CreateRatingsOnJoinChat
+from fsb.handlers.ratings import RatingsSettingsCommand
+from fsb.handlers.ratings import RatingsSettingsQuery
 from fsb.handlers.roles import RolesSettingsCommand
 from fsb.handlers.roles import RolesSettingsQuery
 from fsb.handlers.watchers import MentionWatcher
@@ -20,6 +23,10 @@ class HandlersController:
         RolesSettingsCommand,
         RolesSettingsQuery,
         AboutInfoCommand,
+        RatingsSettingsCommand,
+        RatingsSettingsQuery,
+        RatingCommand,
+        CreateRatingsOnJoinChat,
     ]
 
     def __init__(self, client: TelegramApiClient):

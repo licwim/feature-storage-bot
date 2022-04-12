@@ -115,3 +115,21 @@ class BaseMenu(CallbackQueryHandler):
             return
 
         self._menu_message = await self._client._client.get_messages(self.entity, ids=event.query.msg_id)
+
+
+class ChatActionHandler(Handler):
+    def __init__(self, client: TelegramApiClient, only_self: bool = True):
+        super().__init__(client)
+        self._only_self = only_self
+
+    def listen(self):
+        self._client.add_chat_action_handler(self.handle)
+        super().listen()
+
+    async def handle(self, event):
+        if self._only_self and self._client._current_user.id not in event.user_ids:
+            raise ExitHandlerException
+
+        await super().handle(event)
+
+        logger.info(f"Chat Action event: {', '.join([str(id) for id in event.user_ids])}")

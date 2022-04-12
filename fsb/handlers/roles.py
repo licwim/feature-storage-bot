@@ -145,7 +145,8 @@ class RolesSettingsQuery(BaseMenu):
     @Handler.handle_decorator
     async def handle(self, event):
         await super().handle(event)
-        assert isinstance(self.query_event, RoleQueryEvent)
+        if not isinstance(self.query_event, RoleQueryEvent):
+            return
 
         query_event_type = underscore(self.query_event.__class__.__name__.replace('RoleEvent', ''))
         action = getattr(self, 'action_' + query_event_type)
