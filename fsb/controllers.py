@@ -5,7 +5,7 @@ from fsb.handlers.commands import AboutInfoCommand
 from fsb.handlers.commands import EntityInfoCommand
 from fsb.handlers.commands import PingCommand
 from fsb.handlers.commands import StartCommand
-from fsb.handlers.ratings import RatingCommand, CreateRatingsOnJoinChat
+from fsb.handlers.ratings import RatingCommand, CreateRatingsOnJoinChat, StatRatingCommand
 from fsb.handlers.ratings import RatingsSettingsCommand
 from fsb.handlers.ratings import RatingsSettingsQuery
 from fsb.handlers.roles import RolesSettingsCommand
@@ -26,6 +26,7 @@ class HandlersController:
         RatingsSettingsCommand,
         RatingsSettingsQuery,
         RatingCommand,
+        StatRatingCommand,
         CreateRatingsOnJoinChat,
     ]
 

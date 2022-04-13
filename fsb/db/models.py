@@ -82,6 +82,12 @@ class Member(BaseModel):
     user = ForeignKeyField(User)
     rang = CharField(null=True)
 
+    def get_telegram_id(self):
+        telegram_id = None
+        if self.user:
+            telegram_id = self.user.telegram_id
+        return telegram_id
+
 
 class Role(BaseModel):
     TABLE_NAME = 'roles'
@@ -118,6 +124,12 @@ class MemberRole(BaseModel):
     member = ForeignKeyField(Member)
     role = ForeignKeyField(Role, on_delete='CASCADE')
 
+    def get_telegram_id(self):
+        telegram_id = None
+        if self.member:
+            telegram_id = self.member.user.telegram_id
+        return telegram_id
+
 
 class Rating(BaseModel):
     TABLE_NAME = 'ratings'
@@ -136,8 +148,14 @@ class RatingMember(BaseModel):
     id = AutoField()
     member = ForeignKeyField(Member)
     rating = ForeignKeyField(Rating)
-    times = IntegerField(default=0)
+    count = IntegerField(default=0)
     created_at = DateTimeField(default=datetime.now())
+
+    def get_telegram_id(self):
+        telegram_id = None
+        if self.member:
+            telegram_id = self.member.user.telegram_id
+        return telegram_id
 
 
 class QueryEvent(BaseModel):

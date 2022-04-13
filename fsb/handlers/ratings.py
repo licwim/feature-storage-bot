@@ -22,6 +22,9 @@ from fsb.handlers.commands import BaseCommand
 from fsb.helpers import Helper
 from fsb.telegram.client import TelegramApiClient
 
+PIDOR_KEYWORD = 'pidor'
+CHAD_KEYWORD = 'chad'
+
 
 class RatingQueryEvent(QueryEvent):
     def __init__(self, sender: int = None, rating_id: int = None, member_id: int = None, rating_member_id: int = None):
@@ -164,8 +167,8 @@ class RatingsSettingsCommand(BaseCommand):
 
 
 class RatingCommand(BaseCommand):
-    PIDOR_COMMAND = 'pidor'
-    CHAD_COMMAND = 'chad'
+    PIDOR_COMMAND = PIDOR_KEYWORD
+    CHAD_COMMAND = CHAD_KEYWORD
 
     PIDOR_RUN_MESSAGES = [
         'Эники-беники ели вареники',
@@ -193,11 +196,11 @@ class RatingCommand(BaseCommand):
 
         match self.command:
             case self.PIDOR_COMMAND:
-                rating_name = 'pidor'
+                rating_name = PIDOR_KEYWORD
                 msg_name = 'ПИДОР'
                 run_messages = self.PIDOR_RUN_MESSAGES
             case self.CHAD_COMMAND:
-                rating_name = 'chad'
+                rating_name = CHAD_KEYWORD
                 msg_name = 'КРАСАВЧИК'
                 run_messages = self.CHAD_RUN_MESSAGES
             case _:
@@ -218,7 +221,7 @@ class RatingCommand(BaseCommand):
             random.seed()
             pos = random.randint(0, len(rating_members) - 1)
             tg_member, db_member = rating_members[pos]
-            db_member.times += 1
+            db_member.count += 1
             db_member.save()
             rating.last_winner = db_member.member
             rating.last_run = datetime.now()
@@ -258,11 +261,61 @@ class RatingCommand(BaseCommand):
         return result
 
 
+class StatRatingCommand(BaseCommand):
+    PIDOR_STAT_COMMAND = RatingCommand.PIDOR_COMMAND + 'stat'
+    CHAD_STAT_COMMAND = RatingCommand.CHAD_COMMAND + 'stat'
+
+    def __init__(self, client: TelegramApiClient):
+        super().__init__(client, [self.PIDOR_STAT_COMMAND, self.CHAD_STAT_COMMAND])
+        self._area = self.ONLY_CHAT
+
+    @Handler.handle_decorator
+    async def handle(self, event):
+        await super().handle(event)
+
+        match self.command:
+            case self.PIDOR_STAT_COMMAND:
+                rating_name = PIDOR_KEYWORD
+                msg_name = 'ПИДОР'
+            case self.CHAD_STAT_COMMAND:
+                rating_name = CHAD_KEYWORD
+                msg_name = 'КРАСАВЧИК'
+            case _:
+                raise RuntimeError
+        rating = Rating.get_or_create(
+            name=rating_name,
+            chat=Chat.get(Chat.telegram_id == self.entity.id),
+            defaults={
+                'command': rating_name
+            }
+        )[0]
+
+        actual_members = await self._client.get_dialog_members(self.entity)
+        rating_members = list(
+            RatingMember.select().where(
+                RatingMember.rating == rating
+            ).order_by(RatingMember.count.desc()).objects().execute()
+        )
+        members_collection = Helper.collect_members(actual_members, rating_members)
+        if not members_collection:
+            return
+
+        message = f"**Результаты {msg_name} Дня**\n"
+        pos = 1
+        for member in members_collection:
+            tg_member, db_member = member
+            message += f"#__**{str(pos)}**__  " \
+                       f"{Helper.make_member_name(tg_member)} - " \
+                       f"{Helper.make_count_str(db_member.count)}\n"
+        await self._client.send_message(self.entity, message)
+
+
 class RatingsSettingsQuery(BaseMenu):
     def __init__(self, client: TelegramApiClient):
         super().__init__(client)
         self._area = self.ONLY_CHAT
 
+    @Handler.handle_decorator
     async def handle(self, event):
         await super().handle(event)
         if not isinstance(self.query_event, RatingQueryEvent):
@@ -288,15 +341,15 @@ class RatingsSettingsQuery(BaseMenu):
         await self._menu_message.edit(text, buttons=buttons)
 
     async def action_reg_menu(self):
+        chat = Chat.get(Chat.telegram_id == self.entity.id)
         member = Member.get(
             Member.user == User.get(User.telegram_id == self._sender),
-            Member.chat == Chat.get(Chat.telegram_id == self.entity.id)
+            Member.chat == chat
         )
         ratings = Rating.select().join(RatingMember, JOIN.LEFT_OUTER).where(
+            (Rating.chat == chat) &
             ((RatingMember.member != member)
              | (RatingMember.member.is_null()))
-            & ((Rating.chat == Chat.get(Chat.telegram_id == self.entity.id))
-               | (Rating.chat.is_null()))
         )
 
         buttons = []
@@ -331,3 +384,47 @@ class RatingsSettingsQuery(BaseMenu):
                 self.entity,
                 f"{tg_member.first_name} теперь зареган в {rating.name}"
             )
+
+    async def action_unreg_menu(self):
+        chat = Chat.get(Chat.telegram_id == self.entity.id)
+        member = Member.get(
+            Member.user == User.get(User.telegram_id == self._sender),
+            Member.chat == chat
+        )
+        ratings = Rating.select().join(RatingMember).where(
+            Rating.chat == chat,
+            RatingMember.member == member
+        )
+
+        buttons = []
+        buttons_line = []
+        for rating in ratings:
+            buttons_line.append(Button.inline(
+                f"{rating.name}",
+                UnregRatingEvent(sender=self._sender, rating_id=rating.id, member_id=member.id).save_get_id()
+            ))
+            if len(buttons_line) == 2:
+                buttons.append(buttons_line.copy())
+                buttons_line = []
+        if buttons_line:
+            buttons.append(buttons_line.copy())
+        buttons.append([Button.inline("<< К меню рейтингов", GeneralMenuRatingEvent(self._sender).save_get_id())])
+        await self._menu_message.edit("Откуда разрегаться", buttons=buttons)
+
+    async def action_unreg(self):
+        rating = self.query_event.get_rating()
+        member = self.query_event.get_member()
+        rating_member = RatingMember.get_or_none(
+            RatingMember.rating == rating,
+            RatingMember.member == member
+        )
+        if rating_member:
+            rating_member.delete_instance()
+            tg_member = await self._client.get_entity(member.user.telegram_id)
+            await self._client.send_message(
+                self.entity,
+                f"{tg_member.first_name} теперь разреган из {rating.name}"
+            )
+        else:
+            await self._client.send_message(self.entity, "Ты уже разреган")
+            return

@@ -1,6 +1,7 @@
 # !/usr/bin/env python
 
 import json
+from typing import Union
 
 import yaml
 from telethon.events.callbackquery import CallbackQuery
@@ -159,3 +160,32 @@ class Helper:
         else:
             username = ''
         return f"{first_name}{last_name}{username}"
+
+    @staticmethod
+    def collect_members(tg_members: list, db_members: list) -> Union[list, None]:
+        try:
+            tmp_tg_members = {}
+            for tg_member in tg_members:
+                tmp_tg_members[tg_member.id] = tg_member
+
+            result = []
+            for db_member in db_members:
+                telegram_id = db_member.get_telegram_id()
+                if telegram_id in tmp_tg_members:
+                    result.append((tmp_tg_members[telegram_id], db_member))
+            return result
+        except AttributeError:
+            return None
+
+    @staticmethod
+    def make_count_str(count: int) -> str:
+        dozens = count % 100
+        units = count % 10
+        if 10 < dozens < 20:
+            count_word = 'раз'
+        else:
+            if units in range(2, 5):
+                count_word = 'раза'
+            else:
+                count_word = 'раз'
+        return f"{str(count)} {count_word}"
