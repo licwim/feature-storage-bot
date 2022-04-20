@@ -24,7 +24,7 @@ jobs:
       id: build-image
       run: |
         IMAGE_NAME="${{ github.repository }}:$SHA"
-        docker build . --file Dockerfile --tag "$IMAGE_NAME"
+        docker build . --file Dockerfile -l ${{ github.ref_name }} --tag "$IMAGE_NAME"
         echo $IMAGE_NAME
         echo "::set-output name=IMAGE_NAME::$IMAGE_NAME"
   run:
@@ -59,6 +59,7 @@ jobs:
         docker stop "$ROLLBACK_NAME"
         docker run \
           --log-driver=journald \
+          -l ${{ github.ref_name }}
           -e BOT_TOKEN="$BOT_TOKEN" \
           -e API_ID="$API_ID" \
           -e API_HASH="$API_HASH" \
