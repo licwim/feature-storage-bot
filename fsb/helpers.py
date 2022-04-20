@@ -5,8 +5,10 @@ from typing import Union
 
 import yaml
 from telethon.events.callbackquery import CallbackQuery
+from telethon.events.chataction import ChatAction
 from telethon.events.messageedited import MessageEdited
 from telethon.events.newmessage import NewMessage
+from telethon.tl.custom.button import Button
 from telethon.tl.patched import Message
 
 from fsb import VERSION
@@ -53,7 +55,20 @@ class InfoBuilder:
             'chat': chat_info,
             'event': {
                 'type': query_event.__class__.__name__,
-                'data': query_event.to_dict()
+                'object_data': query_event.to_dict()
+            }
+        }
+
+        return data_info
+
+    @staticmethod
+    @builder_decorator
+    def build_message_info_by_chat_action(event, view_type: int = None):
+        assert isinstance(event, ChatAction.Event)
+
+        data_info = {
+            'event': {
+                'user_ids': event.user_ids,
             }
         }
 
@@ -189,3 +204,18 @@ class Helper:
             else:
                 count_word = 'раз'
         return f"{str(count)} {count_word}"
+
+    @staticmethod
+    def make_buttons_layout(data: list, closing_button: tuple = None):
+        buttons = []
+        buttons_line = []
+        for text, event in data:
+            buttons_line.append(Button.inline(text, event))
+            if len(buttons_line) == 2:
+                buttons.append(buttons_line.copy())
+                buttons_line = []
+        if buttons_line:
+            buttons.append(buttons_line.copy())
+        if closing_button and len(closing_button) >= 2:
+            buttons.append([Button.inline(closing_button[0], closing_button[1])])
+        return buttons

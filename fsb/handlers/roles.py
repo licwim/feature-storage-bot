@@ -139,7 +139,7 @@ class RolesSettingsCommand(BaseCommand):
 
 class RolesSettingsQuery(BaseMenu):
     def __init__(self, client: TelegramApiClient):
-        super().__init__(client)
+        super().__init__(client, RoleQueryEvent)
         self._area = self.ONLY_CHAT
 
     @Handler.handle_decorator

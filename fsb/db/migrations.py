@@ -88,6 +88,7 @@ class CreateTablesForRatings(BaseMigration):
                     raise RuntimeError(f"Table `{table.TABLE_NAME}` already exist")
 
             base_migrator.database.create_tables(self._tables)
+            Rating._schema.create_foreign_key(Rating.last_winner)
             logger.info("Creating tables is done")
 
         def down(self):

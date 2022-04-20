@@ -5,10 +5,11 @@ import sys
 from datetime import datetime
 from typing import Union
 
-from peewee import AutoField
+from peewee import AutoField, DoesNotExist
 from peewee import CharField
 from peewee import CompositeKey
 from peewee import DateTimeField
+from peewee import DeferredForeignKey
 from peewee import ForeignKeyField
 from peewee import IntegerField
 from peewee import Model
@@ -139,7 +140,7 @@ class Rating(BaseModel):
     chat = ForeignKeyField(Chat)
     command = CharField(null=True)
     last_run = DateTimeField(null=True)
-    last_winner = ForeignKeyField(Member, null=True)
+    last_winner = DeferredForeignKey('RatingMember', null=True, on_delete='SET NULL')
 
 
 class RatingMember(BaseModel):
@@ -204,9 +205,10 @@ class QueryEvent(BaseModel):
 
     @classmethod
     def find_and_create(cls, id: int) -> Union['QueryEvent', None]:
-        query_event = cls.get_by_id(id)
-
-        if not query_event.module_name or not query_event.class_name:
+        try:
+            query_event = cls.get_by_id(id)
+            assert query_event.module_name and query_event.class_name
+        except DoesNotExist or AssertionError:
             return None
 
         data_dict = {}
