@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - 'release/**'
 
 jobs:
   build:
@@ -23,6 +24,7 @@ jobs:
         echo "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_ENV
         docker build . --file Dockerfile --tag "$IMAGE_NAME"
   run:
+    needs: build
     runs-on: self-hosted
     environment: production
     env:
@@ -32,6 +34,7 @@ jobs:
       API_ID: ${{ secrets.TELEGRAM_API_ID }}
       API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
       DB_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+      IMAGE_NAME: ${{ needs.build.env.IMAGE_NAME }}
       ROLLBACK_PREFIX: fsb-bak-
     steps:
     - name: Prepare rollback Docker container
@@ -47,7 +50,6 @@ jobs:
         echo "ROLLBACK_NAME=$ROLLBACK_NAME" >> $GITHUB_ENV
     - name: Start app Docker container
       env:
-        IMAGE_NAME: ${{ env.IMAGE_NAME }}
         ROLLBACK_NAME: ${{ env.ROLLBACK_NAME }}
       run: |
         docker stop "$ROLLBACK_NAME"
