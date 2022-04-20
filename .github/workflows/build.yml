@@ -34,7 +34,7 @@ jobs:
       API_ID: ${{ secrets.TELEGRAM_API_ID }}
       API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
       DB_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
-      IMAGE_NAME: ${{ needs.build.env.IMAGE_NAME }}
+      IMAGE_NAME: ${{ jobs.build.env.IMAGE_NAME }}
       ROLLBACK_PREFIX: fsb-bak-
     steps:
     - name: Prepare rollback Docker container
