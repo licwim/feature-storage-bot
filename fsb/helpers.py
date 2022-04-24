@@ -1,7 +1,7 @@
 # !/usr/bin/env python
 
 import json
-from typing import Union
+from typing import Union, Iterable
 
 import yaml
 from telethon.events.callbackquery import CallbackQuery
@@ -170,14 +170,18 @@ class Helper:
     def make_member_name(member, with_username: bool = True, with_mention: bool = False):
         first_name = member.first_name if member.first_name else ''
         last_name = f" {member.last_name}" if member.last_name else ''
-        if with_username:
-            username = f" ({'@' if with_mention else ''}{member.username})" if member.username else ''
+        if with_username and member.username:
+            if with_mention:
+                username = f" (@{member.username})"
+            else:
+                username = f" (__{member.username}__)"
         else:
             username = ''
         return f"{first_name}{last_name}{username}"
 
+    # TODO добавить возможность возвращать ассоциативный массив
     @staticmethod
-    def collect_members(tg_members: list, db_members: list) -> Union[list, None]:
+    def collect_members(tg_members: Iterable, db_members: Iterable) -> Union[list, None]:
         try:
             tmp_tg_members = {}
             for tg_member in tg_members:
