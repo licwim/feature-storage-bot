@@ -170,8 +170,11 @@ class Helper:
     def make_member_name(member, with_username: bool = True, with_mention: bool = False):
         first_name = member.first_name if member.first_name else ''
         last_name = f" {member.last_name}" if member.last_name else ''
-        if with_username:
-            username = f" ({'@' if with_mention else ''}{member.username})" if member.username else ''
+        if with_username and member.username:
+            if with_mention:
+                username = f" (@{member.username})"
+            else:
+                username = f" (__{member.username}__)"
         else:
             username = ''
         return f"{first_name}{last_name}{username}"

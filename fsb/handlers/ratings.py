@@ -313,7 +313,7 @@ class StatRatingCommand(BaseCommand):
         pos = 1
         for member in members_collection:
             tg_member, db_member = member
-            message += f"#__**{str(pos)}**__  " \
+            message += f"#**{str(pos)}**   " \
                        f"{Helper.make_member_name(tg_member)} - " \
                        f"{Helper.make_count_str(db_member.count)}\n"
             pos += 1
