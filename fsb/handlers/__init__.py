@@ -90,6 +90,8 @@ class MessageHandler(Handler):
         if event.message.out:
             raise ExitHandlerException
 
+        self.message = event.message
+
     async def handle(self, event):
         await super().handle(event)
         logger.info(
