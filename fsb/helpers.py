@@ -1,7 +1,7 @@
 # !/usr/bin/env python
 
 import json
-from typing import Union
+from typing import Union, Iterable
 
 import yaml
 from telethon.events.callbackquery import CallbackQuery
@@ -180,7 +180,7 @@ class Helper:
         return f"{first_name}{last_name}{username}"
 
     @staticmethod
-    def collect_members(tg_members: list, db_members: list) -> Union[list, None]:
+    def collect_members(tg_members: Iterable, db_members: Iterable) -> Union[list, None]:
         try:
             tmp_tg_members = {}
             for tg_member in tg_members:

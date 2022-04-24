@@ -300,11 +300,7 @@ class StatRatingCommand(BaseCommand):
         )[0]
 
         actual_members = await self._client.get_dialog_members(self.entity)
-        rating_members = list(
-            RatingMember.select().where(
-                RatingMember.rating == rating
-            ).order_by(RatingMember.count.desc()).objects().execute()
-        )
+        rating_members = RatingMember.select().where(RatingMember.rating == rating).order_by(RatingMember.count.desc())
         members_collection = Helper.collect_members(actual_members, rating_members)
         if not members_collection:
             return
