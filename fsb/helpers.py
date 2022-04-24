@@ -179,6 +179,7 @@ class Helper:
             username = ''
         return f"{first_name}{last_name}{username}"
 
+    # TODO добавить возможность возвращать ассоциативный массив
     @staticmethod
     def collect_members(tg_members: Iterable, db_members: Iterable) -> Union[list, None]:
         try:
