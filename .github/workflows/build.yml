@@ -25,7 +25,7 @@ jobs:
       id: build-image
       run: |
         IMAGE_NAME="${{ github.repository }}:$SHA"
-        BUILD_VERSION="${{ github.ref_name }}-{{ github.sha }}"
+        BUILD_VERSION=$(echo "${{ github.ref_name }}-${{ github.sha }}" | sed 's|/|-|g')
         docker build . --file Dockerfile --label branch=${{ github.ref_name }} --tag "$IMAGE_NAME"
         echo $IMAGE_NAME
         echo "::set-output name=IMAGE_NAME::$IMAGE_NAME"
