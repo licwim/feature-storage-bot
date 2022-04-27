@@ -29,7 +29,7 @@ jobs:
         docker build . --file Dockerfile --label branch=${{ github.ref_name }} --tag "$IMAGE_NAME"
         echo $IMAGE_NAME
         echo "::set-output name=IMAGE_NAME::$IMAGE_NAME"
-        ehco "::set-output name=BUILD_VERSION::$BUILD_VERSION"
+        echo "::set-output name=BUILD_VERSION::$BUILD_VERSION"
   run:
     needs: build
     runs-on: self-hosted
