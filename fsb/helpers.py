@@ -11,6 +11,7 @@ from telethon.events.newmessage import NewMessage
 from telethon.tl.custom.button import Button
 from telethon.tl.patched import Message
 
+from fsb import BUILD
 from fsb import VERSION
 
 
@@ -162,7 +163,8 @@ class InfoBuilder:
     def build_about_info(bot):
         return f"{bot.user.first_name} Bot (@{bot.user.username})\n" \
                f"  {bot.about}\n" \
-               f"  Version: {VERSION}"
+               f"  Version: {VERSION}" \
+               f"  Build: {BUILD}"
 
 
 class Helper:

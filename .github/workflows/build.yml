@@ -12,6 +12,7 @@ jobs:
     environment: production
     outputs:
       image_name: ${{ steps.build-image.outputs.IMAGE_NAME }}
+      build_version: ${{ steps.build-image.outputs.BUILD_VERSION }}
     steps:
     - uses: actions/checkout@v2
     - uses: benjlevesque/short-sha@v1.2
@@ -24,9 +25,11 @@ jobs:
       id: build-image
       run: |
         IMAGE_NAME="${{ github.repository }}:$SHA"
+        BUILD_VERSION="${{ github.ref_name }}-{{ github.sha }}"
         docker build . --file Dockerfile --label branch=${{ github.ref_name }} --tag "$IMAGE_NAME"
         echo $IMAGE_NAME
         echo "::set-output name=IMAGE_NAME::$IMAGE_NAME"
+        ehco "::set-output name=BUILD_VERSION::$BUILD_VERSION"
   run:
     needs: build
     runs-on: self-hosted
@@ -34,6 +37,7 @@ jobs:
     env:
       CONTAINER_NAME: fsb-app
       IMAGE_NAME: ${{ needs.build.outputs.image_name }}
+      BUILD_VERSION: ${{ needs.build.outputs.build_version }}
       NETWORK_NAME: feature-storage-bot-network
       BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       API_ID: ${{ secrets.TELEGRAM_API_ID }}
@@ -64,6 +68,7 @@ jobs:
           -e API_ID="$API_ID" \
           -e API_HASH="$API_HASH" \
           -e DB_PASSWORD="$DB_PASSWORD" \
+          -e BUILD_VERSION="$BUILD_VERSION" \
           -d \
           --network "$NETWORK_NAME" \
           --name "$CONTAINER_NAME" \
