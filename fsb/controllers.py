@@ -1,20 +1,41 @@
 # !/usr/bin/env python
 
-from fsb.handlers import Handler
+from fsb.factories import Factory
 from fsb.handlers.commands import AboutInfoCommand
 from fsb.handlers.commands import EntityInfoCommand
 from fsb.handlers.commands import PingCommand
 from fsb.handlers.commands import StartCommand
-from fsb.handlers.ratings import RatingCommand, CreateRatingsOnJoinChat, StatRatingCommand
+from fsb.handlers.pipelines import JoinChatPipeline
+from fsb.handlers.ratings import RatingCommand
 from fsb.handlers.ratings import RatingsSettingsCommand
 from fsb.handlers.ratings import RatingsSettingsQuery
+from fsb.handlers.ratings import StatRatingCommand
 from fsb.handlers.roles import RolesSettingsCommand
 from fsb.handlers.roles import RolesSettingsQuery
 from fsb.handlers.watchers import MentionWatcher
 from fsb.telegram.client import TelegramApiClient
 
 
-class HandlersController:
+class Controller:
+    def __init__(self, client: TelegramApiClient, factory: Factory, run_command: str):
+        self.objects = {}
+        self._client = client
+        self._factory = factory
+        self._run_command = run_command
+
+    def object_run(self, obj):
+        action = getattr(obj, self._run_command)
+        if action:
+            action()
+
+    def all_objects_run(self):
+        self._factory.create_all()
+        for obj in self._factory.get_objects().values():
+            self.object_run(obj)
+            self.objects[obj.__class__] = obj
+
+
+class GeneralHandlersController(Controller):
     _available_handlers = [
         StartCommand,
         PingCommand,
@@ -27,30 +48,9 @@ class HandlersController:
         RatingsSettingsQuery,
         RatingCommand,
         StatRatingCommand,
-        CreateRatingsOnJoinChat,
+        JoinChatPipeline,
     ]
 
     def __init__(self, client: TelegramApiClient):
-        self._handlers = {}
-        self._client = client
-        self._loop = client.loop
-        for handler in self._available_handlers:
-            self.create_handler(handler)
-
-    def create_handler(self, handler_class):
-        if handler_class in self._available_handlers:
-            handler = handler_class(self._client)
-            return self.add_handler(handler)
-        return False
-
-    def add_handler(self, handler: Handler):
-        if handler.__class__ not in self._handlers.keys():
-            self._handlers[handler.__class__] = handler
-            handler.listen()
-            return True
-        return False
-
-    def get_handler(self, key):
-        if key in self._handlers.keys():
-            return self._handlers[key]
-        return False
+        factory = Factory(client, self._available_handlers)
+        super().__init__(client, factory, 'listen')
