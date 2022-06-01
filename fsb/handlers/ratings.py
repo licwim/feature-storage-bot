@@ -130,13 +130,9 @@ class CreateRatingsOnJoinChat(ChatActionHandler):
         if not event.user_joined and not event.user_added:
             return
         await super().handle(event)
-        chat = Chat.get_or_create(
-            telegram_id=self.entity.id,
-            defaults={
-                'name': self.entity.title,
-                'type': Chat.get_chat_type(self.entity)
-            }
-        )[0]
+
+        chat = Chat.get(telegram_id=self.entity.id)
+
         Rating.get_or_create(
             name=PIDOR_KEYWORD,
             chat=chat,
@@ -144,6 +140,7 @@ class CreateRatingsOnJoinChat(ChatActionHandler):
                 'command': PIDOR_KEYWORD
             }
         )
+
         Rating.get_or_create(
             name=CHAD_KEYWORD,
             chat=chat,
