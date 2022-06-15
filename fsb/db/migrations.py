@@ -1,5 +1,7 @@
 # !/usr/bin/env python
 
+from playhouse.migrate import migrate
+
 from fsb import logger
 from fsb.db import base_migrator
 from fsb.db.models import Chat
@@ -18,6 +20,12 @@ class BaseMigration:
 
     def down(self):
         logger.info(f"Rollback {self.__class__.__name__} ...")
+
+    @staticmethod
+    def migrate_decorator(callback: callable):
+        def migration(self):
+            migrate(callback(self))
+        return migration
 
 
 class CreateMainTables(BaseMigration):

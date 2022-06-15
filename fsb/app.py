@@ -1,11 +1,11 @@
 # !/usr/bin/env python
 from time import sleep
 
-from . import FSB_DEV_MODE
-from . import logger
-from .config import Config
-from .controllers import HandlersController
-from .telegram.client import TelegramApiClient
+from fsb import FSB_DEV_MODE
+from fsb import logger
+from fsb.config import Config
+from fsb.controllers import GeneralHandlersController
+from fsb.telegram.client import TelegramApiClient
 
 
 class FeatureStorageBot:
@@ -15,10 +15,11 @@ class FeatureStorageBot:
     def __init__(self):
         self.client = TelegramApiClient(Config.bot_username)
         self.loop = self.client.loop
-        self.handlers_controller = HandlersController(self.client)
+        self.handlers_controller = GeneralHandlersController(self.client)
 
     def run(self):
         logger.info(f"Development mode is {'ON' if FSB_DEV_MODE else 'OFF'}")
+        self.handlers_controller.all_objects_run()
         self.loop.run_until_complete(self.client.connect(True))
 
         try:
