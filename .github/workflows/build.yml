@@ -7,10 +7,10 @@ on:
         description: 'Job to run'
         required: true
         default: 'build'
-  push:
-    branches:
-      - master
-      - 'release/**'
+#  push:
+#    branches:
+#      - master
+#      - 'release/**'
 
 jobs:
   build:
