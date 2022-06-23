@@ -1,6 +1,12 @@
 name: Feature Storage Bot
 
 on:
+  workflow_dispatch:
+    inputs:
+      job:
+        description: 'Job to run'
+        required: true
+        default: 'build'
   push:
     branches:
       - master
@@ -30,9 +36,11 @@ jobs:
         echo $IMAGE_NAME
         echo "::set-output name=IMAGE_NAME::$IMAGE_NAME"
         echo "::set-output name=BUILD_VERSION::$BUILD_VERSION"
-  run:
+
+  deploy:
     needs: build
     runs-on: self-hosted
+    if: ${{ github.event.inputs.job == 'deploy' }}
     environment: production
     env:
       CONTAINER_NAME: fsb-app

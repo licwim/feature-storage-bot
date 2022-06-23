@@ -29,7 +29,6 @@ class Pipeline:
             if self.factory.create_object(handler_class):
                 initiated_handlers[classname].append(handler_class)
 
-
     async def handle_all(self, event):
         handlers = self.factory.get_objects()
         for handler_class in self._available_handlers:
