@@ -5,10 +5,11 @@ import sys
 from datetime import datetime
 from typing import Union
 
-from peewee import AutoField
+from peewee import AutoField, DoesNotExist
 from peewee import CharField
 from peewee import CompositeKey
 from peewee import DateTimeField
+from peewee import DeferredForeignKey
 from peewee import ForeignKeyField
 from peewee import IntegerField
 from peewee import Model
@@ -82,6 +83,12 @@ class Member(BaseModel):
     user = ForeignKeyField(User)
     rang = CharField(null=True)
 
+    def get_telegram_id(self):
+        telegram_id = None
+        if self.user:
+            telegram_id = self.user.telegram_id
+        return telegram_id
+
 
 class Role(BaseModel):
     TABLE_NAME = 'roles'
@@ -118,14 +125,22 @@ class MemberRole(BaseModel):
     member = ForeignKeyField(Member)
     role = ForeignKeyField(Role, on_delete='CASCADE')
 
+    def get_telegram_id(self):
+        telegram_id = None
+        if self.member:
+            telegram_id = self.member.user.telegram_id
+        return telegram_id
+
 
 class Rating(BaseModel):
     TABLE_NAME = 'ratings'
 
     id = AutoField()
-    name = CharField(null=True)
-    command = CharField(null=True)
+    name = CharField()
     chat = ForeignKeyField(Chat)
+    command = CharField(null=True)
+    last_run = DateTimeField(null=True)
+    last_winner = DeferredForeignKey('RatingMember', null=True, on_delete='SET NULL')
 
 
 class RatingMember(BaseModel):
@@ -134,8 +149,14 @@ class RatingMember(BaseModel):
     id = AutoField()
     member = ForeignKeyField(Member)
     rating = ForeignKeyField(Rating)
-    times = IntegerField(default=0)
+    count = IntegerField(default=0)
     created_at = DateTimeField(default=datetime.now())
+
+    def get_telegram_id(self):
+        telegram_id = None
+        if self.member:
+            telegram_id = self.member.user.telegram_id
+        return telegram_id
 
 
 class QueryEvent(BaseModel):
@@ -184,9 +205,10 @@ class QueryEvent(BaseModel):
 
     @classmethod
     def find_and_create(cls, id: int) -> Union['QueryEvent', None]:
-        query_event = cls.get_by_id(id)
-
-        if not query_event.module_name or not query_event.class_name:
+        try:
+            query_event = cls.get_by_id(id)
+            assert query_event.module_name and query_event.class_name
+        except DoesNotExist or AssertionError:
             return None
 
         data_dict = {}

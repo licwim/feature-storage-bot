@@ -1,13 +1,17 @@
 # !/usr/bin/env python
 
 import json
+from typing import Union, Iterable
 
 import yaml
 from telethon.events.callbackquery import CallbackQuery
+from telethon.events.chataction import ChatAction
 from telethon.events.messageedited import MessageEdited
 from telethon.events.newmessage import NewMessage
+from telethon.tl.custom.button import Button
 from telethon.tl.patched import Message
 
+from fsb import BUILD
 from fsb import VERSION
 
 
@@ -52,7 +56,20 @@ class InfoBuilder:
             'chat': chat_info,
             'event': {
                 'type': query_event.__class__.__name__,
-                'data': query_event.to_dict()
+                'object_data': query_event.to_dict()
+            }
+        }
+
+        return data_info
+
+    @staticmethod
+    @builder_decorator
+    def build_message_info_by_chat_action(event, view_type: int = None):
+        assert isinstance(event, ChatAction.Event)
+
+        data_info = {
+            'event': {
+                'user_ids': event.user_ids,
             }
         }
 
@@ -145,5 +162,66 @@ class InfoBuilder:
     @staticmethod
     def build_about_info(bot):
         return f"{bot.user.first_name} Bot (@{bot.user.username})\n" \
-               f"  {bot.about}\n" \
-               f"  Version: {VERSION}"
+               f"{bot.about}\n" \
+               f"Version: {VERSION}\n" \
+               f"Build: {BUILD}"
+
+
+class Helper:
+    @staticmethod
+    def make_member_name(member, with_username: bool = True, with_mention: bool = False):
+        first_name = member.first_name if member.first_name else ''
+        last_name = f" {member.last_name}" if member.last_name else ''
+        if with_username and member.username:
+            if with_mention:
+                username = f" (@{member.username})"
+            else:
+                username = f" (__{member.username}__)"
+        else:
+            username = ''
+        return f"{first_name}{last_name}{username}"
+
+    # TODO добавить возможность возвращать ассоциативный массив
+    @staticmethod
+    def collect_members(tg_members: Iterable, db_members: Iterable) -> Union[list, None]:
+        try:
+            tmp_tg_members = {}
+            for tg_member in tg_members:
+                tmp_tg_members[tg_member.id] = tg_member
+
+            result = []
+            for db_member in db_members:
+                telegram_id = db_member.get_telegram_id()
+                if telegram_id in tmp_tg_members:
+                    result.append((tmp_tg_members[telegram_id], db_member))
+            return result
+        except AttributeError:
+            return None
+
+    @staticmethod
+    def make_count_str(count: int) -> str:
+        dozens = count % 100
+        units = count % 10
+        if 10 < dozens < 20:
+            count_word = 'раз'
+        else:
+            if units in range(2, 5):
+                count_word = 'раза'
+            else:
+                count_word = 'раз'
+        return f"{str(count)} {count_word}"
+
+    @staticmethod
+    def make_buttons_layout(data: list, closing_button: tuple = None):
+        buttons = []
+        buttons_line = []
+        for text, event in data:
+            buttons_line.append(Button.inline(text, event))
+            if len(buttons_line) == 2:
+                buttons.append(buttons_line.copy())
+                buttons_line = []
+        if buttons_line:
+            buttons.append(buttons_line.copy())
+        if closing_button and len(closing_button) >= 2:
+            buttons.append([Button.inline(closing_button[0], closing_button[1])])
+        return buttons

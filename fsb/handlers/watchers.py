@@ -6,6 +6,7 @@ from peewee import DoesNotExist
 
 from . import Handler
 from . import MessageHandler
+from .commands import BaseCommand
 from ..db.models import Chat
 from ..db.models import MemberRole
 from ..db.models import Role
@@ -19,10 +20,10 @@ class BaseWatcher(MessageHandler):
         super().__init__(client)
         self._filter = filter
 
-    async def handle(self, event):
-        if event.message.text.startswith('/') or not self._filter(event):
+    async def _init_filter(self, event):
+        await super()._init_filter(event)
+        if event.message.text.startswith(BaseCommand.PREFIX) or not self._filter(event):
             raise ExitHandlerException
-        await super().handle(event)
 
 
 class MentionWatcher(BaseWatcher):

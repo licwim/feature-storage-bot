@@ -57,15 +57,15 @@ class TelegramApiClient:
     async def send_message(self, entity, message: Any, reply_to: Message = None, force: bool = False, buttons=None):
         try:
             if not force and FSB_DEV_MODE:
-                await self._send_debug_message(entity, message, reply_to, buttons)
-                return
+                return await self._send_debug_message(entity, message, reply_to, buttons)
             if isinstance(message, str):
                 message = message.rstrip('\t \n')
                 if message:
-                    await self._client.send_message(entity=entity, message=message, reply_to=reply_to, buttons=buttons)
+                    new_message = await self._client.send_message(entity=entity, message=message, reply_to=reply_to, buttons=buttons)
             else:
                 if message:
-                    await self._client.send_file(entity=entity, file=message, reply_to=reply_to, buttons=buttons)
+                    new_message = await self._client.send_file(entity=entity, file=message, reply_to=reply_to, buttons=buttons)
+            return new_message
         except errors.PeerFloodError as e:
             logger.error(f"{entity}: PeerFloodError")
             raise e
@@ -80,7 +80,7 @@ class TelegramApiClient:
         logger.debug(InfoBuilder.build_debug_message_info(entity, message, reply_to))
 
         if entity.id in Config.dev_chats:
-            await self.send_message(entity, message, reply_to, True, buttons)
+            return await self.send_message(entity, message, reply_to, True, buttons)
 
     async def get_entity(self, uid: Union[str, int]):
         try:
@@ -108,6 +108,16 @@ class TelegramApiClient:
         self._client.add_event_handler(
             handler,
             events.CallbackQuery(chats=Config.dev_chats, blacklist_chats=blacklist_chats, *args, **kwargs)
+        )
+
+    def add_chat_action_handler(self, handler: callable, *args, **kwargs):
+        if FSB_DEV_MODE:
+            blacklist_chats = False
+        else:
+            blacklist_chats = True
+        self._client.add_event_handler(
+            handler,
+            events.ChatAction(chats=Config.dev_chats, blacklist_chats=blacklist_chats, *args, **kwargs)
         )
 
     async def request(self, data):

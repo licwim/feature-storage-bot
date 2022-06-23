@@ -15,20 +15,14 @@ from fsb.db.models import Role
 from fsb.db.models import User
 from fsb.error import ConversationTimeoutError
 from fsb.error import InputValueError
-from fsb.handlers import CallbackQueryHandler
+from fsb.handlers import BaseMenu
 from fsb.handlers import Handler
 from fsb.handlers.commands import BaseCommand
+from fsb.helpers import Helper
 from fsb.telegram.client import TelegramApiClient
 
 
 class RoleQueryEvent(QueryEvent):
-    CREATE_ROLE = 1
-    LIST_ROLES = 2
-    ROLE_MENU = 3
-    DELETE_ROLE = 4
-    CHANGE_ROLE = 5
-    TRUNCATE_ROLE = 6
-
     def __init__(self, sender: int = None, role_id: int = None, member_id: int = None):
         self.role_id = role_id
         self.role = None
@@ -45,10 +39,9 @@ class RoleQueryEvent(QueryEvent):
     @classmethod
     def normalize_data_dict(cls, data_dict: dict) -> dict:
         data_dict = super().normalize_data_dict(data_dict)
-        if 'role_id' not in data_dict['data']:
-            data_dict['data']['role_id'] = None
-        if 'member_id' not in data_dict['data']:
-            data_dict['data']['member_id'] = None
+        for key in ['role_id', 'member_id']:
+            if key not in data_dict['data']:
+                data_dict['data'][key] = None
         return data_dict
 
     @classmethod
@@ -133,7 +126,7 @@ class RemoveMemberRoleEvent(RoleQueryEvent):
     pass
 
 
-class RoleSettingsCommand(BaseCommand):
+class RolesSettingsCommand(BaseCommand):
     def __init__(self, client: TelegramApiClient):
         super().__init__(client, 'roles')
         self._area = self.ONLY_CHAT
@@ -145,25 +138,17 @@ class RoleSettingsCommand(BaseCommand):
         await self._client.send_message(self.entity, text, buttons=buttons)
 
 
-class RoleSettingsQuery(CallbackQueryHandler):
-    INPUT_TIMEOUT = 60
-
+class RolesSettingsQuery(BaseMenu):
     def __init__(self, client: TelegramApiClient):
-        super().__init__(client)
+        super().__init__(client, RoleQueryEvent)
         self._area = self.ONLY_CHAT
-        self._menu_message = None
-        self._sender = None
 
     @Handler.handle_decorator
     async def handle(self, event):
         await super().handle(event)
-        assert isinstance(self.query_event, RoleQueryEvent)
-
-        self._sender = self.event.sender.id
-        if self.query_event.sender and self.query_event.sender != self._sender:
+        if not isinstance(self.query_event, RoleQueryEvent):
             return
 
-        self._menu_message = await self._client._client.get_messages(self.entity, ids=event.query.msg_id)
         query_event_type = underscore(self.query_event.__class__.__name__.replace('RoleEvent', ''))
         action = getattr(self, 'action_' + query_event_type)
         if action:
@@ -202,7 +187,7 @@ class RoleSettingsQuery(CallbackQueryHandler):
                 params = await self.get_role_params(conv)
                 if params:
                     Role.create(name=params[0], nickname=params[1], chat=params[2]).save()
-                    await conv.send_message(f"Создана роль: {params[0]} (@{params[1]})")
+                    await conv.send_message(f"Создана роль: {params[0]} (__{params[1]}__)")
                 else:
                     await conv.send_message("Такая роль уже существует")
                     return
@@ -284,7 +269,7 @@ class RoleSettingsQuery(CallbackQueryHandler):
     async def action_delete(self):
         role = self.query_event.get_role()
         role.delete_instance()
-        await self._client.send_message(self.entity, f"Удалена роль: {role.name} (@{role.nickname})")
+        await self._client.send_message(self.entity, f"Удалена роль: {role.name} (__{role.nickname}__)")
         await self.action_list(True)
 
     async def action_change(self):
@@ -299,7 +284,7 @@ class RoleSettingsQuery(CallbackQueryHandler):
                     role.name = params[0]
                     role.nickname = params[1]
                     role.save()
-                    await conv.send_message(f"Изменена роль: {old_name} (@{old_nickname})")
+                    await conv.send_message(f"Изменена роль: {old_name} (__{old_nickname}__)")
                 else:
                     await conv.send_message("Такая роль уже существует")
                     return
@@ -311,28 +296,20 @@ class RoleSettingsQuery(CallbackQueryHandler):
         await self._client._client.send_message(entity=self.entity, message=self._menu_message)
 
     async def get_role_members(self, role: Role) -> list:
-        actual_members = await self._client.get_dialog_members(self.entity)
-        db_members = {}
-        for role_member in MemberRole.select().where(MemberRole.role == role):
-            db_members[role_member.member.user.telegram_id] = role_member.member
-
-        result = []
-        for tg_member in actual_members:
-            if tg_member.id in db_members:
-                result.append((tg_member, db_members[tg_member.id]))
-        return result
+        return Helper.collect_members(
+            await self._client.get_dialog_members(self.entity),
+            MemberRole.select().where(MemberRole.role == role)
+        )
 
     async def action_list_members(self, new_message: bool = False):
         role = self.query_event.get_role()
         members_names = []
         for tg_member, db_member in await self.get_role_members(role):
-            members_names.append(
-                f"{tg_member.first_name} {f'(@{tg_member.username})' if tg_member.username else ''}".strip(' ')
-            )
+            members_names.append(Helper.make_member_name(tg_member))
         if members_names:
-            text = f"**Участники {role.name} (@{role.nickname}):**\n" + '\n'.join(members_names)
+            text = f"**Участники {role.name} (__{role.nickname}__):**\n" + '\n'.join(members_names)
         else:
-            text = f"У роли {role.name} (@{role.nickname}) нет участников"
+            text = f"У роли {role.name} (__{role.nickname}__) нет участников"
 
         buttons = [
             [
@@ -353,79 +330,39 @@ class RoleSettingsQuery(CallbackQueryHandler):
         chat = Chat.get(Chat.telegram_id == self.entity.id)
 
         role_members_tg_ids = [tg_member.id for tg_member, db_member in await self.get_role_members(role)]
-        buttons = []
-        buttons_line = []
+        members = []
         for tg_member in await self._client.get_dialog_members(self.entity):
             if tg_member.id in role_members_tg_ids:
                 continue
 
-            first_name = tg_member.first_name if tg_member.first_name else ''
-            last_name = tg_member.last_name if tg_member.last_name else ''
             user = User.get_or_create(
                 telegram_id=tg_member.id,
                 defaults={
-                    'name': f"{first_name} {last_name}".strip(' '),
+                    'name': Helper.make_member_name(tg_member, with_username=False),
                     'nickname': tg_member.username
                 }
             )[0]
             db_member = Member.get_or_create(chat=chat, user=user)[0]
 
-            buttons_line.append(Button.inline(
-                self.get_username_string(tg_member.first_name, tg_member.username),
-                AddMemberRoleEvent(sender=self._sender, role_id=role.id, member_id=db_member.id).save_get_id()
-            ))
-            if len(buttons_line) == 2:
-                buttons.append(buttons_line.copy())
-                buttons_line = []
-        if buttons_line:
-            buttons.append(buttons_line.copy())
-        buttons.append([Button.inline('<< Участники', ListMembersRoleEvent(self._sender, role.id).save_get_id())])
+            members.append((tg_member, db_member))
 
-        text = f"Добавить участника к роли {role.name} (@{role.nickname}):"
-        if new_message:
-            await self._client.send_message(self.entity, text, buttons=buttons)
-        else:
-            await self._menu_message.edit(text, buttons=buttons)
+        await self._member_menu('add', members, new_message)
 
     async def action_add_member(self):
         role = self.query_event.get_role()
         member = self.query_event.get_member()
 
         if MemberRole.get_or_none(MemberRole.role == role, MemberRole.member == member):
-            await self._client.send_message(self.entity, f"Этот участник уже добавлен {role.name} (@{role.nickname}).")
+            await self._client.send_message(self.entity, f"Этот участник уже добавлен к {role.name} (__{role.nickname}__).")
             return
         else:
             MemberRole.create(role=role, member=member)
-            await self._client.send_message(
-                self.entity,
-                f"К роли {role.name} (@{role.nickname}) добавлен участник:\n" +
-                self.get_username_string(member.user.name, member.user.nickname)
-            )
-
-        await self.action_list_members(True)
+            await self.action_add_member_menu()
 
     async def action_remove_member_menu(self, new_message: bool = False):
         role = self.query_event.get_role()
-
-        buttons = []
-        buttons_line = []
-        for tg_member, db_member in await self.get_role_members(role):
-            buttons_line.append(Button.inline(
-                self.get_username_string(tg_member.first_name, tg_member.username),
-                RemoveMemberRoleEvent(sender=self._sender, role_id=role.id, member_id=db_member.id).save_get_id()
-            ))
-            if len(buttons_line) == 2:
-                buttons.append(buttons_line.copy())
-                buttons_line = []
-        if buttons_line:
-            buttons.append(buttons_line.copy())
-        buttons.append([Button.inline('<< Участники', ListMembersRoleEvent(self._sender, role.id).save_get_id())])
-
-        text = f"Удалить участника из роли {role.name} (@{role.nickname}):"
-        if new_message:
-            await self._client.send_message(self.entity, text, buttons=buttons)
-        else:
-            await self._menu_message.edit(text, buttons=buttons)
+        members = [(tg_member, db_member.member) for tg_member, db_member in await self.get_role_members(role)]
+        await self._member_menu('remove', members, new_message)
 
     async def action_remove_member(self):
         role = self.query_event.get_role()
@@ -436,26 +373,36 @@ class RoleSettingsQuery(CallbackQueryHandler):
             await self._client.send_message(self.entity, f"Этот участник уже удален из {role.name} (@{role.nickname}).")
         else:
             role_member.delete_instance()
-            await self._client.send_message(
-                self.entity,
-                f"Из роли {role.name} (@{role.nickname}) удален участник:\n" +
-                self.get_username_string(member.user.name, member.user.nickname)
-            )
+            await self.action_remove_member_menu()
 
-        await self.action_list_members(True)
+    async def _member_menu(self, action: str, members: list, new_message: bool = False):
+        role = self.query_event.get_role()
 
-    @staticmethod
-    def get_username_string(name: Union[str, None], nickname: Union[str, None]) -> str:
-        name = name if name else ''
+        match action:
+            case 'add':
+                event_class = AddMemberRoleEvent
+                text = f"Добавить участника к роли {role.name} (__{role.nickname}__):"
+            case 'remove':
+                event_class = RemoveMemberRoleEvent
+                text = f"Удалить участника из роли {role.name} (__{role.nickname}__):"
+            case _:
+                raise ValueError
 
-        if nickname and not name:
-            nickname = '@' + nickname
-        elif nickname:
-            nickname = f'(@{nickname})'
+        buttons = []
+        for tg_member, db_member in members:
+            buttons.append((
+                Helper.make_member_name(tg_member, with_mention=True),
+                event_class(sender=self._sender, role_id=role.id, member_id=db_member.id).save_get_id()
+            ))
+        buttons = Helper.make_buttons_layout(
+            buttons,
+            ("<< Участники", ListMembersRoleEvent(self._sender, role.id).save_get_id())
+        )
+
+        if new_message:
+            await self._client.send_message(self.entity, text, buttons=buttons)
         else:
-            nickname = ''
-
-        return f"{name} {nickname}".strip(' ')
+            await self._menu_message.edit(text, buttons=buttons)
 
     async def action_truncate(self):
         pass

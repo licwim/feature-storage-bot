@@ -1,10 +1,12 @@
-name: Automate build and deploy
+name: Manually build and deploy
 
 on:
-  push:
-    branches:
-      - master
-      - 'release/**'
+  workflow_dispatch:
+    inputs:
+      job:
+        description: 'Job to run'
+        required: true
+        default: 'build'
 
 jobs:
   build:

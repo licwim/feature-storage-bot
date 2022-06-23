@@ -1,5 +1,7 @@
 # !/usr/bin/env python
 
+from playhouse.migrate import migrate
+
 from fsb import logger
 from fsb.db import base_migrator
 from fsb.db.models import Chat
@@ -18,6 +20,12 @@ class BaseMigration:
 
     def down(self):
         logger.info(f"Rollback {self.__class__.__name__} ...")
+
+    @staticmethod
+    def migrate_decorator(callback: callable):
+        def migration(self):
+            migrate(callback(self))
+        return migration
 
 
 class CreateMainTables(BaseMigration):
@@ -73,3 +81,33 @@ class CreateEventsTable(BaseMigration):
 
         QueryEvent.drop_table()
         logger.info(f"Table `{QueryEvent.TABLE_NAME}` is dropped")
+
+
+class CreateTablesForRatings(BaseMigration):
+        _tables = [
+            Rating,
+            RatingMember,
+        ]
+
+        def up(self):
+            super().up()
+            for table in self._tables:
+                if table.table_exists():
+                    raise RuntimeError(f"Table `{table.TABLE_NAME}` already exist")
+
+            base_migrator.database.create_tables(self._tables)
+            Rating._schema.create_foreign_key(Rating.last_winner)
+            logger.info("Creating tables is done")
+
+        def down(self):
+            super().down()
+            tables = self._tables.copy()
+
+            for table in self._tables:
+                if not table.table_exists():
+                    tables.remove(table)
+            if not tables:
+                raise RuntimeError("All tables already dropped")
+
+            base_migrator.database.drop_tables(tables)
+            logger.info(f"Dropped tables: {', '.join([table.TABLE_NAME for table in tables])}")
