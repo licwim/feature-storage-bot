@@ -1,4 +1,4 @@
-name: Feature Storage Bot
+name: Manually build and deploy
 
 on:
   workflow_dispatch:
