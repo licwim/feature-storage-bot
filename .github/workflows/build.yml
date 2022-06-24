@@ -1,77 +1,35 @@
-name: Automate build and deploy
+name: Build
 
 on:
   push:
     branches:
       - master
       - 'release/**'
+  pull_request:
+    branches:
+      - master
+      - 'release/**'
 
 jobs:
   build:
-    runs-on: self-hosted
-    environment: production
-    outputs:
-      image_name: ${{ steps.build-image.outputs.IMAGE_NAME }}
-      build_version: ${{ steps.build-image.outputs.BUILD_VERSION }}
+    runs-on: ubuntu-latest
+    environment: build
+    env:
+      DOCKER_HUB_USERNAME: licwim
+      DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
     steps:
     - uses: actions/checkout@v2
-    - uses: benjlevesque/short-sha@v1.2
-      id: short-sha
+    - name: Login to DockerHub
+      uses: docker/login-action@v2
       with:
-        length: 7
-    - name: Move configs to project folder
-      run: cp -rT ../../admin .
-    - name: Build the Docker image
+        username: $DOCKER_HUB_USERNAME
+        password: $DOCKER_HUB_TOKEN
+    - name: Build and push image
       id: build-image
       run: |
-        IMAGE_NAME="${{ github.repository }}:$SHA"
-        BUILD_VERSION=$(echo "${{ github.ref_name }}-${{ github.sha }}" | sed 's|/|-|g')
-        docker build . --file Dockerfile --label branch=${{ github.ref_name }} --tag "$IMAGE_NAME"
-        echo $IMAGE_NAME
-        echo "::set-output name=IMAGE_NAME::$IMAGE_NAME"
-        echo "::set-output name=BUILD_VERSION::$BUILD_VERSION"
-
-  deploy:
-    needs: build
-    runs-on: self-hosted
-    if: ${{ github.event.inputs.job == 'deploy' }}
-    environment: production
-    env:
-      CONTAINER_NAME: fsb-app
-      IMAGE_NAME: ${{ needs.build.outputs.image_name }}
-      BUILD_VERSION: ${{ needs.build.outputs.build_version }}
-      NETWORK_NAME: feature-storage-bot-network
-      BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-      API_ID: ${{ secrets.TELEGRAM_API_ID }}
-      API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
-      DB_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
-      ROLLBACK_PREFIX: fsb-bak-
-    steps:
-    - name: Prepare rollback Docker container
-      id: rollback
-      run: |
-        ROLLBACK_NAME=\
-        "$ROLLBACK_PREFIX"\
-        $(docker inspect \
-          --format='{{.Config.Image}}' \
-          "$CONTAINER_NAME" \
-          | awk -F':' '{print $2}')
-        docker rename "$CONTAINER_NAME" "$ROLLBACK_NAME"
-        echo "ROLLBACK_NAME=$ROLLBACK_NAME" >> $GITHUB_ENV
-    - name: Start app Docker container
-      env:
-        ROLLBACK_NAME: ${{ env.ROLLBACK_NAME }}
-      run: |
-        docker stop "$ROLLBACK_NAME"
-        docker run \
-          --log-driver=journald \
-          --label branch=${{ github.ref_name }} \
-          -e BOT_TOKEN="$BOT_TOKEN" \
-          -e API_ID="$API_ID" \
-          -e API_HASH="$API_HASH" \
-          -e DB_PASSWORD="$DB_PASSWORD" \
-          -e BUILD_VERSION="$BUILD_VERSION" \
-          -d \
-          --network "$NETWORK_NAME" \
-          --name "$CONTAINER_NAME" \
-          "$IMAGE_NAME"
+        TAG=$(echo "${{ github.ref_name }}" | sed 's|/|-|g')
+        IMAGE_NAME="${{ github.repository }}:$TAG"
+        BUILD_VERSION="$TAG-${{ github.sha }}"
+        docker build . --file Dockerfile --label sha=${{ github.sha }} --label build=$BUILD_VERSION --tag "$IMAGE_NAME"
+        echo "IMAGE_NAME = $IMAGE_NAME"
+        docker push "$IMAGE_NAME"

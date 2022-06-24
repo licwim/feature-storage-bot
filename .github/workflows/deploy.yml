@@ -1,0 +1,65 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      stand:
+        description: 'Deploy to stand'
+        required: true
+        default: 'prod'
+        type: choice
+        options:
+          - prod
+
+jobs:
+  prod-deploy:
+    runs-on: self-hosted
+    if: github.event.inputs.stand == 'prod'
+    environment: production
+    env:
+      CONTAINER_NAME: fsb-app
+      NETWORK_NAME: feature-storage-bot-network
+      BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      API_ID: ${{ secrets.TELEGRAM_API_ID }}
+      API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+      DB_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+      DOCKER_HUB_USERNAME: licwim
+      DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
+    steps:
+    - name: Login to DockerHub
+      uses: docker/login-action@v2
+      with:
+        username: $DOCKER_HUB_USERNAME
+        password: $DOCKER_HUB_TOKEN
+    - name: Image name prepare
+      run: |
+        TAG=$(echo "${{ github.ref_name }}" | sed 's|/|-|g')
+        IMAGE_NAME="${{ github.repository }}:$TAG"
+        ehco "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_ENV
+    - name: Images metadata
+      id: image-meta
+      uses: docker/metadata-action@v4
+      with:
+        images: ${{ env.IMAGE_NAME }}
+    - name: Start app container
+      env:
+        IMAGE_NAME: ${{ env.IMAGE_NAME }}
+        LABELS: ${{ steps.image-meta.outputs.labels }}
+        BUILD_VERSION: ${{ env.IMAGE_NAME }}
+      run: |
+        docker pull "$IMAGE_NAME"
+        docker stop "$CONTAINER_NAME"
+        docker rm "$CONTAINER_NAME"
+        echo "$LABELS"
+        docker run \
+          --log-driver=journald \
+          --label branch=${{ github.ref_name }} \
+          -e BOT_TOKEN="$BOT_TOKEN" \
+          -e API_ID="$API_ID" \
+          -e API_HASH="$API_HASH" \
+          -e DB_PASSWORD="$DB_PASSWORD" \
+          -e BUILD_VERSION="$BUILD_VERSION" \
+          -d \
+          --network "$NETWORK_NAME" \
+          --name "$CONTAINER_NAME" \
+          "$IMAGE_NAME"
