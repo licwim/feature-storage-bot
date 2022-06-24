@@ -41,8 +41,8 @@ jobs:
         IMAGE_NAME="${{ github.repository }}:$TAG"
         docker pull "$IMAGE_NAME"
         BUILD_VERSION=$(docker image inspect "$IMAGE_NAME" --format='{{.Config.Labels.branch}}')
-        docker stop "$CONTAINER_NAME"
-        docker rm "$CONTAINER_NAME"
+        docker stop "$CONTAINER_NAME" || true
+        docker rm "$CONTAINER_NAME" || true
         docker run \
           --log-driver=journald \
           --label branch=${{ github.ref_name }} \
