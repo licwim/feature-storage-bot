@@ -127,6 +127,7 @@ dmypy.json
 
 # Configs
 config.json
+admin/
 
 # Sessions
 *.session

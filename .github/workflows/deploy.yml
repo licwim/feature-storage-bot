@@ -25,7 +25,7 @@ jobs:
       DB_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
       DOCKER_HUB_USERNAME: licwim
       DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
-      ADMIN_LOCAL_LOCATION: /var/apps/feature-storage-bot/admin
+      ADMIN_LOCAL_LOCATION: /var/apps/feature_storage_bot/admin
       ADMIN_CONTAINER_LOCATION: /var/app/admin
     steps:
     - name: Login to DockerHub
@@ -53,7 +53,7 @@ jobs:
           -e API_HASH="$API_HASH" \
           -e DB_PASSWORD="$DB_PASSWORD" \
           -e BUILD_VERSION="$BUILD_VERSION" \
-          -e PIPENV_DOTENV_LOCATION="$ADMIN_CONTAINER_LOCATION" \
+          -e PIPENV_DOTENV_LOCATION="$ADMIN_CONTAINER_LOCATION/env" \
           -d \
           --network "$NETWORK_NAME" \
           --name "$CONTAINER_NAME" \
