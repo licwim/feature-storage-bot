@@ -40,7 +40,7 @@ jobs:
         TAG=$(echo "${{ github.ref_name }}" | sed 's|/|-|g')
         IMAGE_NAME="${{ github.repository }}:$TAG"
         docker pull "$IMAGE_NAME"
-        BUILD_VERSION=$(docker image inspect "$IMAGE_NAME" --format='{{.Config.Labels.branch}}')
+        BUILD_VERSION=$(docker image inspect "$IMAGE_NAME" --format='{{.Config.Labels.build}}')
         echo "BUILD_VERSION = $BUILD_VERSION"
         docker stop "$CONTAINER_NAME" || true
         docker rm "$CONTAINER_NAME" || true
