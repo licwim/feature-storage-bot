@@ -35,7 +35,7 @@ jobs:
       run: |
         TAG=$(echo "${{ github.ref_name }}" | sed 's|/|-|g')
         IMAGE_NAME="${{ github.repository }}:$TAG"
-        ehco "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_ENV
+        echo "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_ENV
     - name: Images metadata
       id: image-meta
       uses: docker/metadata-action@v4
