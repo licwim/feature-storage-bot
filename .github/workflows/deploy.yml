@@ -41,18 +41,19 @@ jobs:
         IMAGE_NAME="${{ github.repository }}:$TAG"
         docker pull "$IMAGE_NAME"
         BUILD_VERSION=$(docker image inspect "$IMAGE_NAME" --format='{{.Config.Labels.branch}}')
+        echo "BUILD_VERSION = $BUILD_VERSION"
         docker stop "$CONTAINER_NAME" || true
         docker rm "$CONTAINER_NAME" || true
         docker run \
           --log-driver=journald \
           --label branch=${{ github.ref_name }} \
-          -v "$ADMIN_LOCAL_LOCATION":"$ADMIN_CONTAINER_LOCATION"
+          -v "$ADMIN_LOCAL_LOCATION":"$ADMIN_CONTAINER_LOCATION" \
           -e BOT_TOKEN="$BOT_TOKEN" \
           -e API_ID="$API_ID" \
           -e API_HASH="$API_HASH" \
           -e DB_PASSWORD="$DB_PASSWORD" \
           -e BUILD_VERSION="$BUILD_VERSION" \
-          -e PIPENV_DOTENV_LOCATION="$ADMIN_CONTAINER_LOCATION"
+          -e PIPENV_DOTENV_LOCATION="$ADMIN_CONTAINER_LOCATION" \
           -d \
           --network "$NETWORK_NAME" \
           --name "$CONTAINER_NAME" \
