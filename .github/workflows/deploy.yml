@@ -29,8 +29,8 @@ jobs:
     - name: Login to DockerHub
       uses: docker/login-action@v2
       with:
-        username: $DOCKER_HUB_USERNAME
-        password: $DOCKER_HUB_TOKEN
+        username: ${{ DOCKER_HUB_USERNAME }}
+        password: ${{ DOCKER_HUB_TOKEN }}
     - name: Image name prepare
       run: |
         TAG=$(echo "${{ github.ref_name }}" | sed 's|/|-|g')
