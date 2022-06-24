@@ -21,7 +21,7 @@ import os
 
 from .config import init_config
 
-VERSION = '1.2.1-beta'
+VERSION = os.getenv('RELEASE') if os.getenv('RELEASE') else 'Unknown'
 BUILD = os.getenv('BUILD_VERSION') if os.getenv('BUILD_VERSION') else 'Unknown'
 FSB_DEV_MODE = bool(int(os.getenv('FSB_DEV_MODE'))) if os.getenv('FSB_DEV_MODE') else False
 

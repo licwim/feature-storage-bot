@@ -33,6 +33,11 @@ jobs:
       with:
         username: ${{ env.DOCKER_HUB_USERNAME }}
         password: ${{ env.DOCKER_HUB_TOKEN }}
+    - name: Latest release info
+      id: release-info
+      uses: pozetroninc/github-action-get-latest-release@master
+      with:
+        repository: ${{ github.repository }}
     - name: Start app container
       env:
         IMAGE_NAME: ${{ env.IMAGE_NAME }}
@@ -53,6 +58,7 @@ jobs:
           -e API_HASH="$API_HASH" \
           -e DB_PASSWORD="$DB_PASSWORD" \
           -e BUILD_VERSION="$BUILD_VERSION" \
+          -e RELEASE=${{ steps.release-info.outputs.release }} \
           -e PIPENV_DOTENV_LOCATION="$ADMIN_CONTAINER_LOCATION/env" \
           -d \
           --network "$NETWORK_NAME" \
