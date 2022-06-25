@@ -22,7 +22,7 @@ jobs:
       NC: \033[0m
     outputs:
       image_name: ${{ steps.build-image.outputs.IMAGE_NAME }}
-      build_version: ${{ steps.build-image.outputs.BUILD_VERSION }
+      build_version: ${{ steps.build-image.outputs.BUILD_VERSION }}
     steps:
     - uses: actions/checkout@v2
     - name: Login to DockerHub
