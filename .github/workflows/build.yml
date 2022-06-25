@@ -17,9 +17,6 @@ jobs:
     env:
       DOCKER_HUB_USERNAME: licwim
       DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
-      RED: \033[0;31m
-      GREEN: \033[0;32m
-      NC: \033[0m
     outputs:
       image_name: ${{ steps.build-image.outputs.IMAGE_NAME }}
       build_version: ${{ steps.build-image.outputs.BUILD_VERSION }}
@@ -36,9 +33,9 @@ jobs:
         TAG=$(echo "${{ github.ref_name }}" | sed 's|/|-|g')
         IMAGE_NAME="${{ github.repository }}:$TAG"
         BUILD_VERSION="$TAG-${{ github.sha }}"
-        echo "$GREEN""BUILD_VERSION = $BUILD_VERSION""$NC"
+        echo "BUILD_VERSION = $BUILD_VERSION"
         docker build . --file Dockerfile --label sha=${{ github.sha }} --label build=$BUILD_VERSION --tag "$IMAGE_NAME"
-        echo "$GREEN""IMAGE_NAME = $IMAGE_NAME""$NC"
+        echo "IMAGE_NAME = $IMAGE_NAME"
         docker push "$IMAGE_NAME"
         echo "::set-output name=IMAGE_NAME::$IMAGE_NAME"
         echo "::set-output name=BUILD_VERSION::$BUILD_VERSION"
@@ -69,7 +66,7 @@ jobs:
         repository: ${{ github.repository }}
     - name: Start app container
       run: |
-        echo "$GREEN""BUILD_VERSION = $BUILD_VERSION""$NC"
+        echo "BUILD_VERSION = $BUILD_VERSION"
         docker stop "$CONTAINER_NAME" || true
         docker rm "$CONTAINER_NAME" || true
         docker run \
@@ -88,4 +85,4 @@ jobs:
           --name "$CONTAINER_NAME" \
           "$IMAGE_NAME"
     - name: Prune unused images
-      run: docker image prune -f
+      run: docker image prune -af

@@ -27,9 +27,6 @@ jobs:
       DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
       ADMIN_LOCAL_LOCATION: /var/apps/feature_storage_bot/admin
       ADMIN_CONTAINER_LOCATION: /var/app/admin
-      RED: \033[0;31m
-      GREEN: \033[0;32m
-      NC: \033[0m
     steps:
     - name: Login to DockerHub
       uses: docker/login-action@v2
@@ -47,10 +44,10 @@ jobs:
       run: |
         TAG=$(echo "${{ github.ref_name }}" | sed 's|/|-|g')
         IMAGE_NAME="${{ github.repository }}:$TAG"
-        echo "$GREEN""IMAGE_NAME = $IMAGE_NAME""$NC"
+        echo "IMAGE_NAME = $IMAGE_NAME"
         docker pull "$IMAGE_NAME"
         BUILD_VERSION=$(docker image inspect "$IMAGE_NAME" --format='{{.Config.Labels.build}}')
-        echo "$GREEN""BUILD_VERSION = $BUILD_VERSION""$NC"
+        echo "BUILD_VERSION = $BUILD_VERSION"
         docker stop "$CONTAINER_NAME" || true
         docker rm "$CONTAINER_NAME" || true
         docker run \
@@ -69,4 +66,4 @@ jobs:
           --name "$CONTAINER_NAME" \
           "$IMAGE_NAME"
     - name: Prune unused images
-      run: docker image prune -f
+      run: docker image prune -af
