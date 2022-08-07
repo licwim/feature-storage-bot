@@ -21,8 +21,8 @@ class Config:
 
     db_user = os.getenv('DB_USER')
     db_password = os.getenv('DB_PASSWORD')
-    db_host: str = 'localhost'
-    db_name: str = 'feature_storage'
+    db_host: str = os.getenv('DB_HOST')
+    db_name: str = os.getenv('DB_NAME')
     MAX_DB_CONNECTIONS = 10
 
     dev_chats: list = []

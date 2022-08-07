@@ -1,0 +1,15 @@
+version: '3.8'
+services:
+  fsb-app:
+#    image: licwim/feature-storage-bot:master
+    build: .
+    environment:
+      - DB_HOST=fsb-db
+      - DB_NAME=feature_storage
+      - DB_USER=root
+      - DB_PASSWORD=111111
+
+  fsb-db:
+    image: mysql/mysql-server:8.0.28-1.2.7-server-aarch64
+    volumes:
+      - ./local/db:/var/lib/mysql
