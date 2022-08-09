@@ -200,7 +200,7 @@ class RatingCommand(BaseCommand):
     @Handler.handle_decorator
     async def handle(self, event):
         await super().handle(event)
-        self.set_wait(True)
+        self.set_wait(event.chat.id, True)
 
         match self.command:
             case self.PIDOR_COMMAND:
@@ -264,7 +264,7 @@ class RatingCommand(BaseCommand):
                 msg_name=msg_name,
                 member_name=Helper.make_member_name(tg_member, with_mention=True)
             ))
-        self.set_wait(False)
+        self.set_wait(event.chat.id, False)
 
 
 class StatRatingCommand(BaseCommand):
