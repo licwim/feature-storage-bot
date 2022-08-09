@@ -15,8 +15,7 @@ from fsb.db.models import Role
 from fsb.db.models import User
 from fsb.error import ConversationTimeoutError
 from fsb.error import InputValueError
-from fsb.handlers import BaseMenu
-from fsb.handlers import Handler
+from fsb.handlers.common import BaseMenu, Handler
 from fsb.handlers.commands import BaseCommand
 from fsb.helpers import Helper
 from fsb.telegram.client import TelegramApiClient

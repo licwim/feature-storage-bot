@@ -5,8 +5,7 @@ from typing import Union
 from telethon.tl.functions.users import GetFullUserRequest
 
 from fsb.error import ExitHandlerException
-from fsb.handlers import Handler
-from fsb.handlers import MessageHandler
+from fsb.handlers.common import Handler, MessageHandler
 from fsb.helpers import InfoBuilder
 from fsb.telegram.client import TelegramApiClient
 

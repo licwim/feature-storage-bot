@@ -1,7 +1,7 @@
 # !/usr/bin/env python
 
 from fsb.db.models import Chat, User, Member
-from fsb.handlers import ChatActionHandler, Handler
+from fsb.handlers.common import ChatActionHandler, Handler
 from fsb.helpers import Helper
 from fsb.telegram.client import TelegramApiClient
 

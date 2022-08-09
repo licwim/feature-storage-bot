@@ -2,7 +2,7 @@
 
 from fsb.error import DuplicateHandlerError
 from fsb.factories import Factory
-from fsb.handlers import ChatActionHandler, Handler
+from fsb.handlers.common import ChatActionHandler, Handler
 from fsb.handlers.chats import JoinChatHandler
 from fsb.handlers.ratings import CreateRatingsOnJoinChat
 from fsb.telegram.client import TelegramApiClient

@@ -15,8 +15,7 @@ from fsb.db.models import QueryEvent
 from fsb.db.models import Rating
 from fsb.db.models import RatingMember
 from fsb.db.models import User
-from fsb.handlers import BaseMenu, ChatActionHandler
-from fsb.handlers import Handler
+from fsb.handlers.common import BaseMenu, ChatActionHandler, Handler
 from fsb.handlers.commands import BaseCommand
 from fsb.helpers import Helper
 from fsb.telegram.client import TelegramApiClient

@@ -4,14 +4,11 @@ import re
 
 from peewee import DoesNotExist
 
-from . import Handler
-from . import MessageHandler
-from .commands import BaseCommand
-from ..db.models import Chat
-from ..db.models import MemberRole
-from ..db.models import Role
-from ..error import ExitHandlerException
-from ..telegram.client import TelegramApiClient
+from fsb.handlers.common import Handler, MessageHandler
+from fsb.handlers.commands import BaseCommand
+from fsb.db.models import Chat, MemberRole, Role
+from fsb.error import ExitHandlerException
+from fsb.telegram.client import TelegramApiClient
 
 
 class BaseWatcher(MessageHandler):
