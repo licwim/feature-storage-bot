@@ -17,19 +17,19 @@ class Migrator:
         self.migration = migration
 
     @staticmethod
-    def migration_need_decorator(callback: callable):
+    def _migration_need_decorator(callback: callable):
         def action(self):
             if self.migration:
-                callback()
+                callback(self)
             else:
                 exit_with_message("Migration must be specified")
         return action
 
-    @migration_need_decorator
+    @_migration_need_decorator
     def migrate(self):
         self.migration.up()
 
-    @migration_need_decorator
+    @_migration_need_decorator
     def rollback(self):
         self.migration.down()
 
@@ -42,22 +42,36 @@ class Migrator:
                 class_list.append(class_name)
         print('\n'.join(class_list))
 
+    @staticmethod
+    def help():
+        commands = []
+        for i in inspect.getmembers(Migrator):
+            if not i[0].startswith('_'):
+                if inspect.ismethod(i[1]) or inspect.isfunction(i[1]):
+                    commands.append('  - ' + i[0])
+
+        print('Available commands:\n' + '\n'.join(commands))
+
 
 if len(sys.argv) == 3:
+    command = sys.argv[1]
+    migration_class = sys.argv[2]
     try:
-        migration = getattr(migrations, sys.argv[2])()
+        migration = getattr(migrations, migration_class)()
         assert isinstance(migration, BaseMigration)
     except AttributeError or AssertionError:
-        exit_with_message("Migration not found: " + sys.argv[2])
+        exit_with_message("Migration not found: " + migration_class)
 elif len(sys.argv) == 2:
+    command = sys.argv[1]
     migration = None
 else:
-    exit(1)
+    command = 'help'
+    migration = None
 
 migrator = Migrator(migration)
 
 try:
-    action = getattr(migrator, sys.argv[1])
+    action = getattr(migrator, command)
     action()
 except AttributeError:
     exit_with_message("Unsupported method: " + sys.argv[1])
