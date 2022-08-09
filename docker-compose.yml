@@ -3,13 +3,16 @@ services:
   fsb-app:
 #    image: licwim/feature-storage-bot:master
     build: .
+    volumes:
+      - ./:/var/app
     environment:
       - DB_HOST=fsb-db
       - DB_NAME=feature_storage
       - DB_USER=root
       - DB_PASSWORD=111111
+      - FSB_CONFIG_FILE=/var/app/config.json
 
   fsb-db:
-    image: mysql/mysql-server:8.0.28-1.2.7-server-aarch64
+    image: mysql/mysql-server:latest
     volumes:
       - ./local/db:/var/lib/mysql
