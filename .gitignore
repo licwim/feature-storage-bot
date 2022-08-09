@@ -134,3 +134,6 @@ admin/
 
 # Debug files
 test.py
+
+# Local dev
+local/
