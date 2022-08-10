@@ -2,14 +2,14 @@
 
 from telethon.events.callbackquery import CallbackQuery
 from telethon.events.chataction import ChatAction
+from telethon.events.common import EventCommon
 from telethon.events.messageedited import MessageEdited
 from telethon.events.newmessage import NewMessage
-from telethon.events.common import EventCommon
 
 
 class EventDTO:
     def __init__(self, event):
-        assert issubclass(event, EventCommon)
+        assert isinstance(event, EventCommon)
         self._event = event
         self.chat = event.chat
         self.chat_type = event.chat.__class__.__name__
