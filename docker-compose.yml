@@ -1,4 +1,4 @@
-version: '3.8'
+version: '3.3'
 services:
   fsb-app:
 #    image: licwim/feature-storage-bot:master
@@ -15,4 +15,7 @@ services:
   fsb-db:
     image: mysql/mysql-server:latest
     volumes:
-      - ./local/db:/var/lib/mysql
+      - fsb-db:/var/lib/mysql
+
+volumes:
+  fsb-db:
