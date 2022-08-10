@@ -5,6 +5,7 @@ services:
     build: .
     volumes:
       - ./:/var/app
+      - /var/app/.venv/
     environment:
       - DB_HOST=fsb-db
       - DB_NAME=feature_storage
