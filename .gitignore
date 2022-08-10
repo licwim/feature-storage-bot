@@ -127,13 +127,9 @@ dmypy.json
 
 # Configs
 config.json
-admin/
 
 # Sessions
 *.session
 
 # Debug files
 test.py
-
-# Local dev
-local/
