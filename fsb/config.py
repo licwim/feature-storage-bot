@@ -32,7 +32,9 @@ class Config:
         'api_id',
         'api_hash',
         'db_user',
-        'db_password'
+        'db_password',
+        'db_host',
+        'db_name',
     ]
 
     @staticmethod
