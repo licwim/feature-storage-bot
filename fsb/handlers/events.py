@@ -51,3 +51,8 @@ class CommandEventDTO(MessageEventDTO):
         super().__init__(event)
         self.command = None
         self.args = []
+
+
+class WatcherEventDTO(MessageEventDTO):
+    def __init__(self, event):
+        super().__init__(event)
