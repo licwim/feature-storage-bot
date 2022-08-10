@@ -16,3 +16,6 @@ inflection = "==0.5.1"
 
 [requires]
 python_version = "3.10"
+
+[scripts]
+migrator = "python migrator.py"
