@@ -1,1 +1,4 @@
-local/
+.venv/
+*.session
+docker-compose.yml
+setup.sh

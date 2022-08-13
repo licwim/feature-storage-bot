@@ -4,7 +4,7 @@ from typing import Union
 
 from telethon.tl.functions.users import GetFullUserRequest
 
-from events import CommandEventDTO
+from fsb.handlers.events import CommandEventDTO
 from fsb.error import ExitHandlerException
 from fsb.handlers.common import Handler, MessageHandler
 from fsb.helpers import InfoBuilder
