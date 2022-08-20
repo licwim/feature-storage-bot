@@ -34,12 +34,21 @@ class Migrator:
         self.migration.down()
 
     @staticmethod
-    def list():
+    def _get_migrations():
         class_members = inspect.getmembers(migrations, inspect.isclass)
+        class_members = list(filter(
+            lambda cls: issubclass(cls[1], BaseMigration) and cls[1] != BaseMigration and cls[0].endswith('Migration'),
+            class_members
+        ))
+        class_members.sort(key=lambda m: inspect.getsourcelines(m[1])[1])
+        return class_members
+
+    @staticmethod
+    def list():
+        class_members = Migrator._get_migrations()
         class_list = []
         for class_name, class_object in class_members:
-            if issubclass(class_object, BaseMigration) and class_object != BaseMigration:
-                class_list.append(class_name)
+            class_list.append(class_name)
         print('\n'.join(class_list))
 
     @staticmethod
@@ -52,6 +61,13 @@ class Migrator:
 
         print('Available commands:\n' + '\n'.join(commands))
 
+    @staticmethod
+    def new():
+        migrations = Migrator._get_migrations()
+
+        for migration_name, migration in migrations:
+            migrator = Migrator(migration)
+            migrator.migrate()
 
 if len(sys.argv) == 3:
     command = sys.argv[1]

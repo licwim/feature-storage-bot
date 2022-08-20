@@ -2,3 +2,6 @@
 *.session
 docker-compose.yml
 setup.sh
+.idea/
+.git/
+.github/

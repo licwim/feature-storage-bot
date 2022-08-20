@@ -1,0 +1,10 @@
+{
+  "prerun": "# some code here",
+  "directory": "fsb/db/migrations",
+  "history": "migratehistory",
+  "models": [
+    "fsb.db.models.User",
+    "fsb.db.models.Chat",
+    "fsb.db.models.Member"
+  ]
+}

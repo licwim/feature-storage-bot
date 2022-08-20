@@ -15,6 +15,18 @@ from fsb.db.models import User
 
 
 class BaseMigration:
+    __MIGRATION_TABLE_NAME = 'migrations'
+
+    def __init__(self):
+        self.db = base_migrator.database
+
+        if not self.db.table_exists(self.__MIGRATION_TABLE_NAME):
+            self.db.execute_sql(f'CREATE TABLE {self.__MIGRATION_TABLE_NAME} ('
+                                f'  id INT PRIMARY KEY,'
+                                f'  migration_name VARCHAR(255) NOT NULL ,'
+                                f'  apply_time TIMESTAMP DEFAULT NULL'
+                                f')')
+
     def up(self):
         logger.info(f"Migrate {self.__class__.__name__} ...")
 
@@ -28,16 +40,8 @@ class BaseMigration:
         return migration
 
 
-class CreateMainTables(BaseMigration):
-    _tables = [
-        User,
-        Chat,
-        Member,
-        Role,
-        MemberRole,
-        Rating,
-        RatingMember,
-    ]
+class CreatingTables(BaseMigration):
+    _tables = []
 
     def up(self):
         super().up()
@@ -45,7 +49,7 @@ class CreateMainTables(BaseMigration):
             if table.table_exists():
                 raise RuntimeError(f"Table `{table.TABLE_NAME}` already exist")
 
-        base_migrator.database.create_tables(self._tables)
+        self.db.create_tables(self._tables)
         logger.info("Creating tables is done")
 
     def down(self):
@@ -58,56 +62,33 @@ class CreateMainTables(BaseMigration):
         if not tables:
             raise RuntimeError("All tables already dropped")
 
-        base_migrator.database.drop_tables(tables)
+        self.db.drop_tables(tables)
         logger.info(f"Dropped tables: {', '.join([table.TABLE_NAME for table in tables])}")
 
 
-class CreateEventsTable(BaseMigration):
-
-    def up(self):
-        super().up()
-
-        if QueryEvent.table_exists():
-            raise RuntimeError(f"Table `{QueryEvent.TABLE_NAME}` already exist")
-
-        QueryEvent.create_table()
-        logger.info(f"Creating `{QueryEvent.TABLE_NAME}` is done")
-
-    def down(self):
-        super().down()
-
-        if not QueryEvent.table_exists():
-            raise RuntimeError(f"Table `{QueryEvent.TABLE_NAME}` already dropped")
-
-        QueryEvent.drop_table()
-        logger.info(f"Table `{QueryEvent.TABLE_NAME}` is dropped")
+class CreateMainTablesMigration(CreatingTables):
+    _tables = [
+        User,
+        Chat,
+        Member,
+    ]
 
 
-class CreateTablesForRatings(BaseMigration):
-        _tables = [
-            Rating,
-            RatingMember,
-        ]
+class CreateRolesTablesMigration(CreatingTables):
+    _tables = [
+        Role,
+        MemberRole,
+    ]
 
-        def up(self):
-            super().up()
-            for table in self._tables:
-                if table.table_exists():
-                    raise RuntimeError(f"Table `{table.TABLE_NAME}` already exist")
 
-            base_migrator.database.create_tables(self._tables)
-            Rating._schema.create_foreign_key(Rating.last_winner)
-            logger.info("Creating tables is done")
+class CreateEventsTableMigration(CreatingTables):
+    _tables = [
+        QueryEvent,
+    ]
 
-        def down(self):
-            super().down()
-            tables = self._tables.copy()
 
-            for table in self._tables:
-                if not table.table_exists():
-                    tables.remove(table)
-            if not tables:
-                raise RuntimeError("All tables already dropped")
-
-            base_migrator.database.drop_tables(tables)
-            logger.info(f"Dropped tables: {', '.join([table.TABLE_NAME for table in tables])}")
+class CreateTablesForRatingsMigration(CreatingTables):
+    _tables = [
+        Rating,
+        RatingMember,
+    ]
