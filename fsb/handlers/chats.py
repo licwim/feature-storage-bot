@@ -1,30 +1,21 @@
 # !/usr/bin/env python
 
 from fsb.db.models import Chat, User, Member
-from fsb.handlers.common import ChatActionHandler, Handler
+from fsb.handlers import ChatActionHandler
 from fsb.helpers import Helper
-from fsb.telegram.client import TelegramApiClient
 
 
 class JoinChatHandler(ChatActionHandler):
-    def __init__(self, client: TelegramApiClient):
-        super().__init__(client)
-
-    @Handler.handle_decorator
-    async def handle(self, event):
-        if not event.user_joined and not event.user_added:
-            return
-        await super().handle(event)
-
+    async def run(self):
         chat = Chat.get_or_create(
-            telegram_id=self.entity.id,
+            telegram_id=self.chat.id,
             defaults={
-                'name': self.entity.title,
-                'type': Chat.get_chat_type(self.entity)
+                'name': self.chat.title,
+                'type': Chat.get_chat_type(self.chat)
             }
         )[0]
 
-        for tg_member in await self._client.get_dialog_members(self.entity):
+        for tg_member in await self.client.get_dialog_members(self.chat):
             user = User.get_or_create(
                 telegram_id=tg_member.id,
                 defaults={

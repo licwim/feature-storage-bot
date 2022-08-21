@@ -9,7 +9,7 @@ from telethon.tl.patched import Message
 
 from fsb import BUILD
 from fsb import VERSION
-from fsb.handlers.events import CallbackQueryEventDTO, EventDTO, MessageEventDTO, ChatActionEventDTO
+from fsb.events.common import CallbackQueryEventDTO, EventDTO, MessageEventDTO, ChatActionEventDTO
 
 
 class InfoBuilder:

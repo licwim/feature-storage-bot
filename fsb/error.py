@@ -16,14 +16,14 @@ class DisconnectFailedError(BaseFsbException):
     message = "Disconnect error"
 
 
-class ExitHandlerException(BaseFsbException):
-    def __init__(self, handler_class: str = None, reason: str = None):
-        message = f"Exit from {handler_class if handler_class else 'Handler'}"
+class ExitControllerException(BaseFsbException):
+    def __init__(self, controller_class: str = None, reason: str = None):
+        message = f"Exit from {controller_class if controller_class else 'Controller'}"
         if reason:
             message += f". Reason: {reason}"
         super().__init__(message)
         self.reason = reason
-        self.handler_class = handler_class
+        self.controller_class = controller_class
 
 
 class RequiredAttributeError(BaseFsbException, AttributeError):
