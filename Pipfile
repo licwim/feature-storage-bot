@@ -13,7 +13,7 @@ peewee = "==3.14.9"
 peewee-async = "==0.7.2"
 aiomysql = "==0.0.22"
 inflection = "==0.5.1"
-peewee-migrations = "==0.3.32"
+pyCLI = "2.0.3"
 
 [requires]
 python_version = "3.10"

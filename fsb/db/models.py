@@ -5,15 +5,18 @@ import sys
 from datetime import datetime
 from typing import Union
 
-from peewee import AutoField, DoesNotExist
-from peewee import CharField
-from peewee import CompositeKey
-from peewee import DateTimeField
-from peewee import DeferredForeignKey
-from peewee import ForeignKeyField
-from peewee import IntegerField
-from peewee import Model
-from peewee import TextField
+from peewee import (
+    AutoField,
+    DoesNotExist,
+    CharField,
+    CompositeKey,
+    DateTimeField,
+    DeferredForeignKey,
+    ForeignKeyField,
+    IntegerField,
+    Model,
+    TextField,
+)
 
 from fsb.db import base_db
 from fsb.error import InputValueError

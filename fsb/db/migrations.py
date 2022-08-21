@@ -1,31 +1,42 @@
 # !/usr/bin/env python
 
-from playhouse.migrate import migrate
+from peewee import (
+    IntegerField,
+    CharField,
+    BooleanField,
+    TimestampField,
+)
 
 from fsb import logger
 from fsb.db import base_migrator
-from fsb.db.models import Chat
-from fsb.db.models import Member
-from fsb.db.models import MemberRole
-from fsb.db.models import QueryEvent
-from fsb.db.models import Rating
-from fsb.db.models import RatingMember
-from fsb.db.models import Role
-from fsb.db.models import User
+from fsb.db.models import (
+    BaseModel,
+    Chat,
+    Member,
+    MemberRole,
+    QueryEvent,
+    Rating,
+    RatingMember,
+    Role,
+    User,
+)
 
 
-class BaseMigration:
-    __MIGRATION_TABLE_NAME = 'migrations'
+class Migration(BaseModel):
+    TABLE_NAME = 'migrations'
+    position = 0
 
-    def __init__(self):
+    id = IntegerField(primary_key=True)
+    migration_name = CharField(null=False, unique=True)
+    apply = BooleanField(default=False)
+    updated_at = TimestampField()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.db = base_migrator.database
 
-        if not self.db.table_exists(self.__MIGRATION_TABLE_NAME):
-            self.db.execute_sql(f'CREATE TABLE {self.__MIGRATION_TABLE_NAME} ('
-                                f'  id INT PRIMARY KEY,'
-                                f'  migration_name VARCHAR(255) NOT NULL ,'
-                                f'  apply_time TIMESTAMP DEFAULT NULL'
-                                f')')
+    def is_applied(self):
+        return self.apply == 1
 
     def up(self):
         logger.info(f"Migrate {self.__class__.__name__} ...")
@@ -35,14 +46,35 @@ class BaseMigration:
 
     @staticmethod
     def migrate_decorator(callback: callable):
-        def migration(self):
-            migrate(callback(self))
-        return migration
+        def up(self):
+            migration = Migration.get_or_none(Migration.migration_name == self.__class__.__name__)
+            if migration and migration.is_applied():
+                logger.info("Migration already applied")
+                return
+            callback(self)
+            Migration \
+                .insert(id=self.position, migration_name=self.__class__.__name__, apply=1) \
+                .on_conflict(update={Migration.apply: 1}) \
+                .execute()
+        return up
+
+    @staticmethod
+    def rollback_decorator(callback: callable):
+        def down(self):
+            migration = Migration.get_or_none(Migration.migration_name == self.__class__.__name__)
+            if not migration or not migration.is_applied():
+                logger.info("Migration not applied")
+                return
+            callback(self)
+            migration.apply = False
+            migration.save()
+        return down
 
 
-class CreatingTables(BaseMigration):
+class CreatingTables(Migration):
     _tables = []
 
+    @Migration.migrate_decorator
     def up(self):
         super().up()
         for table in self._tables:
@@ -52,6 +84,7 @@ class CreatingTables(BaseMigration):
         self.db.create_tables(self._tables)
         logger.info("Creating tables is done")
 
+    @Migration.rollback_decorator
     def down(self):
         super().down()
         tables = self._tables.copy()
