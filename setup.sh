@@ -37,6 +37,6 @@ mysql_query "GRANT GRANT OPTION ON *.* TO 'root'@'%';"
 mysql_query "CREATE DATABASE feature_storage;"
 mysql_query "DROP USER 'root'@'localhost';"
 
-
+docker exec -it feature-storage-bot_fsb-app_1 pipenv run migrator migrate -y
 
 docker-compose down
