@@ -12,6 +12,7 @@ class MentionWatcherHandler(WatcherHandler):
     UNKNOWN_NAME_REPLACEMENT = "ты"
 
     async def run(self):
+        await super().run()
         members = await self.client.get_dialog_members(self.chat)
         members.remove(self.sender)
         mentions = [matches[1] for matches in re.findall(r"(\s+|^)@([^\s@]+)", self.message.text)]

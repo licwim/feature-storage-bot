@@ -8,16 +8,19 @@ from fsb.helpers import InfoBuilder
 
 class StartCommandHandler(CommandHandler):
     async def run(self):
+        await super().run()
         await self.client.send_message(self.chat, "Ну дарова!")
 
 
 class PingCommandHandler(CommandHandler):
     async def run(self):
-        await self.client.send_message(self.event.chat, 'pong')
+        await super().run()
+        await self.client.send_message(self.chat, 'pong')
 
 
 class EntityInfoCommandHandler(CommandHandler):
     async def run(self):
+        await super().run()
         self.args = ['this'] if not self.args else self.args
         entity_uid = ' '.join(self.args)
         try:
@@ -33,6 +36,7 @@ class EntityInfoCommandHandler(CommandHandler):
 
 class AboutInfoCommandHandler(CommandHandler):
     async def run(self):
+        await super().run()
         bot = await self.client.request(GetFullUserRequest(self.client._current_user))
         await self.client.send_message(self.chat, InfoBuilder.build_about_info(bot))
 

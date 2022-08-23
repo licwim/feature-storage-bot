@@ -24,12 +24,14 @@ from fsb.helpers import Helper
 
 class RolesSettingsCommandHandler(CommandHandler):
     async def run(self):
-        text, buttons = GeneralMenuRoleEvent.get_message_and_buttons(self.message.sender.id)
+        await super().run()
+        text, buttons = GeneralMenuRoleEvent.get_message_and_buttons(self.sender.id)
         await self.client.send_message(self.chat, text, buttons=buttons)
 
 
 class RolesSettingsQueryHandler(MenuHandler):
     async def run(self):
+        await super().run()
         if not isinstance(self.query_event, RoleQueryEvent):
             return
 
@@ -39,12 +41,12 @@ class RolesSettingsQueryHandler(MenuHandler):
             await action()
 
     async def action_general_menu(self):
-        text, buttons = GeneralMenuRoleEvent.get_message_and_buttons(self.sender)
+        text, buttons = GeneralMenuRoleEvent.get_message_and_buttons(self.sender.id)
         await self.menu_message.edit(text, buttons=buttons)
 
     async def get_role_params(self, conv):
         response = conv.wait_event(
-            events.NewMessage(forwards=False, chats=self.chat, from_users=self.event.sender),
+            events.NewMessage(forwards=False, chats=self.chat, from_users=self.sender.id),
             timeout=self.INPUT_TIMEOUT
         )
         await conv.send_message('Введи тег роли либо название и тег через запятую\n(Rolename, roletag)')
@@ -96,14 +98,14 @@ class RolesSettingsQueryHandler(MenuHandler):
         for role in roles:
             buttons_line.append(Button.inline(
                 f"{role.name} (@{role.nickname})",
-                MenuRoleEvent(self.sender, role.id).save_get_id()
+                MenuRoleEvent(self.sender.id, role.id).save_get_id()
             ))
             if len(buttons_line) == 2:
                 buttons.append(buttons_line.copy())
                 buttons_line = []
         if buttons_line:
             buttons.append(buttons_line.copy())
-        buttons.append([Button.inline("<< К меню ролей", GeneralMenuRoleEvent(self.sender).save_get_id())])
+        buttons.append([Button.inline("<< К меню ролей", GeneralMenuRoleEvent(self.sender.id).save_get_id())])
         text = "Список ролей:"
         if new_message:
             await self.client.send_message(self.chat, text, buttons=buttons)
@@ -124,7 +126,7 @@ class RolesSettingsQueryHandler(MenuHandler):
         for role in roles:
             buttons_line.append(Button.inline(
                 f"{role.name} (@{role.nickname})",
-                DeleteRoleEvent(self.sender, role.id).save_get_id()
+                DeleteRoleEvent(self.sender.id, role.id).save_get_id()
             ))
             if len(buttons_line) == 2:
                 buttons.append(buttons_line.copy())
@@ -132,23 +134,29 @@ class RolesSettingsQueryHandler(MenuHandler):
         if buttons_line:
             buttons.append(buttons_line.copy())
 
-        buttons.append([Button.inline("<< К меню ролей", GeneralMenuRoleEvent(self.sender).save_get_id())])
+        buttons.append([Button.inline("<< К меню ролей", GeneralMenuRoleEvent(self.sender.id).save_get_id())])
         await self.menu_message.edit("Удалить роль:", buttons=buttons)
 
-    async def action_menu(self):
+    async def action_menu(self, new_message: bool = False):
         role = self.query_event.get_role()
-        await self.menu_message.edit(f"Меню роли **{role.name}** (@{role.nickname}):", buttons=[
+        text = f"Меню роли **{role.name}** (@{role.nickname}):"
+        buttons = [
             [
-                Button.inline('Участники', ListMembersRoleEvent(self.sender, role.id).save_get_id()),
+                Button.inline('Участники', ListMembersRoleEvent(self.sender.id, role.id).save_get_id()),
             ],
             [
-                Button.inline('Изменить', ChangeRoleEvent(self.sender, role.id).save_get_id()),
-                Button.inline('Удалить', DeleteRoleEvent(self.sender, role.id).save_get_id()),
+                Button.inline('Изменить', ChangeRoleEvent(self.sender.id, role.id).save_get_id()),
+                Button.inline('Удалить', DeleteRoleEvent(self.sender.id, role.id).save_get_id()),
             ],
             [
-                Button.inline('<< К списку ролей', ListRoleEvent(self.sender).save_get_id())
+                Button.inline('<< К списку ролей', ListRoleEvent(self.sender.id).save_get_id())
             ],
-        ])
+        ]
+
+        if new_message:
+            await self.client.send_message(self.chat, text, buttons=buttons)
+        else:
+            await self.menu_message.edit(text, buttons=buttons)
 
     async def action_delete(self):
         role = self.query_event.get_role()
@@ -168,7 +176,9 @@ class RolesSettingsQueryHandler(MenuHandler):
                     role.name = params[0]
                     role.nickname = params[1]
                     role.save()
-                    await conv.send_message(f"Изменена роль: {old_name} (__{old_nickname}__)")
+                    await conv.send_message(
+                        f"Изменена роль с {old_name} (__{old_nickname}__) на {role.name} (__{role.nickname}__)"
+                    )
                 else:
                     await conv.send_message("Такая роль уже существует")
                     return
@@ -177,7 +187,7 @@ class RolesSettingsQueryHandler(MenuHandler):
             except InputValueError as ex:
                 await conv.send_message(ex.message)
 
-        await self.client._client.send_message(entity=self.chat, message=self.menu_message)
+        await self.action_menu(True)
 
     async def get_role_members(self, role: Role) -> list:
         return Helper.collect_members(
@@ -197,11 +207,11 @@ class RolesSettingsQueryHandler(MenuHandler):
 
         buttons = [
             [
-                Button.inline('Добавить участника', AddMemberMenuRoleEvent(self.sender, role.id).save_get_id()),
-                Button.inline('Удалить участника', RemoveMemberMenuRoleEvent(self.sender, role.id).save_get_id()),
+                Button.inline('Добавить участника', AddMemberMenuRoleEvent(self.sender.id, role.id).save_get_id()),
+                Button.inline('Удалить участника', RemoveMemberMenuRoleEvent(self.sender.id, role.id).save_get_id()),
             ],
             [
-                Button.inline('<< К меню роли', MenuRoleEvent(self.sender, role.id).save_get_id())
+                Button.inline('<< К меню роли', MenuRoleEvent(self.sender.id, role.id).save_get_id())
             ],
         ]
         if new_message:
@@ -276,11 +286,11 @@ class RolesSettingsQueryHandler(MenuHandler):
         for tg_member, db_member in members:
             buttons.append((
                 Helper.make_member_name(tg_member, with_mention=True),
-                event_class(sender=self.sender, role_id=role.id, member_id=db_member.id).save_get_id()
+                event_class(sender_id=self.sender.id, role_id=role.id, member_id=db_member.id).save_get_id()
             ))
         buttons = Helper.make_buttons_layout(
             buttons,
-            ("<< Участники", ListMembersRoleEvent(self.sender, role.id).save_get_id())
+            ("<< Участники", ListMembersRoleEvent(self.sender.id, role.id).save_get_id())
         )
 
         if new_message:

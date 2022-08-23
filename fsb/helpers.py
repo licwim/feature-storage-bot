@@ -74,25 +74,26 @@ class InfoBuilder:
 
     @staticmethod
     def build_chat_info(event: EventDTO):
-        match event.chat_type:
-            case 'Chat' | 'Channel':
-                chat_info = {
-                    'id': event.chat.id,
-                    'title': event.chat.title,
-                    'type': event.chat_type,
-                    'sender': {
-                        'id': event.sender.id,
-                        'username': event.sender.username,
+        chat_info = None
+
+        if isinstance(event, (MessageEventDTO, CallbackQueryEventDTO)):
+            match event.chat_type:
+                case 'Chat' | 'Channel':
+                    chat_info = {
+                        'id': event.chat.id,
+                        'title': event.chat.title,
+                        'type': event.chat_type,
+                        'sender': {
+                            'id': event.sender.id,
+                            'username': event.sender.username,
+                        }
                     }
-                }
-            case 'User':
-                chat_info = {
-                    'id': event.chat.id,
-                    'username': event.chat.username,
-                    'type': event.chat.__class__.__name__,
-                }
-            case _:
-                chat_info = None
+                case 'User':
+                    chat_info = {
+                        'id': event.chat.id,
+                        'username': event.chat.username,
+                        'type': event.chat.__class__.__name__,
+                    }
 
         return chat_info
 

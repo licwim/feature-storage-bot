@@ -7,6 +7,7 @@ from fsb.helpers import Helper
 
 class JoinChatHandler(ChatActionHandler):
     async def run(self):
+        await super().run()
         chat = Chat.get_or_create(
             telegram_id=self.chat.id,
             defaults={

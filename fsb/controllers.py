@@ -3,7 +3,7 @@
 import inspect
 import re
 from asyncio import sleep
-from typing import Union, Type
+from typing import Type
 
 from fsb import logger
 from fsb.config import Config
@@ -42,10 +42,11 @@ class Controller:
         self._waiting_list = {}
 
     def listen(self):
+        handle_names = []
         for handle_name, handle in self.get_handle_list():
             self._listen_handle(handle)
-            logger.info(f"Listen handle: {handle_name}")
-        logger.info(f"Add controller: {self._controller_name}")
+            handle_names.append(handle_name.replace('_handle', '', -1))
+        logger.info(f"Add controller: {self._controller_name} [{', '.join(handle_names)}]")
 
     def _listen_handle(self, handle: callable):
         pass
@@ -153,8 +154,8 @@ class MenuController(CallbackQueryController):
 
     async def _init_filter(self, event: MenuEventDTO):
         await super()._init_filter(event)
-        sender = event.sender.id
-        if event.query_event.sender and event.query_event.sender != sender:
+        sender_id = event.sender.id
+        if event.query_event.sender_id and event.query_event.sender_id != sender_id:
             raise ExitControllerException
         event.menu_message = await self._client._client.get_messages(event.chat, ids=event.source_message_id)
 
@@ -211,6 +212,7 @@ class ChatActionController(Controller):
 
 
 class CommandController(MessageController):
+    _event_class = CommandEventDTO
     PREFIX = '/'
 
     async def _init_filter(self, event: CommandEventDTO):
@@ -218,69 +220,68 @@ class CommandController(MessageController):
         if event.message.text:
             args = event.message.text.split(' ')
             command = args[0].replace(f'@{self._client._current_user.username}', '').replace(self.PREFIX, '', 1)
-            if args[0].startswith(self.PREFIX):
+            if args[0].startswith(self.PREFIX) and command in event.command_names:
                 args.pop(0)
                 event.args = args
                 event.command = command
                 return
         raise ExitControllerException
 
-    async def handle(self, event: CommandEventDTO,
-                     command_names: Union[str, list] = None, handler_class: Type[Handler] = None):
-        await super().handle(event)
-
-        if isinstance(command_names, str):
-            command_names = [command_names]
-        if event.command in command_names:
-            await self.run_handler(event, handler_class)
-
     @Controller.handle_decorator
     async def start_handle(self, event: CommandEventDTO):
-        await self.handle(event, 'start', StartCommandHandler)
+        event.command_names = ['start']
+        await super().handle(event)
+        await self.run_handler(event, StartCommandHandler)
 
     @Controller.handle_decorator
     async def ping_handle(self, event: CommandEventDTO):
+        event.command_names = ['ping']
         event.debug = True
-        await self.handle(event, 'ping', PingCommandHandler)
+        await super().handle(event)
+        await self.run_handler(event, PingCommandHandler)
 
     @Controller.handle_decorator
     async def entity_info_handle(self, event: CommandEventDTO):
+        event.command_names = ['entity']
         event.debug = True
-        await self.handle(event, 'entity', EntityInfoCommandHandler)
+        await super().handle(event)
+        await self.run_handler(event, EntityInfoCommandHandler)
 
     @Controller.handle_decorator
     async def about_handle(self, event: CommandEventDTO):
-        await self.handle(event, 'about', AboutInfoCommandHandler)
+        event.command_names = ['about']
+        await super().handle(event)
+        await self.run_handler(event, AboutInfoCommandHandler)
 
     @Controller.handle_decorator
     async def role_settings_handle(self, event: CommandEventDTO):
+        event.command_names = ['roles']
         event.area = event.ONLY_CHAT
-        await self.handle(event, 'roles', RolesSettingsCommandHandler)
+        await super().handle(event)
+        await self.run_handler(event, RolesSettingsCommandHandler)
 
     @Controller.handle_decorator
     async def ratings_settings_handle(self, event: CommandEventDTO):
+        event.command_names = ['ratings']
         event.area = event.ONLY_CHAT
-        await self.handle(event, 'ratings', RatingsSettingsCommandHandler)
+        await super().handle(event)
+        await self.run_handler(event, RatingsSettingsCommandHandler)
 
     @Controller.handle_decorator
     async def ratings_handle(self, event: CommandEventDTO):
+        event.command_names = [RatingCommandHandler.PIDOR_COMMAND, RatingCommandHandler.CHAD_COMMAND]
         event.area = event.ONLY_CHAT
+        await super().handle(event)
         self.set_wait(event.chat.id, True)
-        await self.handle(
-            event,
-            [RatingCommandHandler.PIDOR_COMMAND, RatingCommandHandler.CHAD_COMMAND],
-            RatingCommandHandler
-        )
+        await self.run_handler(event, RatingCommandHandler)
         self.set_wait(event.chat.id, False)
 
     @Controller.handle_decorator
     async def ratings_stats_handle(self, event: CommandEventDTO):
+        event.command_names = [StatRatingCommandHandler.PIDOR_STAT_COMMAND, StatRatingCommandHandler.CHAD_STAT_COMMAND]
+        await super().handle(event)
         event.area = event.ONLY_CHAT
-        await self.handle(
-            event,
-            [StatRatingCommandHandler.PIDOR_STAT_COMMAND, StatRatingCommandHandler.CHAD_STAT_COMMAND],
-            StatRatingCommandHandler
-        )
+        await self.run_handler(event, StatRatingCommandHandler)
 
 
 class WatcherController(MessageController):

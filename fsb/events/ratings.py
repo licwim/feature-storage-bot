@@ -8,14 +8,14 @@ from fsb.db.models import QueryEvent, Rating, Member, RatingMember
 
 
 class RatingQueryEvent(QueryEvent):
-    def __init__(self, sender: int = None, rating_id: int = None, member_id: int = None, rating_member_id: int = None):
+    def __init__(self, sender_id: int = None, rating_id: int = None, member_id: int = None, rating_member_id: int = None):
         self.rating_id = rating_id
         self.rating = None
         self.member_id = member_id
         self.member = None
         self.rating_member_id = rating_member_id
         self.rating_member = None
-        super().__init__(sender, self.build_data_dict())
+        super().__init__(sender_id, self.build_data_dict())
 
     def build_data_dict(self) -> dict:
         return {
@@ -35,10 +35,10 @@ class RatingQueryEvent(QueryEvent):
     @classmethod
     def from_dict(cls, data_dict: dict) -> QueryEvent:
         data_dict = cls.normalize_data_dict(data_dict)
-        sender = data_dict['sender']
+        sender_id = data_dict['sender_id']
         data = data_dict['data']
         return cls(
-            sender=sender,
+            sender_id=sender_id,
             rating_id=data['rating_id'],
             member_id=data['member_id'],
             rating_member_id=data['rating_member_id']
@@ -65,14 +65,14 @@ class RatingQueryEvent(QueryEvent):
 
 class GeneralMenuRatingEvent(RatingQueryEvent):
     @staticmethod
-    def get_message_and_buttons(sender, ratings_list) -> tuple:
+    def get_message_and_buttons(sender_id, ratings_list) -> tuple:
         if ratings_list:
             text = "**Список твоих рейтингов:**\n" + '\n'.join(ratings_list)
         else:
             text = "Список твоих рейтингов пуст"
         buttons = [
-            Button.inline("Зарегаться", RegMenuRatingEvent(sender).save_get_id()),
-            Button.inline("Разрегаться", UnregMenuRatingEvent(sender).save_get_id())
+            Button.inline("Зарегаться", RegMenuRatingEvent(sender_id).save_get_id()),
+            Button.inline("Разрегаться", UnregMenuRatingEvent(sender_id).save_get_id())
         ]
         return text, buttons
 

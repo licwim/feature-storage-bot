@@ -4,16 +4,16 @@ from typing import Union
 
 from telethon import Button
 
-from models import QueryEvent, Role, Member
+from fsb.db.models import QueryEvent, Role, Member
 
 
 class RoleQueryEvent(QueryEvent):
-    def __init__(self, sender: int = None, role_id: int = None, member_id: int = None):
+    def __init__(self, sender_id: int = None, role_id: int = None, member_id: int = None):
         self.role_id = role_id
         self.role = None
         self.member_id = member_id
         self.member = None
-        super().__init__(sender, self.build_data_dict())
+        super().__init__(sender_id, self.build_data_dict())
 
     def build_data_dict(self) -> dict:
         return {
@@ -32,9 +32,9 @@ class RoleQueryEvent(QueryEvent):
     @classmethod
     def from_dict(cls, data_dict: dict) -> QueryEvent:
         data_dict = cls.normalize_data_dict(data_dict)
-        sender = data_dict['sender']
+        sender_id = data_dict['sender_id']
         data = data_dict['data']
-        return cls(sender=sender, role_id=data['role_id'], member_id=data['member_id'])
+        return cls(sender_id=sender_id, role_id=data['role_id'], member_id=data['member_id'])
 
     def get_role(self) -> Union[Role, None]:
         if not self.role and self.role_id:
@@ -51,14 +51,14 @@ class RoleQueryEvent(QueryEvent):
 
 class GeneralMenuRoleEvent(RoleQueryEvent):
     @staticmethod
-    def get_message_and_buttons(sender) -> tuple:
+    def get_message_and_buttons(sender_id) -> tuple:
         return "Меню ролей", [
             [
-                Button.inline('Список ролей', ListRoleEvent(sender).save_get_id())
+                Button.inline('Список ролей', ListRoleEvent(sender_id).save_get_id())
             ],
             [
-                Button.inline('Создать роль', CreateRoleEvent(sender).save_get_id()),
-                Button.inline('Удалить роль', DeleteMenuRoleEvent(sender).save_get_id()),
+                Button.inline('Создать роль', CreateRoleEvent(sender_id).save_get_id()),
+                Button.inline('Удалить роль', DeleteMenuRoleEvent(sender_id).save_get_id()),
             ]
         ]
 

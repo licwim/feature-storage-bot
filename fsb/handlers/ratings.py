@@ -7,8 +7,8 @@ from datetime import datetime
 from inflection import underscore
 from peewee import DoesNotExist
 
-from events.ratings import RatingQueryEvent, GeneralMenuRatingEvent, RegRatingEvent, UnregRatingEvent
 from fsb.db.models import Chat, Member, Rating, RatingMember, User
+from fsb.events.ratings import RatingQueryEvent, GeneralMenuRatingEvent, RegRatingEvent, UnregRatingEvent
 from fsb.handlers import ChatActionHandler, CommandHandler, MenuHandler
 from fsb.helpers import Helper
 
@@ -28,6 +28,7 @@ LANGS = {
 
 class CreateRatingsOnJoinChatHandler(ChatActionHandler):
     async def run(self):
+        await super().run()
         chat = Chat.get(telegram_id=self.chat.id)
 
         Rating.get_or_create(
@@ -49,17 +50,18 @@ class CreateRatingsOnJoinChatHandler(ChatActionHandler):
 
 class RatingsSettingsCommandHandler(CommandHandler):
     async def run(self):
+        await super().run()
         try:
             ratings = Rating.select().join(RatingMember, on=(RatingMember.rating_id == Rating.id)).where(
                 RatingMember.member == Member.get(
-                    Member.user == User.get(User.telegram_id == self.event.message.sender.id),
+                    Member.user == User.get(User.telegram_id == self.sender.id),
                     Member.chat == Chat.get(Chat.telegram_id == self.chat.id)
                 ),
             )
             ratings_list = [rating.name for rating in ratings]
         except DoesNotExist:
             ratings_list = []
-        text, buttons = GeneralMenuRatingEvent.get_message_and_buttons(self.message.sender.id, ratings_list)
+        text, buttons = GeneralMenuRatingEvent.get_message_and_buttons(self.sender.id, ratings_list)
         await self.client.send_message(self.chat, text, buttons=buttons)
 
 
@@ -85,6 +87,7 @@ class RatingCommandHandler(CommandHandler):
     WINNER_MESSAGE_PATTERN = "Сегодня {msg_name} дня - {member_name}!"
 
     async def run(self):
+        await super().run()
         match self.command:
             case self.PIDOR_COMMAND:
                 rating_name = PIDOR_KEYWORD
@@ -154,6 +157,7 @@ class StatRatingCommandHandler(CommandHandler):
     CHAD_STAT_COMMAND = RatingCommandHandler.CHAD_COMMAND + 'stat'
 
     async def run(self):
+        await super().run()
         match self.command:
             case self.PIDOR_STAT_COMMAND:
                 rating_name = PIDOR_KEYWORD
@@ -190,6 +194,7 @@ class StatRatingCommandHandler(CommandHandler):
 
 class RatingsSettingsQueryHandler(MenuHandler):
     async def run(self):
+        await super().run()
         if not isinstance(self.query_event, RatingQueryEvent):
             return
 
@@ -202,20 +207,20 @@ class RatingsSettingsQueryHandler(MenuHandler):
         try:
             ratings = Rating.select().join(RatingMember, on=(RatingMember.rating_id == Rating.id)).where(
                 RatingMember.member == Member.get(
-                    Member.user == User.get(User.telegram_id == self.sender),
+                    Member.user == User.get(User.telegram_id == self.sender.id),
                     Member.chat == Chat.get(Chat.telegram_id == self.chat.id)
                 ),
             )
             ratings_list = [rating.name for rating in ratings]
         except DoesNotExist:
             ratings_list = []
-        text, buttons = GeneralMenuRatingEvent.get_message_and_buttons(self.sender, ratings_list)
+        text, buttons = GeneralMenuRatingEvent.get_message_and_buttons(self.sender.id, ratings_list)
         await self.menu_message.edit(text, buttons=buttons)
 
     async def action_reg_menu(self):
         chat = Chat.get(Chat.telegram_id == self.chat.id)
         member = Member.get(
-            Member.user == User.get(User.telegram_id == self.sender),
+            Member.user == User.get(User.telegram_id == self.sender.id),
             Member.chat == chat
         )
         chat_ratings = list(Rating.select().where(Rating.chat == chat).execute())
@@ -229,11 +234,11 @@ class RatingsSettingsQueryHandler(MenuHandler):
         for rating in ratings:
             buttons.append((
                 f"{rating.name}",
-                RegRatingEvent(sender=self.sender, rating_id=rating.id, member_id=member.id).save_get_id()
+                RegRatingEvent(sender_id=self.sender.id, rating_id=rating.id, member_id=member.id).save_get_id()
             ))
         buttons = Helper.make_buttons_layout(buttons, (
             "<< К меню рейтингов",
-            GeneralMenuRatingEvent(self.sender).save_get_id()
+            GeneralMenuRatingEvent(self.sender.id).save_get_id()
         ))
 
         await self.menu_message.edit("Куда регаться", buttons=buttons)
@@ -259,7 +264,7 @@ class RatingsSettingsQueryHandler(MenuHandler):
     async def action_unreg_menu(self):
         chat = Chat.get(Chat.telegram_id == self.chat.id)
         member = Member.get(
-            Member.user == User.get(User.telegram_id == self.sender),
+            Member.user == User.get(User.telegram_id == self.sender.id),
             Member.chat == chat
         )
         ratings = Rating.select().join(RatingMember, on=(RatingMember.rating_id == Rating.id)).where(
@@ -271,11 +276,11 @@ class RatingsSettingsQueryHandler(MenuHandler):
         for rating in ratings:
             buttons.append((
                 f"{rating.name}",
-                UnregRatingEvent(sender=self.sender, rating_id=rating.id, member_id=member.id).save_get_id()
+                UnregRatingEvent(sender_id=self.sender.id, rating_id=rating.id, member_id=member.id).save_get_id()
             ))
         buttons = Helper.make_buttons_layout(buttons, (
             "<< К меню рейтингов",
-            GeneralMenuRatingEvent(self.sender).save_get_id()
+            GeneralMenuRatingEvent(self.sender.id).save_get_id()
         ))
 
         await self.menu_message.edit("Откуда разрегаться", buttons=buttons)

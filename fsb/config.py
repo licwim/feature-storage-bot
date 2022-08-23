@@ -62,7 +62,7 @@ def init_config(logger: Logger):
         unknown_configs_check = configs_by_json.copy()
         for key in configs_by_json.copy():
             if key in Config.get_attributes().keys():
-                if getattr(Config, key) is None:
+                if not getattr(Config, key):
                     setattr(Config, key, configs_by_json[key])
                 unknown_configs_check.pop(key)
         if unknown_configs_check:
