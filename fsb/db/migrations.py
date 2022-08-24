@@ -8,6 +8,7 @@ from peewee import (
 )
 
 from fsb import logger
+from fsb.config import Config
 from fsb.db import base_migrator
 from fsb.db.models import (
     BaseModel,
@@ -20,6 +21,12 @@ from fsb.db.models import (
     Role,
     User,
 )
+from fsb.handlers.ratings import PIDOR_KEYWORD, CHAD_KEYWORD
+from fsb.helpers import Helper
+from fsb.telegram.client import TelegramApiClient
+
+client = TelegramApiClient(Config.bot_username)
+client.loop.run_until_complete(client.connect(True))
 
 
 class Migration(BaseModel):
@@ -39,10 +46,10 @@ class Migration(BaseModel):
         return self.apply == 1
 
     def up(self):
-        logger.info(f"Migrate {self.__class__.__name__} ...")
+        pass
 
     def down(self):
-        logger.info(f"Rollback {self.__class__.__name__} ...")
+        pass
 
     @staticmethod
     def migrate_decorator(callback: callable):
@@ -51,11 +58,13 @@ class Migration(BaseModel):
             if migration and migration.is_applied():
                 logger.info("Migration already applied")
                 return
+            logger.info(f"Migrate {self.__class__.__name__} ...")
             callback(self)
             Migration \
                 .insert(id=self.position, migration_name=self.__class__.__name__, apply=1) \
                 .on_conflict(update={Migration.apply: 1}) \
                 .execute()
+            logger.info(f"Migrate {self.__class__.__name__} is done")
         return up
 
     @staticmethod
@@ -65,10 +74,16 @@ class Migration(BaseModel):
             if not migration or not migration.is_applied():
                 logger.info("Migration not applied")
                 return
+            logger.info(f"Rollback {self.__class__.__name__} ...")
             callback(self)
             migration.apply = False
             migration.save()
+            logger.info(f"Rollback {self.__class__.__name__} is done")
         return down
+
+    @staticmethod
+    def async_run(coro, *args, **kwargs):
+        return client.loop.run_until_complete(coro(*args, **kwargs))
 
 
 class CreatingTables(Migration):
@@ -125,3 +140,66 @@ class CreateTablesForRatingsMigration(CreatingTables):
         Rating,
         RatingMember,
     ]
+
+
+class AddPidorAndChadRatingsMigration(Migration):
+    _chats = [
+        1511700614
+    ]
+
+    @Migration.migrate_decorator
+    def up(self):
+        super().up()
+        for chat_id in self._chats:
+            tg_chat = self.async_run(client.get_entity, chat_id)
+            db_chat = Chat.get_or_create(
+                telegram_id=tg_chat.id,
+                defaults={
+                    'name': tg_chat.title,
+                    'type': Chat.get_chat_type(tg_chat)
+                }
+            )[0]
+
+            for tg_member in self.async_run(client.get_dialog_members, tg_chat):
+                user = User.get_or_create(
+                    telegram_id=tg_member.id,
+                    defaults={
+                        'name': Helper.make_member_name(tg_member, with_username=False),
+                        'nickname': tg_member.username
+                    }
+                )[0]
+                Member.get_or_create(chat=db_chat, user=user)
+
+            Rating.get_or_create(
+                name=PIDOR_KEYWORD,
+                chat=db_chat,
+                defaults={
+                    'command': PIDOR_KEYWORD
+                }
+            )
+
+            Rating.get_or_create(
+                name=CHAD_KEYWORD,
+                chat=db_chat,
+                defaults={
+                    'command': CHAD_KEYWORD
+                }
+            )
+
+    @Migration.rollback_decorator
+    def down(self):
+        super().down()
+        for chat_id in self._chats:
+            tg_chat = self.async_run(client.get_entity, chat_id)
+            db_chat = Chat.get(telegram_id=tg_chat.id)
+
+            for tg_member in self.async_run(client.get_dialog_members, tg_chat):
+                user = User.get(telegram_id=tg_member.id)
+                member = Member.get(chat=db_chat, user=user)
+                member.delete_instance()
+                user.delete_instance()
+
+            for rating in Rating.select().where(Rating.chat == db_chat):
+                rating.delete_instance()
+
+            db_chat.delete_instance()
