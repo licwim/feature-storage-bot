@@ -8,7 +8,6 @@ from peewee import (
 )
 
 from fsb import logger
-from fsb.config import Config
 from fsb.db import base_migrator
 from fsb.db.models import (
     BaseModel,
@@ -25,9 +24,6 @@ from fsb.handlers.ratings import PIDOR_KEYWORD, CHAD_KEYWORD
 from fsb.helpers import Helper
 from fsb.telegram.client import TelegramApiClient
 
-client = TelegramApiClient(Config.bot_username)
-client.loop.run_until_complete(client.connect(True))
-
 
 class Migration(BaseModel):
     TABLE_NAME = 'migrations'
@@ -38,17 +34,18 @@ class Migration(BaseModel):
     apply = BooleanField(default=False)
     updated_at = TimestampField()
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, client: TelegramApiClient = None, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.client = client
         self.db = base_migrator.database
 
     def is_applied(self):
         return self.apply == 1
 
-    def up(self):
+    async def up(self):
         pass
 
-    def down(self):
+    async def down(self):
         pass
 
     @staticmethod
@@ -59,7 +56,7 @@ class Migration(BaseModel):
                 logger.info("Migration already applied")
                 return
             logger.info(f"Migrate {self.__class__.__name__} ...")
-            callback(self)
+            self.client.loop.run_until_complete(callback(self))
             Migration \
                 .insert(id=self.position, migration_name=self.__class__.__name__, apply=1) \
                 .on_conflict(update={Migration.apply: 1}) \
@@ -75,23 +72,22 @@ class Migration(BaseModel):
                 logger.info("Migration not applied")
                 return
             logger.info(f"Rollback {self.__class__.__name__} ...")
-            callback(self)
+            self.client.loop.run_until_complete(callback(self))
             migration.apply = False
             migration.save()
             logger.info(f"Rollback {self.__class__.__name__} is done")
         return down
 
-    @staticmethod
-    def async_run(coro, *args, **kwargs):
-        return client.loop.run_until_complete(coro(*args, **kwargs))
+    def async_run(self, coro, *args, **kwargs):
+        return self.client.loop.run_until_complete(coro(*args, **kwargs))
 
 
 class CreatingTables(Migration):
     _tables = []
 
     @Migration.migrate_decorator
-    def up(self):
-        super().up()
+    async def up(self):
+        await super().up()
         for table in self._tables:
             if table.table_exists():
                 raise RuntimeError(f"Table `{table.TABLE_NAME}` already exist")
@@ -100,8 +96,8 @@ class CreatingTables(Migration):
         logger.info("Creating tables is done")
 
     @Migration.rollback_decorator
-    def down(self):
-        super().down()
+    async def down(self):
+        await super().down()
         tables = self._tables.copy()
 
         for table in self._tables:
@@ -148,10 +144,10 @@ class AddPidorAndChadRatingsMigration(Migration):
     ]
 
     @Migration.migrate_decorator
-    def up(self):
-        super().up()
+    async def up(self):
+        await super().up()
         for chat_id in self._chats:
-            tg_chat = self.async_run(client.get_entity, chat_id)
+            tg_chat = await self.client.get_entity(chat_id)
             db_chat = Chat.get_or_create(
                 telegram_id=tg_chat.id,
                 defaults={
@@ -160,7 +156,7 @@ class AddPidorAndChadRatingsMigration(Migration):
                 }
             )[0]
 
-            for tg_member in self.async_run(client.get_dialog_members, tg_chat):
+            for tg_member in await self.client.get_dialog_members(tg_chat):
                 user = User.get_or_create(
                     telegram_id=tg_member.id,
                     defaults={
@@ -187,13 +183,13 @@ class AddPidorAndChadRatingsMigration(Migration):
             )
 
     @Migration.rollback_decorator
-    def down(self):
-        super().down()
+    async def down(self):
+        await super().down()
         for chat_id in self._chats:
-            tg_chat = self.async_run(client.get_entity, chat_id)
+            tg_chat = await self.client.get_entity(chat_id)
             db_chat = Chat.get(telegram_id=tg_chat.id)
 
-            for tg_member in self.async_run(client.get_dialog_members, tg_chat):
+            for tg_member in await self.client.get_dialog_members(tg_chat):
                 user = User.get(telegram_id=tg_member.id)
                 member = Member.get(chat=db_chat, user=user)
                 member.delete_instance()
