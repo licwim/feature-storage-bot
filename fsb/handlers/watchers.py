@@ -4,41 +4,18 @@ import re
 
 from peewee import DoesNotExist
 
-from . import Handler
-from . import MessageHandler
-from .commands import BaseCommand
-from ..db.models import Chat
-from ..db.models import MemberRole
-from ..db.models import Role
-from ..error import ExitHandlerException
-from ..telegram.client import TelegramApiClient
+from fsb.db.models import Chat, MemberRole, Role
+from fsb.handlers import WatcherHandler
 
 
-class BaseWatcher(MessageHandler):
-
-    def __init__(self, client: TelegramApiClient, filter: callable):
-        super().__init__(client)
-        self._filter = filter
-
-    async def _init_filter(self, event):
-        await super()._init_filter(event)
-        if event.message.text.startswith(BaseCommand.PREFIX) or not self._filter(event):
-            raise ExitHandlerException
-
-
-class MentionWatcher(BaseWatcher):
-
+class MentionWatcherHandler(WatcherHandler):
     UNKNOWN_NAME_REPLACEMENT = "ты"
 
-    def __init__(self, client: TelegramApiClient):
-        super().__init__(client, self.filter)
-
-    @Handler.handle_decorator
-    async def handle(self, event):
-        await super().handle(event)
-        members = await self._client.get_dialog_members(self.entity)
-        members.remove(event.sender)
-        mentions = [matches[1] for matches in re.findall(r"(\s+|^)@([^\s@]+)", event.message.text)]
+    async def run(self):
+        await super().run()
+        members = await self.client.get_dialog_members(self.chat)
+        members.remove(self.sender)
+        mentions = [matches[1] for matches in re.findall(r"(\s+|^)@([^\s@]+)", self.message.text)]
 
         mentions_strings = []
         for mention in mentions:
@@ -50,10 +27,10 @@ class MentionWatcher(BaseWatcher):
                 members.remove(member)
 
         if mentions_strings:
-            await self._client.send_message(
-                self.entity,
+            await self.client.send_message(
+                self.chat,
                 ' '.join(mentions_strings),
-                event.message
+                self.message
             )
 
     def _make_mention_string(self, members: list, rank_mention: bool = False):
@@ -70,7 +47,7 @@ class MentionWatcher(BaseWatcher):
             elif member.username:
                 result_mentions.append('@' + member.username)
             else:
-                member_name = member.first_name if member.first_name else MentionWatcher.UNKNOWN_NAME_REPLACEMENT
+                member_name = member.first_name if member.first_name else self.UNKNOWN_NAME_REPLACEMENT
                 result_mentions.append(f"[{member_name}](tg://user?id={str(member.id)})")
 
         return ' '.join(result_mentions)
@@ -90,7 +67,7 @@ class MentionWatcher(BaseWatcher):
         try:
             role_members = MemberRole.select().where(
                 MemberRole.role == Role.get(
-                    Role.chat == Chat.get(Chat.telegram_id == self.entity.id).get_id(),
+                    Role.chat == Chat.get(Chat.telegram_id == self.chat.id).get_id(),
                     Role.nickname == mention
                 )
             )
@@ -102,9 +79,3 @@ class MentionWatcher(BaseWatcher):
 
         return self._make_mention_string(members, False), members
 
-    @staticmethod
-    def filter(event):
-        if re.search(r"(\s+|^)@([^\s]+)", event.message.text):
-            return True
-        else:
-            return False

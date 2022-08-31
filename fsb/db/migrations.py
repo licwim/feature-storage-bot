@@ -1,55 +1,103 @@
 # !/usr/bin/env python
 
-from playhouse.migrate import migrate
+from peewee import (
+    IntegerField,
+    CharField,
+    BooleanField,
+    TimestampField,
+)
 
 from fsb import logger
 from fsb.db import base_migrator
-from fsb.db.models import Chat
-from fsb.db.models import Member
-from fsb.db.models import MemberRole
-from fsb.db.models import QueryEvent
-from fsb.db.models import Rating
-from fsb.db.models import RatingMember
-from fsb.db.models import Role
-from fsb.db.models import User
+from fsb.db.models import (
+    BaseModel,
+    Chat,
+    Member,
+    MemberRole,
+    QueryEvent,
+    Rating,
+    RatingMember,
+    Role,
+    User,
+)
+from fsb.handlers.ratings import PIDOR_KEYWORD, CHAD_KEYWORD
+from fsb.helpers import Helper
+from fsb.telegram.client import TelegramApiClient
 
 
-class BaseMigration:
-    def up(self):
-        logger.info(f"Migrate {self.__class__.__name__} ...")
+class Migration(BaseModel):
+    TABLE_NAME = 'migrations'
+    position = 0
 
-    def down(self):
-        logger.info(f"Rollback {self.__class__.__name__} ...")
+    id = IntegerField(primary_key=True)
+    migration_name = CharField(null=False, unique=True)
+    apply = BooleanField(default=False)
+    updated_at = TimestampField()
+
+    def __init__(self, client: TelegramApiClient = None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.client = client
+        self.db = base_migrator.database
+
+    def is_applied(self):
+        return self.apply == 1
+
+    async def up(self):
+        pass
+
+    async def down(self):
+        pass
 
     @staticmethod
     def migrate_decorator(callback: callable):
-        def migration(self):
-            migrate(callback(self))
-        return migration
+        def up(self):
+            migration = Migration.get_or_none(Migration.migration_name == self.__class__.__name__)
+            if migration and migration.is_applied():
+                logger.info("Migration already applied")
+                return
+            logger.info(f"Migrate {self.__class__.__name__} ...")
+            self.client.loop.run_until_complete(callback(self))
+            Migration \
+                .insert(id=self.position, migration_name=self.__class__.__name__, apply=1) \
+                .on_conflict(update={Migration.apply: 1}) \
+                .execute()
+            logger.info(f"Migrate {self.__class__.__name__} is done")
+        return up
+
+    @staticmethod
+    def rollback_decorator(callback: callable):
+        def down(self):
+            migration = Migration.get_or_none(Migration.migration_name == self.__class__.__name__)
+            if not migration or not migration.is_applied():
+                logger.info("Migration not applied")
+                return
+            logger.info(f"Rollback {self.__class__.__name__} ...")
+            self.client.loop.run_until_complete(callback(self))
+            migration.apply = False
+            migration.save()
+            logger.info(f"Rollback {self.__class__.__name__} is done")
+        return down
+
+    def async_run(self, coro, *args, **kwargs):
+        return self.client.loop.run_until_complete(coro(*args, **kwargs))
 
 
-class CreateMainTables(BaseMigration):
-    _tables = [
-        User,
-        Chat,
-        Member,
-        Role,
-        MemberRole,
-        Rating,
-        RatingMember,
-    ]
+class CreatingTables(Migration):
+    _tables = []
 
-    def up(self):
-        super().up()
+    @Migration.migrate_decorator
+    async def up(self):
+        await super().up()
         for table in self._tables:
             if table.table_exists():
                 raise RuntimeError(f"Table `{table.TABLE_NAME}` already exist")
 
-        base_migrator.database.create_tables(self._tables)
+        self.db.create_tables(self._tables)
         logger.info("Creating tables is done")
 
-    def down(self):
-        super().down()
+    @Migration.rollback_decorator
+    async def down(self):
+        await super().down()
         tables = self._tables.copy()
 
         for table in self._tables:
@@ -58,56 +106,96 @@ class CreateMainTables(BaseMigration):
         if not tables:
             raise RuntimeError("All tables already dropped")
 
-        base_migrator.database.drop_tables(tables)
+        self.db.drop_tables(tables)
         logger.info(f"Dropped tables: {', '.join([table.TABLE_NAME for table in tables])}")
 
 
-class CreateEventsTable(BaseMigration):
-
-    def up(self):
-        super().up()
-
-        if QueryEvent.table_exists():
-            raise RuntimeError(f"Table `{QueryEvent.TABLE_NAME}` already exist")
-
-        QueryEvent.create_table()
-        logger.info(f"Creating `{QueryEvent.TABLE_NAME}` is done")
-
-    def down(self):
-        super().down()
-
-        if not QueryEvent.table_exists():
-            raise RuntimeError(f"Table `{QueryEvent.TABLE_NAME}` already dropped")
-
-        QueryEvent.drop_table()
-        logger.info(f"Table `{QueryEvent.TABLE_NAME}` is dropped")
+class CreateMainTablesMigration(CreatingTables):
+    _tables = [
+        User,
+        Chat,
+        Member,
+    ]
 
 
-class CreateTablesForRatings(BaseMigration):
-        _tables = [
-            Rating,
-            RatingMember,
-        ]
+class CreateRolesTablesMigration(CreatingTables):
+    _tables = [
+        Role,
+        MemberRole,
+    ]
 
-        def up(self):
-            super().up()
-            for table in self._tables:
-                if table.table_exists():
-                    raise RuntimeError(f"Table `{table.TABLE_NAME}` already exist")
 
-            base_migrator.database.create_tables(self._tables)
-            Rating._schema.create_foreign_key(Rating.last_winner)
-            logger.info("Creating tables is done")
+class CreateEventsTableMigration(CreatingTables):
+    _tables = [
+        QueryEvent,
+    ]
 
-        def down(self):
-            super().down()
-            tables = self._tables.copy()
 
-            for table in self._tables:
-                if not table.table_exists():
-                    tables.remove(table)
-            if not tables:
-                raise RuntimeError("All tables already dropped")
+class CreateTablesForRatingsMigration(CreatingTables):
+    _tables = [
+        Rating,
+        RatingMember,
+    ]
 
-            base_migrator.database.drop_tables(tables)
-            logger.info(f"Dropped tables: {', '.join([table.TABLE_NAME for table in tables])}")
+
+class AddPidorAndChadRatingsMigration(Migration):
+    _chats = [
+        1511700614
+    ]
+
+    @Migration.migrate_decorator
+    async def up(self):
+        await super().up()
+        for chat_id in self._chats:
+            tg_chat = await self.client.get_entity(chat_id)
+            db_chat = Chat.get_or_create(
+                telegram_id=tg_chat.id,
+                defaults={
+                    'name': tg_chat.title,
+                    'type': Chat.get_chat_type(tg_chat)
+                }
+            )[0]
+
+            for tg_member in await self.client.get_dialog_members(tg_chat):
+                user = User.get_or_create(
+                    telegram_id=tg_member.id,
+                    defaults={
+                        'name': Helper.make_member_name(tg_member, with_username=False),
+                        'nickname': tg_member.username
+                    }
+                )[0]
+                Member.get_or_create(chat=db_chat, user=user)
+
+            Rating.get_or_create(
+                name=PIDOR_KEYWORD,
+                chat=db_chat,
+                defaults={
+                    'command': PIDOR_KEYWORD
+                }
+            )
+
+            Rating.get_or_create(
+                name=CHAD_KEYWORD,
+                chat=db_chat,
+                defaults={
+                    'command': CHAD_KEYWORD
+                }
+            )
+
+    @Migration.rollback_decorator
+    async def down(self):
+        await super().down()
+        for chat_id in self._chats:
+            tg_chat = await self.client.get_entity(chat_id)
+            db_chat = Chat.get(telegram_id=tg_chat.id)
+
+            for tg_member in await self.client.get_dialog_members(tg_chat):
+                user = User.get(telegram_id=tg_member.id)
+                member = Member.get(chat=db_chat, user=user)
+                member.delete_instance()
+                user.delete_instance()
+
+            for rating in Rating.select().where(Rating.chat == db_chat):
+                rating.delete_instance()
+
+            db_chat.delete_instance()

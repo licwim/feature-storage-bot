@@ -4,15 +4,12 @@ import json
 from typing import Union, Iterable
 
 import yaml
-from telethon.events.callbackquery import CallbackQuery
-from telethon.events.chataction import ChatAction
-from telethon.events.messageedited import MessageEdited
-from telethon.events.newmessage import NewMessage
 from telethon.tl.custom.button import Button
 from telethon.tl.patched import Message
 
 from fsb import BUILD
 from fsb import VERSION
+from fsb.events.common import CallbackQueryEventDTO, EventDTO, MessageEventDTO, ChatActionEventDTO
 
 
 class InfoBuilder:
@@ -35,8 +32,8 @@ class InfoBuilder:
 
     @staticmethod
     @builder_decorator
-    def build_message_info_by_message_event(event, view_type: int = None):
-        assert isinstance(event, NewMessage.Event) or isinstance(event, MessageEdited.Event)
+    def build_message_info_by_message_event(event: MessageEventDTO, view_type: int = None):
+        assert isinstance(event, MessageEventDTO)
         chat_info = InfoBuilder.build_chat_info(event)
 
         data_info = {
@@ -48,15 +45,15 @@ class InfoBuilder:
 
     @staticmethod
     @builder_decorator
-    def build_message_info_by_query_event(event, query_event, view_type: int = None):
-        assert isinstance(event, CallbackQuery.Event)
+    def build_message_info_by_query_event(event: CallbackQueryEventDTO, view_type: int = None):
+        assert isinstance(event, CallbackQueryEventDTO)
         chat_info = InfoBuilder.build_chat_info(event)
 
         data_info = {
             'chat': chat_info,
             'event': {
-                'type': query_event.__class__.__name__,
-                'object_data': query_event.to_dict()
+                'type': event.query_event.__class__.__name__,
+                'object_data': event.query_event.to_dict()
             }
         }
 
@@ -64,8 +61,8 @@ class InfoBuilder:
 
     @staticmethod
     @builder_decorator
-    def build_message_info_by_chat_action(event, view_type: int = None):
-        assert isinstance(event, ChatAction.Event)
+    def build_message_info_by_chat_action(event: ChatActionEventDTO, view_type: int = None):
+        assert isinstance(event, ChatActionEventDTO)
 
         data_info = {
             'event': {
@@ -76,26 +73,27 @@ class InfoBuilder:
         return data_info
 
     @staticmethod
-    def build_chat_info(event):
-        match event.chat.__class__.__name__:
-            case 'Chat' | 'Channel':
-                chat_info = {
-                    'id': event.chat.id,
-                    'title': event.chat.title,
-                    'type': event.chat.__class__.__name__,
-                    'sender': {
-                        'id': event.sender.id,
-                        'username': event.sender.username,
+    def build_chat_info(event: EventDTO):
+        chat_info = None
+
+        if isinstance(event, (MessageEventDTO, CallbackQueryEventDTO)):
+            match event.chat_type:
+                case 'Chat' | 'Channel':
+                    chat_info = {
+                        'id': event.chat.id,
+                        'title': event.chat.title,
+                        'type': event.chat_type,
+                        'sender': {
+                            'id': event.sender.id,
+                            'username': event.sender.username,
+                        }
                     }
-                }
-            case 'User':
-                chat_info = {
-                    'id': event.chat.id,
-                    'username': event.chat.username,
-                    'type': event.chat.__class__.__name__,
-                }
-            case _:
-                chat_info = None
+                case 'User':
+                    chat_info = {
+                        'id': event.chat.id,
+                        'username': event.chat.username,
+                        'type': event.chat.__class__.__name__,
+                    }
 
         return chat_info
 

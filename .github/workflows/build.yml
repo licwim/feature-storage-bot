@@ -32,7 +32,7 @@ jobs:
     - name: Build and push image
       id: build-image
       run: |
-        TAG=$(echo "${{ github.ref_name }}" | sed 's|/|-|g')
+        TAG=$(if [ ${{ github.event_name }} = 'pull_request' ]; then echo "${{ github.head_ref }}"; else echo "${{ github.ref_name }}"; fi | sed 's|/|-|g')
         IMAGE_NAME="${{ github.repository }}:$TAG"
         BUILD_VERSION="$TAG-${{ github.sha }}"
         echo "BUILD_VERSION = $BUILD_VERSION"

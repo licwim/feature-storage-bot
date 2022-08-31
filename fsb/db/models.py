@@ -5,15 +5,18 @@ import sys
 from datetime import datetime
 from typing import Union
 
-from peewee import AutoField, DoesNotExist
-from peewee import CharField
-from peewee import CompositeKey
-from peewee import DateTimeField
-from peewee import DeferredForeignKey
-from peewee import ForeignKeyField
-from peewee import IntegerField
-from peewee import Model
-from peewee import TextField
+from peewee import (
+    AutoField,
+    DoesNotExist,
+    CharField,
+    CompositeKey,
+    DateTimeField,
+    DeferredForeignKey,
+    ForeignKeyField,
+    IntegerField,
+    Model,
+    TextField,
+)
 
 from fsb.db import base_db
 from fsb.error import InputValueError
@@ -168,9 +171,9 @@ class QueryEvent(BaseModel):
     data = TextField(null=True)
     created_at = DateTimeField(default=datetime.now())
 
-    def __init__(self, sender: int = None, data_value=None, *args, **kwargs):
+    def __init__(self, sender_id: int = None, data_value=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.sender = sender
+        self.sender_id = sender_id
         self._data_value = data_value
         if '__no_default__' not in kwargs:
             self.module_name = self.__class__.__module__
@@ -186,14 +189,14 @@ class QueryEvent(BaseModel):
 
     def to_dict(self) -> dict:
         return {
-            'sender': self.sender,
+            'sender_id': self.sender_id,
             'data': self._data_value
         }
 
     @classmethod
     def normalize_data_dict(cls, data_dict: dict) -> dict:
-        if 'sender' not in data_dict:
-            data_dict['sender'] = None
+        if 'sender_id' not in data_dict:
+            data_dict['sender_id'] = None
         if 'data' not in data_dict:
             data_dict['data'] = None
         return data_dict
@@ -201,7 +204,7 @@ class QueryEvent(BaseModel):
     @classmethod
     def from_dict(cls, data_dict: dict) -> 'QueryEvent':
         data_dict = cls.normalize_data_dict(data_dict)
-        return cls(data_dict['sender'], data_dict['data'])
+        return cls(data_dict['sender_id'], data_dict['data'])
 
     @classmethod
     def find_and_create(cls, id: int) -> Union['QueryEvent', None]:
