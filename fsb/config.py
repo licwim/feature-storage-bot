@@ -55,13 +55,15 @@ def init_config(logger: Logger):
         for key, var_type in config_annotations.items():
             value = None
             env_value = os.getenv(key.upper())
+
             if env_value is not None:
                 value = var_type(env_value)
             elif key in configs_by_json:
                 value = configs_by_json[key]
+                unknown_configs.pop(key)
+
             if value is not None:
                 setattr(Config, key, value)
-                unknown_configs.pop(key)
                 if key in required_attributes:
                     required_attributes.remove(key)
 
