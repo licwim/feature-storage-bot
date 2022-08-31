@@ -45,7 +45,7 @@ jobs:
   deploy:
     runs-on: self-hosted
     needs: build
-    if: github.event_name == 'push'
+    if: github.ref_type == 'tag'
     environment: production
     env:
       IMAGE_NAME: ${{ needs.build.outputs.image_name }}
