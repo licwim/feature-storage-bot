@@ -32,6 +32,7 @@ jobs:
     - name: Build and push image
       id: build-image
       run: |
+        echo "head - ${{ github.head_ref }}  base - ${{ github.base_ref }}"
         TAG=$(echo "${{ github.ref_name }}" | sed 's|/|-|g')
         IMAGE_NAME="${{ github.repository }}:$TAG"
         BUILD_VERSION="$TAG-${{ github.sha }}"
