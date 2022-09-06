@@ -16,6 +16,7 @@ mysql_query () {
   docker exec -it feature-storage-bot_fsb-db_1 mysql -A --password="$password" --connect-expired-password -u root -e "$query"
 }
 
+pipenv update
 docker-compose build --no-cache
 docker-compose up -d
 
