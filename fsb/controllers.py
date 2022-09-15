@@ -289,7 +289,7 @@ class WatcherController(MessageController):
 
     async def _init_filter(self, event: WatcherEventDTO):
         await super()._init_filter(event)
-        if event.message.text.startswith(CommandController.PREFIX):
+        if event.message.text.startswith(CommandController.PREFIX) and '@' not in event.message.text:
             raise ExitControllerException
 
     @Controller.handle_decorator
