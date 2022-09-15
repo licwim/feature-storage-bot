@@ -237,7 +237,7 @@ class RatingCommand(BaseCommand):
                     tg_member, db_member = member
                     if rating.last_winner == db_member:
                         break
-                member_name = Helper.make_member_name(tg_member, with_mention=True)
+                member_name = Helper.make_member_name(tg_member)
             except DoesNotExist or AssertionError:
                 member_name = "__какой-то неизвестный хер__"
             await self._client.send_message(self.entity, self.WINNER_MESSAGE_PATTERN.format(
