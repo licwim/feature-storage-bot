@@ -26,17 +26,25 @@ def month_rating_calc():
             case _:
                 raise RuntimeError
 
-        db_member = RatingMember.select()\
+        rating_members = RatingMember.select()\
             .where(RatingMember.rating == rating)\
-            .order_by(RatingMember.month_count.desc())\
-            .first()
-        tg_member = client.sync_get_entity(db_member.member.user.telegram_id)
-        member_name = Helper.make_member_name(tg_member, with_mention=True)
-        rating.last_month_winner = db_member
+            .order_by(RatingMember.month_count.desc())
+        actual_members = client.sync_get_dialog_members(rating.chat.telegram_id)
+        members_collection = Helper.collect_members(actual_members, rating_members)
+        if not members_collection:
+            return
+
+        win_tg_member, win_db_member = members_collection[0]
+        for tg_member, db_member in members_collection:
+            db_member.month_count = 0
+            db_member.save()
+
+        member_name = Helper.make_member_name(win_tg_member, with_mention=True)
+        rating.last_month_winner = win_db_member
         rating.last_month_run = datetime.now()
         rating.save()
 
         client.sync_send_message(rating.chat.telegram_id, RatingCommandHandler.MONTH_WINNER_MESSAGE_PATTERN.format(
             msg_name=msg_name,
             member_name=member_name
-        ) + "Поздравляем! 🎉")
+        ) + "\nПоздравляем! 🎉")
