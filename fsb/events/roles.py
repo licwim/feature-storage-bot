@@ -59,6 +59,9 @@ class GeneralMenuRoleEvent(RoleQueryEvent):
             [
                 Button.inline('Создать роль', CreateRoleEvent(sender_id).save_get_id()),
                 Button.inline('Удалить роль', DeleteMenuRoleEvent(sender_id).save_get_id()),
+            ],
+            [
+                Button.inline('Закрыть', CloseGeneralMenuRoleEvent(sender_id).save_get_id())
             ]
         ]
 
@@ -108,4 +111,8 @@ class RemoveMemberMenuRoleEvent(RoleQueryEvent):
 
 
 class RemoveMemberRoleEvent(RoleQueryEvent):
+    pass
+
+
+class CloseGeneralMenuRoleEvent(RoleQueryEvent):
     pass

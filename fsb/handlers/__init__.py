@@ -30,6 +30,9 @@ class MenuHandler(Handler, MenuEventDTO):
     event_class = MenuEventDTO
     INPUT_TIMEOUT = 60
 
+    async def action_close_general_menu(self):
+        await self.menu_message.delete()
+
 
 class ChatActionHandler(Handler, ChatActionEventDTO):
     event_class = ChatActionEventDTO

@@ -269,7 +269,10 @@ class CommandController(MessageController):
 
     @Controller.handle_decorator
     async def ratings_handle(self, event: CommandEventDTO):
-        event.command_names = [RatingCommandHandler.PIDOR_COMMAND, RatingCommandHandler.CHAD_COMMAND]
+        event.command_names = [
+            RatingCommandHandler.PIDOR_COMMAND, RatingCommandHandler.CHAD_COMMAND,
+            RatingCommandHandler.PIDOR_MONTH_COMMAND, RatingCommandHandler.CHAD_MONTH_COMMAND,
+        ]
         event.area = event.ONLY_CHAT
         await super().handle(event)
         self.set_wait(event.chat.id, True)
@@ -278,7 +281,10 @@ class CommandController(MessageController):
 
     @Controller.handle_decorator
     async def ratings_stats_handle(self, event: CommandEventDTO):
-        event.command_names = [StatRatingCommandHandler.PIDOR_STAT_COMMAND, StatRatingCommandHandler.CHAD_STAT_COMMAND]
+        event.command_names = [
+            StatRatingCommandHandler.PIDOR_STAT_COMMAND, StatRatingCommandHandler.CHAD_STAT_COMMAND,
+            StatRatingCommandHandler.PIDOR_MONTH_STAT_COMMAND, StatRatingCommandHandler.CHAD_MONTH_STAT_COMMAND,
+        ]
         await super().handle(event)
         event.area = event.ONLY_CHAT
         await self.run_handler(event, StatRatingCommandHandler)

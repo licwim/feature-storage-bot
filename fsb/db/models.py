@@ -143,16 +143,19 @@ class Rating(BaseModel):
     chat = ForeignKeyField(Chat)
     command = CharField(null=True)
     last_run = DateTimeField(null=True)
+    last_month_run = DateTimeField(null=True)
     last_winner = DeferredForeignKey('RatingMember', null=True, on_delete='SET NULL')
+    last_month_winner = DeferredForeignKey('RatingMember', null=True, on_delete='SET NULL')
 
 
 class RatingMember(BaseModel):
     TABLE_NAME = 'ratings_members'
 
     id = AutoField()
-    member = ForeignKeyField(Member)
-    rating = ForeignKeyField(Rating)
+    member = ForeignKeyField(Member, on_delete='CASCADE')
+    rating = ForeignKeyField(Rating, on_delete='CASCADE')
     count = IntegerField(default=0)
+    month_count = IntegerField(default=0)
     created_at = DateTimeField(default=datetime.now())
 
     def get_telegram_id(self):

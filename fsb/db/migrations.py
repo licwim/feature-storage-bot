@@ -5,10 +5,13 @@ from peewee import (
     CharField,
     BooleanField,
     TimestampField,
+    SQL,
+    DateTimeField,
 )
+from playhouse.migrate import migrate
 
 from fsb import logger
-from fsb.db import base_migrator
+from fsb.db import base_migrator as migrator
 from fsb.db.models import (
     BaseModel,
     Chat,
@@ -37,7 +40,7 @@ class Migration(BaseModel):
     def __init__(self, client: TelegramApiClient = None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.client = client
-        self.db = base_migrator.database
+        self.db = migrator.database
 
     def is_applied(self):
         return self.apply == 1
@@ -137,6 +140,27 @@ class CreateTablesForRatingsMigration(CreatingTables):
         RatingMember,
     ]
 
+    def up(self):
+        super().up()
+        migrate(
+            migrator.add_foreign_key_constraint(
+                Rating.TABLE_NAME,
+                'last_winner_id',
+                RatingMember.TABLE_NAME,
+                'id',
+                on_delete='SET NULL'
+            )
+        )
+
+    def down(self):
+        migrate(
+            migrator.drop_foreign_key_constraint(
+                Rating.TABLE_NAME,
+                'last_winner_id',
+            )
+        )
+        super().down()
+
 
 class AddPidorAndChadRatingsMigration(Migration):
     _chats = [
@@ -189,13 +213,42 @@ class AddPidorAndChadRatingsMigration(Migration):
             tg_chat = await self.client.get_entity(chat_id)
             db_chat = Chat.get(telegram_id=tg_chat.id)
 
-            for tg_member in await self.client.get_dialog_members(tg_chat):
-                user = User.get(telegram_id=tg_member.id)
-                member = Member.get(chat=db_chat, user=user)
-                member.delete_instance()
-                user.delete_instance()
-
             for rating in Rating.select().where(Rating.chat == db_chat):
                 rating.delete_instance()
 
-            db_chat.delete_instance()
+
+class AddMonthRatingMigration(Migration):
+    @Migration.migrate_decorator
+    async def up(self):
+        migrate(
+            migrator.add_column(
+                Rating.TABLE_NAME,
+                'last_month_winner_id',
+                IntegerField(null=True, constraints=[SQL('AFTER last_winner_id')])
+            ),
+            migrator.add_foreign_key_constraint(
+                Rating.TABLE_NAME,
+                'last_month_winner_id',
+                RatingMember.TABLE_NAME,
+                'id',
+                on_delete='SET NULL'
+            ),
+            migrator.add_column(
+                Rating.TABLE_NAME,
+                'last_month_run',
+                DateTimeField(null=True, constraints=[SQL('AFTER last_run')])
+            ),
+            migrator.add_column(
+                RatingMember.TABLE_NAME,
+                'month_count',
+                IntegerField(default=0, constraints=[SQL('AFTER count')])
+            )
+        )
+
+    @Migration.rollback_decorator
+    async def down(self):
+        migrate(
+            migrator.drop_foreign_key_constraint(Rating.TABLE_NAME, 'last_month_winner_id'),
+            migrator.drop_column(Rating.TABLE_NAME, 'last_month_winner_id'),
+            migrator.drop_column(RatingMember.TABLE_NAME, 'month_count')
+        )
