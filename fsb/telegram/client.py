@@ -132,3 +132,12 @@ class TelegramApiClient:
             members.append(member)
 
         return members
+
+    def sync_get_dialog_members(self, entity, with_bot: bool = False) -> list:
+        return self.loop.run_until_complete(self.get_dialog_members(entity, with_bot))
+
+    def sync_get_entity(self, uid: Union[str, int]):
+        return self.loop.run_until_complete(self.get_entity(uid))
+
+    def sync_send_message(self, entity, message: Any, reply_to: Message = None, force: bool = False, buttons=None):
+        return self.loop.run_until_complete(self.send_message(entity, message, reply_to, force, buttons))
