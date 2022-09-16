@@ -122,7 +122,13 @@ class InfoBuilder:
     @builder_decorator
     def build_debug_message_info(entity, message, reply_to: Message):
         match entity.__class__.__name__:
-            case 'Chat' | 'Channel':
+            case 'Chat':
+                entity_info = {
+                    'id': entity.id,
+                    'name': entity.name,
+                    'type': entity.__class__.__name__,
+                }
+            case 'Channel':
                 entity_info = {
                     'id': entity.id,
                     'title': entity.title,

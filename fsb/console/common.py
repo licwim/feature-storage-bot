@@ -31,12 +31,12 @@ def month_rating_calc():
             .order_by(RatingMember.month_count.desc())\
             .first()
         tg_member = client.sync_get_entity(db_member.member.user.telegram_id)
-        member_name = Helper.make_member_name(tg_member)
+        member_name = Helper.make_member_name(tg_member, with_mention=True)
         rating.last_month_winner = db_member
         rating.last_month_run = datetime.now()
         rating.save()
 
-        client.sync_send_message(rating.chat, RatingCommandHandler.MONTH_WINNER_MESSAGE_PATTERN.format(
+        client.sync_send_message(rating.chat.telegram_id, RatingCommandHandler.MONTH_WINNER_MESSAGE_PATTERN.format(
             msg_name=msg_name,
             member_name=member_name
         ) + "Поздравляем! 🎉")

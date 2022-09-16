@@ -1,0 +1,2 @@
+# Monthly rating
+0 0 1 * * root cd /var/app && /usr/local/bin/python -m pipenv run console month-rating-calc 2>>/var/log/cron/month-rating-calc.log
