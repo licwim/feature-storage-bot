@@ -2,16 +2,19 @@
 
 from datetime import datetime
 
-import click
+import asyncclick as click
 
 from fsb.console import client
-from fsb.db.models import Rating, RatingMember
+from fsb.controllers import CommandController
+from fsb.db.models import Rating, RatingMember, Chat
 from fsb.handlers.ratings import RatingCommandHandler
 from fsb.helpers import Helper
 
 
 @click.command('month-rating-calc')
-def month_rating_calc():
+async def month_rating_calc():
+    """Calculation of the ratings winners of the month"""
+
     for rating in Rating.select():
         if rating.last_month_winner \
                 and rating.last_month_run \
@@ -48,3 +51,28 @@ def month_rating_calc():
             msg_name=msg_name,
             member_name=member_name
         ) + "\nПоздравляем! 🎉")
+
+
+@click.command('day-rating-roll')
+async def day_rating_roll():
+    """Run ratings commands"""
+
+    for rating in Rating.select():
+        if rating.last_run \
+                and rating.last_run >= datetime.today().replace(hour=0, minute=0, second=0, microsecond=0):
+            continue
+
+        message = await client.send_message(rating.chat.telegram_id, CommandController.PREFIX + rating.command, force=True)
+        # await message.delete()
+
+
+@click.command('broadcast-message')
+@click.argument('text', type=str, default='')
+async def broadcast_message(text):
+    """Sending a message to all chats"""
+
+    if not text:
+        return
+
+    for chat in Chat.select():
+        await client.send_message(chat.telegram_id, text, force=True)

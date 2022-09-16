@@ -117,8 +117,8 @@ class MessageController(Controller):
         if event.debug and event.sender.username not in Config.contributors:
             raise ExitControllerException(self._controller_name, "Debug handler. Sender not in contributors")
 
-        if event.message.out:
-            raise ExitControllerException
+        # if event.message.out:
+        #     raise ExitControllerException
 
     async def handle(self, event: MessageEventDTO):
         await super().handle(event)

@@ -2,7 +2,7 @@
 
 import inspect
 
-import click
+import asyncclick as click
 
 from fsb.console import client, exit_with_message
 from fsb.db import migrations
@@ -10,7 +10,9 @@ from fsb.db.migrations import Migration
 
 
 @click.group('migrator')
-def migrator_cli():
+async def migrator_cli():
+    """Migrator"""
+
     if not Migration.table_exists():
         Migration.create_table()
 
@@ -59,14 +61,14 @@ def get_migration_by_classname(ctx, param, migration_name):
 
 @click.command('up')
 @click.argument('migration', callback=get_migration_by_classname)
-def action_up(migration: Migration):
+async def action_up(migration: Migration):
     click.echo(f"Migrate {migration.__class__.__name__} ...")
     migration.up()
 
 
 @click.command('down')
 @click.argument('migration', callback=get_migration_by_classname)
-def action_down(migration: Migration):
+async def action_down(migration: Migration):
     click.echo(f"Rollback {migration.__class__.__name__} ...")
     migration.down()
 
@@ -74,7 +76,7 @@ def action_down(migration: Migration):
 @click.command('migrate')
 @click.argument('count', type=int, default=0)
 @click.option('-y', help='Force confirm', is_flag=True, default=False)
-def action_migrate(count: int, y: bool):
+async def action_migrate(count: int, y: bool):
     migration_list = get_migrations()
     migration_names = []
     for migration in migration_list.copy():
@@ -101,7 +103,7 @@ def action_migrate(count: int, y: bool):
 @click.command('rollback')
 @click.argument('count', type=int, default=1)
 @click.option('-y', help='Force confirm', is_flag=True, default=False)
-def action_rollback(count: int, y: bool):
+async def action_rollback(count: int, y: bool):
     migration_list = get_migrations()
     migration_list.reverse()
     migration_names = []
@@ -126,7 +128,7 @@ def action_rollback(count: int, y: bool):
 
 
 @click.command('list')
-def action_list():
+async def action_list():
     migration_list = get_migrations()
     result = []
     for migration in migration_list:
