@@ -53,13 +53,11 @@ def init_config(logger: Logger):
         required_attributes = Config.REQUIRED_ATTRIBUTES.copy()
         config_annotations = Config.get_annotations()
         for key, var_type in config_annotations.items():
-            value = None
             env_value = os.getenv(key.upper())
+            config_value = configs_by_json[key] if key in configs_by_json else None
+            value = env_value if env_value is not None else config_value
 
-            if env_value is not None:
-                value = var_type(env_value)
-            elif key in configs_by_json:
-                value = configs_by_json[key]
+            if key in configs_by_json:
                 unknown_configs.pop(key)
 
             if value is not None:
