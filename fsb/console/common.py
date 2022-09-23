@@ -2,9 +2,9 @@
 
 from datetime import datetime
 
-import asyncclick as click
+import click
 
-from fsb.console import client
+from fsb.console import client, coro
 from fsb.controllers import CommandController
 from fsb.db.models import Rating, RatingMember, Chat
 from fsb.handlers.ratings import RatingCommandHandler
@@ -12,7 +12,7 @@ from fsb.helpers import Helper
 
 
 @click.command('month-rating-calc')
-async def month_rating_calc():
+def month_rating_calc():
     """Calculation of the ratings winners of the month"""
 
     for rating in Rating.select():
@@ -54,6 +54,7 @@ async def month_rating_calc():
 
 
 @click.command('day-rating-roll')
+@coro
 async def day_rating_roll():
     """Run ratings commands"""
 
@@ -68,6 +69,7 @@ async def day_rating_roll():
 
 @click.command('broadcast-message')
 @click.argument('text', type=str, default='')
+@coro
 async def broadcast_message(text):
     """Sending a message to all chats"""
 
