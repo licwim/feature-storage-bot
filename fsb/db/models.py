@@ -49,6 +49,7 @@ class User(BaseModel):
     name = CharField(null=True)
     nickname = CharField(null=True)
     phone = CharField(null=True)
+    input_peer = TextField(null=True)
 
 
 class Chat(BaseModel):
@@ -62,6 +63,7 @@ class Chat(BaseModel):
     telegram_id = IntegerField(unique=True)
     name = CharField(null=True)
     type = IntegerField()
+    input_peer = TextField(null=True)
 
     @staticmethod
     def get_chat_type(chat):

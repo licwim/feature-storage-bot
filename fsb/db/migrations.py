@@ -7,6 +7,7 @@ from peewee import (
     TimestampField,
     SQL,
     DateTimeField,
+    TextField,
 )
 from playhouse.migrate import migrate
 
@@ -251,4 +252,30 @@ class AddMonthRatingMigration(Migration):
             migrator.drop_foreign_key_constraint(Rating.TABLE_NAME, 'last_month_winner_id'),
             migrator.drop_column(Rating.TABLE_NAME, 'last_month_winner_id'),
             migrator.drop_column(RatingMember.TABLE_NAME, 'month_count')
+        )
+
+
+class AddInputPeerColumnForChatAndUserMigration(Migration):
+    @Migration.migrate_decorator
+    async def up(self):
+        await super().up()
+        migrate(
+            migrator.add_column(
+                Chat.TABLE_NAME,
+                'input_peer',
+                TextField(null=True)
+            ),
+            migrator.add_column(
+                User.TABLE_NAME,
+                'input_peer',
+                TextField(null=True)
+            )
+        )
+
+    @Migration.rollback_decorator
+    async def down(self):
+        await super().down()
+        migrate(
+            migrator.drop_column(Chat.TABLE_NAME, 'input_peer'),
+            migrator.drop_column(User.TABLE_NAME, 'input_peer')
         )
