@@ -159,7 +159,7 @@ class InfoBuilder:
                     'type': entity.__class__.__name__,
                 }
             case _:
-                entity_info = None
+                entity_info = entity
 
         if reply_to:
             reply_info = {

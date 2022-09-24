@@ -77,4 +77,4 @@ async def broadcast_message(text):
         return
 
     for chat in Chat.select():
-        await client.send_message(chat.telegram_id, text, force=True)
+        await client.send_message(chat.telegram_id, text)

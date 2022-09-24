@@ -59,6 +59,8 @@ class TelegramApiClient:
 
     async def send_message(self, entity, message: Any, reply_to: Message = None, force: bool = False, buttons=None):
         try:
+            if isinstance(entity, Union[str, int]):
+                entity = await self.get_entity(entity)
             if not force and FSB_DEV_MODE:
                 return await self._send_debug_message(entity, message, reply_to, buttons)
             if isinstance(message, str):
@@ -76,12 +78,8 @@ class TelegramApiClient:
             logger.error(f"{entity}: UsernameInvalidError")
             raise e
         except ValueError as e:
-            if isinstance(entity, Union[str, int]):
-                entity = await self.get_entity(entity)
-                await self.send_message(entity, message, reply_to, force, buttons)
-            else:
-                logger.error(f"{entity}: ValueError")
-                raise e
+            logger.error(f"{entity}: ValueError")
+            raise e
 
     async def _send_debug_message(self, entity, message: Any, reply_to: Message = None, buttons=None):
         logger.debug(InfoBuilder.build_debug_message_info(entity, message, reply_to))
