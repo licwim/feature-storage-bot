@@ -16,6 +16,7 @@ from peewee import (
     IntegerField,
     Model,
     TextField,
+    BooleanField,
 )
 
 from fsb.db import base_db
@@ -148,6 +149,7 @@ class Rating(BaseModel):
     last_month_run = DateTimeField(null=True)
     last_winner = DeferredForeignKey('RatingMember', null=True, on_delete='SET NULL')
     last_month_winner = DeferredForeignKey('RatingMember', null=True, on_delete='SET NULL')
+    autorun = BooleanField(default=False)
 
 
 class RatingMember(BaseModel):

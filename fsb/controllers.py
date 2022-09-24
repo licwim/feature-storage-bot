@@ -34,6 +34,8 @@ class Controller:
     MAX_WAITING = 60 * 2
 
     _event_class = EventDTO
+    _from_bot = False
+    _from_user = True
 
     def __init__(self, client: 'TelegramApiClient'):
         self._client = client
@@ -117,8 +119,8 @@ class MessageController(Controller):
         if event.debug and event.sender.username not in Config.contributors:
             raise ExitControllerException(self._controller_name, "Debug handler. Sender not in contributors")
 
-        # if event.message.out:
-        #     raise ExitControllerException
+        if (event.message.out and not self._from_bot) or (not event.message.out and not self._from_user):
+            raise ExitControllerException
 
     async def handle(self, event: MessageEventDTO):
         await super().handle(event)
@@ -214,6 +216,7 @@ class ChatActionController(Controller):
 class CommandController(MessageController):
     _event_class = CommandEventDTO
     PREFIX = '/'
+    _from_bot = True
 
     async def _init_filter(self, event: CommandEventDTO):
         await super()._init_filter(event)

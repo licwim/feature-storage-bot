@@ -279,3 +279,23 @@ class AddInputPeerColumnForChatAndUserMigration(Migration):
             migrator.drop_column(Chat.TABLE_NAME, 'input_peer'),
             migrator.drop_column(User.TABLE_NAME, 'input_peer')
         )
+
+
+class AddAutorunRatingColumnMigration(Migration):
+    @Migration.migrate_decorator
+    async def up(self):
+        await super().up()
+        migrate(
+            migrator.add_column(
+                Rating.TABLE_NAME,
+                'autorun',
+                BooleanField(default=False)
+            )
+        )
+
+    @Migration.rollback_decorator
+    async def down(self):
+        await super().down()
+        migrate(
+            migrator.drop_column(Rating.TABLE_NAME, 'autorun')
+        )
