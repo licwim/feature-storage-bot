@@ -151,6 +151,24 @@ class Rating(BaseModel):
     last_month_winner = DeferredForeignKey('RatingMember', null=True, on_delete='SET NULL')
     autorun = BooleanField(default=False)
 
+    @staticmethod
+    def parse_from_message(message: str) -> tuple:
+        message = message.split(',')
+
+        if len(message) >= 2:
+            command = message[0].strip(' \n\t').lower()
+            name = message[1].strip(' \n\t')
+        elif len(message) >= 1:
+            command = name = message[0].strip(' \n\t')
+            command = command.lower()
+        else:
+            name = command = None
+
+        if not name or not command:
+            raise InputValueError
+
+        return command, name
+
 
 class RatingMember(BaseModel):
     TABLE_NAME = 'ratings_members'
@@ -160,6 +178,7 @@ class RatingMember(BaseModel):
     rating = ForeignKeyField(Rating, on_delete='CASCADE')
     count = IntegerField(default=0)
     month_count = IntegerField(default=0)
+    current_month_count = IntegerField(default=0)
     created_at = DateTimeField(default=datetime.now())
 
     def get_telegram_id(self):

@@ -76,6 +76,10 @@ class GeneralMenuRatingEvent(RatingQueryEvent):
                 Button.inline("Разрегаться", UnregMenuRatingEvent(sender_id).save_get_id())
             ],
             [
+                Button.inline("Создать рейтинг", CreateRatingEvent(sender_id).save_get_id()),
+                Button.inline("Список рейтингов", ListRatingEvent(sender_id).save_get_id()),
+            ],
+            [
                 Button.inline("Закрыть", CloseGeneralMenuRatingEvent(sender_id).save_get_id())
             ]
         ]
@@ -99,4 +103,24 @@ class UnregMenuRatingEvent(RatingQueryEvent):
 
 
 class CloseGeneralMenuRatingEvent(RatingQueryEvent):
+    pass
+
+
+class ListRatingEvent(RatingQueryEvent):
+    pass
+
+
+class CreateRatingEvent(RatingQueryEvent):
+    pass
+
+
+class DeleteRatingEvent(RatingQueryEvent):
+    pass
+
+
+class ChangeRatingEvent(RatingQueryEvent):
+    pass
+
+
+class MenuRatingEvent(RatingQueryEvent):
     pass

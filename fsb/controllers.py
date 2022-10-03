@@ -180,7 +180,7 @@ class ChatActionController(Controller):
     _event_class = ChatActionEventDTO
 
     def _listen_handle(self, handle: callable):
-        self._client.add_chat_action_handler(self.handle)
+        self._client.add_chat_action_handler(handle)
 
     async def _init_filter(self, event: ChatActionEventDTO):
         await super()._init_filter(event)
@@ -199,8 +199,8 @@ class ChatActionController(Controller):
         await super().handle(event)
         if not event.user_joined and not event.user_added:
             return
-        await self._join_chat_handle(self, event.telegram_event)
-        await self._create_ratings_on_join_chat_handle(self, event.telegram_event)
+        await self._join_chat_handle(event.telegram_event)
+        await self._create_ratings_on_join_chat_handle(event.telegram_event)
 
     @Controller.handle_decorator
     async def _join_chat_handle(self, event):
@@ -275,6 +275,7 @@ class CommandController(MessageController):
         event.command_names = [
             RatingCommandHandler.PIDOR_COMMAND, RatingCommandHandler.CHAD_COMMAND,
             RatingCommandHandler.PIDOR_MONTH_COMMAND, RatingCommandHandler.CHAD_MONTH_COMMAND,
+            RatingCommandHandler.ROLL_COMMAND, RatingCommandHandler.ROLL_MONTH_COMMAND,
         ]
         event.area = event.ONLY_CHAT
         await super().handle(event)
@@ -287,6 +288,7 @@ class CommandController(MessageController):
         event.command_names = [
             StatRatingCommandHandler.PIDOR_STAT_COMMAND, StatRatingCommandHandler.CHAD_STAT_COMMAND,
             StatRatingCommandHandler.PIDOR_MONTH_STAT_COMMAND, StatRatingCommandHandler.CHAD_MONTH_STAT_COMMAND,
+            StatRatingCommandHandler.STAT_COMMAND, StatRatingCommandHandler.STAT_MONTH_COMMAND,
         ]
         await super().handle(event)
         event.area = event.ONLY_CHAT

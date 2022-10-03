@@ -221,9 +221,10 @@ class Helper:
             return None
 
     @staticmethod
-    def make_count_str(count: int) -> str:
+    def make_count_str(count: int, advanced_count: int = None) -> str:
         dozens = count % 100
         units = count % 10
+
         if 10 < dozens < 20:
             count_word = 'раз'
         else:
@@ -231,7 +232,13 @@ class Helper:
                 count_word = 'раза'
             else:
                 count_word = 'раз'
-        return f"{str(count)} {count_word}"
+
+        if advanced_count is None:
+            advanced_count_msg = ''
+        else:
+            advanced_count_msg = f' ({advanced_count})'
+
+        return f'{count}' + advanced_count_msg + f' {count_word}'
 
     @staticmethod
     def make_buttons_layout(data: list, closing_button: tuple = None):

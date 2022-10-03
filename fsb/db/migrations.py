@@ -24,8 +24,6 @@ from fsb.db.models import (
     Role,
     User,
 )
-from fsb.handlers.ratings import PIDOR_KEYWORD, CHAD_KEYWORD
-from fsb.helpers import Helper
 from fsb.telegram.client import TelegramApiClient
 
 
@@ -163,61 +161,6 @@ class CreateTablesForRatingsMigration(CreatingTables):
         super().down()
 
 
-class AddPidorAndChadRatingsMigration(Migration):
-    _chats = [
-        1511700614
-    ]
-
-    @Migration.migrate_decorator
-    async def up(self):
-        await super().up()
-        for chat_id in self._chats:
-            tg_chat = await self.client.get_entity(chat_id)
-            db_chat = Chat.get_or_create(
-                telegram_id=tg_chat.id,
-                defaults={
-                    'name': tg_chat.title,
-                    'type': Chat.get_chat_type(tg_chat)
-                }
-            )[0]
-
-            for tg_member in await self.client.get_dialog_members(tg_chat):
-                user = User.get_or_create(
-                    telegram_id=tg_member.id,
-                    defaults={
-                        'name': Helper.make_member_name(tg_member, with_username=False),
-                        'nickname': tg_member.username
-                    }
-                )[0]
-                Member.get_or_create(chat=db_chat, user=user)
-
-            Rating.get_or_create(
-                name=PIDOR_KEYWORD,
-                chat=db_chat,
-                defaults={
-                    'command': PIDOR_KEYWORD
-                }
-            )
-
-            Rating.get_or_create(
-                name=CHAD_KEYWORD,
-                chat=db_chat,
-                defaults={
-                    'command': CHAD_KEYWORD
-                }
-            )
-
-    @Migration.rollback_decorator
-    async def down(self):
-        await super().down()
-        for chat_id in self._chats:
-            tg_chat = await self.client.get_entity(chat_id)
-            db_chat = Chat.get(telegram_id=tg_chat.id)
-
-            for rating in Rating.select().where(Rating.chat == db_chat):
-                rating.delete_instance()
-
-
 class AddMonthRatingMigration(Migration):
     @Migration.migrate_decorator
     async def up(self):
@@ -243,6 +186,11 @@ class AddMonthRatingMigration(Migration):
                 RatingMember.TABLE_NAME,
                 'month_count',
                 IntegerField(default=0, constraints=[SQL('AFTER count')])
+            ),
+            migrator.add_column(
+                RatingMember.TABLE_NAME,
+                'current_month_count',
+                IntegerField(default=0, constraints=[SQL('AFTER month_count')])
             )
         )
 
@@ -251,7 +199,8 @@ class AddMonthRatingMigration(Migration):
         migrate(
             migrator.drop_foreign_key_constraint(Rating.TABLE_NAME, 'last_month_winner_id'),
             migrator.drop_column(Rating.TABLE_NAME, 'last_month_winner_id'),
-            migrator.drop_column(RatingMember.TABLE_NAME, 'month_count')
+            migrator.drop_column(RatingMember.TABLE_NAME, 'month_count'),
+            migrator.drop_column(RatingMember.TABLE_NAME, 'current_month_count')
         )
 
 

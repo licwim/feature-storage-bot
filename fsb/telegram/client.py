@@ -149,6 +149,9 @@ class TelegramApiClient:
         return await self._client(data)
 
     async def get_dialog_members(self, entity, with_bot: bool = False) -> list:
+        if isinstance(entity, Union[str, int]):
+            entity = await self.get_entity(entity)
+
         members = []
 
         for member in await self._client.get_participants(entity):

@@ -6,10 +6,8 @@ from time import sleep
 import click
 
 from fsb.console import client, coro
-from fsb.controllers import CommandController
-from fsb.db.models import Rating, RatingMember
-from fsb.handlers.ratings import RatingCommandHandler
-from fsb.helpers import Helper
+from fsb.db.models import Rating
+from fsb.services import RatingService
 
 
 @click.group('ratings')
@@ -19,8 +17,11 @@ def ratings():
 
 
 @click.command('month-roll')
-def month_roll():
+@coro
+async def month_roll():
     """Calculation of the ratings winners of the month"""
+
+    ratings_service = RatingService(client)
 
     for rating in Rating.select():
         if rating.last_month_winner \
@@ -28,36 +29,7 @@ def month_roll():
                 and rating.last_month_run >= datetime.today().replace(hour=0, minute=0, second=0, microsecond=0, day=1):
             continue
 
-        match rating.command:
-            case RatingCommandHandler.PIDOR_COMMAND:
-                msg_name = 'ПИДОР'
-            case RatingCommandHandler.CHAD_COMMAND:
-                msg_name = 'КРАСАВЧИК'
-            case _:
-                raise RuntimeError
-
-        rating_members = RatingMember.select()\
-            .where(RatingMember.rating == rating)\
-            .order_by(RatingMember.month_count.desc())
-        actual_members = client.sync_get_dialog_members(rating.chat.telegram_id)
-        members_collection = Helper.collect_members(actual_members, rating_members)
-        if not members_collection:
-            return
-
-        win_tg_member, win_db_member = members_collection[0]
-        for tg_member, db_member in members_collection:
-            db_member.month_count = 0
-            db_member.save()
-
-        member_name = Helper.make_member_name(win_tg_member, with_mention=True)
-        rating.last_month_winner = win_db_member
-        rating.last_month_run = datetime.now()
-        rating.save()
-
-        client.sync_send_message(rating.chat.telegram_id, RatingCommandHandler.MONTH_WINNER_MESSAGE_PATTERN.format(
-            msg_name=msg_name,
-            member_name=member_name
-        ) + "\nПоздравляем! 🎉")
+        await ratings_service.roll(rating, rating.chat.telegram_id, True)
         sleep(1)
 
 
@@ -65,6 +37,8 @@ def month_roll():
 @coro
 async def day_roll():
     """Run ratings commands"""
+
+    ratings_service = RatingService(client)
 
     for rating in Rating.select():
         if not rating.autorun:
@@ -74,8 +48,7 @@ async def day_roll():
                 and rating.last_run >= datetime.today().replace(hour=0, minute=0, second=0, microsecond=0):
             continue
 
-        message = await client.send_message(rating.chat.telegram_id, CommandController.PREFIX + rating.command)
-        await message.delete()
+        await ratings_service.roll(rating, rating.chat.telegram_id)
         sleep(1)
 
 ratings.add_command(month_roll)

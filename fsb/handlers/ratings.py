@@ -1,41 +1,29 @@
 # !/usr/bin/env python
 
-import random
-from asyncio import sleep
 from datetime import datetime
 
 from inflection import underscore
 from peewee import DoesNotExist
+from telethon import events
+from telethon.tl.custom.button import Button
 
 from fsb.db.models import Chat, Member, Rating, RatingMember, User
-from fsb.events.ratings import RatingQueryEvent, GeneralMenuRatingEvent, RegRatingEvent, UnregRatingEvent
+from fsb.events.ratings import (
+    RatingQueryEvent, GeneralMenuRatingEvent, RegRatingEvent, UnregRatingEvent,
+    CreateRatingEvent, ChangeRatingEvent, DeleteRatingEvent, ListRatingEvent, MenuRatingEvent,
+)
+from fsb.error import ExitControllerException, InputValueError
 from fsb.handlers import ChatActionHandler, CommandHandler, MenuHandler
 from fsb.helpers import Helper
-
-PIDOR_KEYWORD = 'pidor'
-CHAD_KEYWORD = 'chad'
+from fsb.services import RatingService
 
 
 class CreateRatingsOnJoinChatHandler(ChatActionHandler):
     async def run(self):
         await super().run()
         chat = Chat.get(telegram_id=self.chat.id)
-
-        Rating.get_or_create(
-            name=PIDOR_KEYWORD,
-            chat=chat,
-            defaults={
-                'command': PIDOR_KEYWORD
-            }
-        )
-
-        Rating.get_or_create(
-            name=CHAD_KEYWORD,
-            chat=chat,
-            defaults={
-                'command': CHAD_KEYWORD
-            }
-        )
+        rating_service = RatingService(self.client)
+        rating_service.create_system_ratings(chat)
 
 
 class RatingsSettingsCommandHandler(CommandHandler):
@@ -56,148 +44,72 @@ class RatingsSettingsCommandHandler(CommandHandler):
 
 
 class RatingCommandHandler(CommandHandler):
-    MESSAGE_WAIT = 2
-    PIDOR_COMMAND = PIDOR_KEYWORD
-    CHAD_COMMAND = CHAD_KEYWORD
-    PIDOR_MONTH_COMMAND = PIDOR_KEYWORD + 'month'
-    CHAD_MONTH_COMMAND = CHAD_KEYWORD + 'month'
-
-    PIDOR_RUN_MESSAGES = [
-        "Вышел месяц из тумана,",
-        "Вынул ножик из кармана.",
-        "Буду резать, буду бить,",
-        "Всё равно ты пидор!",
-    ]
-
-    CHAD_RUN_MESSAGES = [
-        "Сидел король на лавочке,",
-        "Считал свои булавочки:",
-        "«Раз, два, три»",
-        "Королевой будешь ты!",
-    ]
-
-    WINNER_MESSAGE_PATTERN = "Сегодня {msg_name} дня - {member_name}!"
-    MONTH_WINNER_MESSAGE_PATTERN = "{msg_name} этого месяца - {member_name}!"
-    MONTH_UNKNOWN_MESSAGE_PATTERN = "{msg_name} этого месяца еще не объявился."
-
-    UNKNOWN_PERSON = "__какой-то неизвестный хер__"
+    PIDOR_COMMAND = RatingService.PIDOR_KEYWORD
+    CHAD_COMMAND = RatingService.CHAD_KEYWORD
+    ROLL_COMMAND = 'roll'
+    MONTH_POSTFIX = 'month'
+    ROLL_MONTH_COMMAND = ROLL_COMMAND + MONTH_POSTFIX
+    PIDOR_MONTH_COMMAND = PIDOR_COMMAND + MONTH_POSTFIX
+    CHAD_MONTH_COMMAND = CHAD_COMMAND + MONTH_POSTFIX
 
     async def run(self):
         await super().run()
         match self.command:
             case self.PIDOR_COMMAND | self.PIDOR_MONTH_COMMAND:
-                rating_name = PIDOR_KEYWORD
-                msg_name = 'ПИДОР'
-                run_messages = self.PIDOR_RUN_MESSAGES
+                rating_command = self.PIDOR_COMMAND
             case self.CHAD_COMMAND | self.CHAD_MONTH_COMMAND:
-                rating_name = CHAD_KEYWORD
-                msg_name = 'КРАСАВЧИК'
-                run_messages = self.CHAD_RUN_MESSAGES
+                rating_command = self.CHAD_COMMAND
+            case self.ROLL_COMMAND | self.ROLL_MONTH_COMMAND:
+                if not self.args:
+                    raise ExitControllerException
+                rating_command = self.args[0]
             case _:
                 raise RuntimeError
 
-        is_month = self.command in [self.PIDOR_MONTH_COMMAND, self.CHAD_MONTH_COMMAND]
-        rating = Rating.get_or_create(
-            name=rating_name,
-            chat=Chat.get(Chat.telegram_id == self.chat.id),
-            defaults={
-                'command': rating_name
-            }
-        )[0]
+        ratings_service = RatingService(self.client)
+        is_month = self.command in [self.PIDOR_MONTH_COMMAND, self.CHAD_MONTH_COMMAND, self.ROLL_MONTH_COMMAND]
+        rating = Rating.get(
+            Rating.command == rating_command,
+            Rating.chat == Chat.get(Chat.telegram_id == self.chat.id)
+        )
 
-        actual_members = await self.client.get_dialog_members(self.chat)
-        rating_members = RatingMember.select().where(RatingMember.rating == rating)
-        members_collection = Helper.collect_members(actual_members, rating_members)
-        if not members_collection:
-            return
-
-        if is_month:
-            if rating.last_month_winner \
-                    and rating.last_month_run \
-                    and rating.last_month_run >= datetime.today().replace(hour=0, minute=0, second=0, microsecond=0, day=1):
-                try:
-                    assert rating.last_month_winner
-                    tg_member = db_member = None
-                    for member in members_collection:
-                        tg_member, db_member = member
-                        if rating.last_month_winner == db_member:
-                            break
-                    member_name = Helper.make_member_name(tg_member)
-                except DoesNotExist or AssertionError:
-                    member_name = self.UNKNOWN_PERSON
-                await self.client.send_message(self.chat, self.MONTH_WINNER_MESSAGE_PATTERN.format(
-                    msg_name=msg_name,
-                    member_name=member_name
-                ))
-            else:
-                await self.client.send_message(self.chat, self.MONTH_UNKNOWN_MESSAGE_PATTERN.format(msg_name=msg_name))
+        if is_month \
+                and (not rating.last_month_winner \
+                or not rating.last_month_run \
+                or rating.last_month_run < datetime.today().replace(hour=0, minute=0, second=0, microsecond=0, day=1)):
+            await self.client.send_message(self.chat, f"{rating.name.upper()} этого месяца еще не объявился.")
         else:
-            if rating.last_winner \
-                    and rating.last_run \
-                    and rating.last_run >= datetime.today().replace(hour=0, minute=0, second=0, microsecond=0):
-                try:
-                    assert rating.last_winner
-                    tg_member = db_member = None
-                    for member in members_collection:
-                        tg_member, db_member = member
-                        if rating.last_winner == db_member:
-                            break
-                    member_name = Helper.make_member_name(tg_member, with_mention=True)
-                except DoesNotExist or AssertionError:
-                    member_name = self.UNKNOWN_PERSON
-                await self.client.send_message(self.chat, self.WINNER_MESSAGE_PATTERN.format(
-                    msg_name=msg_name,
-                    member_name=member_name
-                ))
-            else:
-                random.seed()
-                pos = random.randint(0, len(members_collection) - 1)
-                tg_member, db_member = members_collection[pos]
-                db_member.count += 1
-                db_member.month_count += 1
-                db_member.save()
-                rating.last_winner = db_member
-                rating.last_run = datetime.now()
-                rating.save()
-                message = await self.client._client.send_message(entity=self.chat, message='Итаааааак...')
-                await sleep(self.MESSAGE_WAIT)
-                text = ''
-                for line in run_messages:
-                    text += line + '\n'
-                    await message.edit(text)
-                    await sleep(self.MESSAGE_WAIT)
-                await self.client.send_message(self.chat, self.WINNER_MESSAGE_PATTERN.format(
-                    msg_name=msg_name,
-                    member_name=Helper.make_member_name(tg_member, with_mention=True)
-                ))
+            await ratings_service.roll(rating, self.chat, is_month)
 
 
 class StatRatingCommandHandler(CommandHandler):
-    PIDOR_STAT_COMMAND = RatingCommandHandler.PIDOR_COMMAND + 'stat'
-    CHAD_STAT_COMMAND = RatingCommandHandler.CHAD_COMMAND + 'stat'
-    PIDOR_MONTH_STAT_COMMAND = RatingCommandHandler.PIDOR_MONTH_COMMAND + 'stat'
-    CHAD_MONTH_STAT_COMMAND = RatingCommandHandler.CHAD_MONTH_COMMAND + 'stat'
+    STAT_POSTFIX = 'stat'
+    PIDOR_STAT_COMMAND = RatingCommandHandler.PIDOR_COMMAND + STAT_POSTFIX
+    CHAD_STAT_COMMAND = RatingCommandHandler.CHAD_COMMAND + STAT_POSTFIX
+    PIDOR_MONTH_STAT_COMMAND = PIDOR_STAT_COMMAND + RatingCommandHandler.MONTH_POSTFIX
+    CHAD_MONTH_STAT_COMMAND = CHAD_STAT_COMMAND + RatingCommandHandler.MONTH_POSTFIX
+    STAT_COMMAND = STAT_POSTFIX
+    STAT_MONTH_COMMAND = STAT_COMMAND + RatingCommandHandler.MONTH_POSTFIX
 
     async def run(self):
         await super().run()
         match self.command:
             case self.PIDOR_STAT_COMMAND | self.PIDOR_MONTH_STAT_COMMAND:
-                rating_name = PIDOR_KEYWORD
-                msg_name = 'ПИДОРАМ'
+                rating_command = RatingService.PIDOR_KEYWORD
             case self.CHAD_STAT_COMMAND | self.CHAD_MONTH_STAT_COMMAND:
-                rating_name = CHAD_KEYWORD
-                msg_name = 'КРАСАВЧИКАМ'
+                rating_command = RatingService.CHAD_KEYWORD
+            case self.STAT_COMMAND | self.STAT_MONTH_COMMAND:
+                if not self.args:
+                    raise ExitControllerException
+                rating_command = self.args[0]
             case _:
                 raise RuntimeError
 
-        is_month = self.command in [self.PIDOR_MONTH_STAT_COMMAND, self.CHAD_MONTH_STAT_COMMAND]
-        rating = Rating.get_or_create(
-            name=rating_name,
-            chat=Chat.get(Chat.telegram_id == self.chat.id),
-            defaults={
-                'command': rating_name
-            }
-        )[0]
+        is_month = self.command in [self.PIDOR_MONTH_STAT_COMMAND, self.CHAD_MONTH_STAT_COMMAND, self.STAT_MONTH_COMMAND]
+        rating = Rating.get(
+            Rating.command == rating_command,
+            Rating.chat == Chat.get(Chat.telegram_id == self.chat.id)
+        )
 
         order = RatingMember.month_count.desc() if is_month else RatingMember.count.desc()
         actual_members = await self.client.get_dialog_members(self.chat)
@@ -206,14 +118,15 @@ class StatRatingCommandHandler(CommandHandler):
         if not members_collection:
             return
 
-        message = f"**Результаты по {msg_name} за "\
-                  + (f"месяц**\n" if is_month else f"всё время**\n")
+        message = f"**Результаты {rating.name.upper()} следующего месяца:**\n" if is_month \
+            else f"**Результаты {rating.name.upper()} дня:**\n"
         pos = 1
+
         for member in members_collection:
             tg_member, db_member = member
-            message += f"#**{str(pos)}**   " \
-                       f"{Helper.make_member_name(tg_member)} - " \
-                       f"{Helper.make_count_str(db_member.count)}\n"
+            count_msg = f"{Helper.make_count_str(db_member.current_month_count)}\n" if is_month \
+                     else f"{Helper.make_count_str(db_member.count, db_member.month_count)}\n"
+            message += f"#**{pos}**   {Helper.make_member_name(tg_member)} - {count_msg}"
             pos += 1
         await self.client.send_message(self.chat, message)
 
@@ -236,7 +149,7 @@ class RatingsSettingsQueryHandler(MenuHandler):
                     Member.user == User.get(User.telegram_id == self.sender.id),
                     Member.chat == Chat.get(Chat.telegram_id == self.chat.id)
                 ),
-            )
+            ).order_by(Rating.id)
             ratings_list = [rating.name for rating in ratings]
         except DoesNotExist:
             ratings_list = []
@@ -320,3 +233,118 @@ class RatingsSettingsQueryHandler(MenuHandler):
         else:
             await self.client.send_message(self.chat, "Ты уже разреган")
             return
+
+    async def action_list(self, new_message: bool=False):
+        chat = Chat.get(Chat.telegram_id == self.chat.id)
+        ratings = Rating.select().where(Rating.chat == chat).order_by(Rating.id)
+        buttons = []
+
+        for rating in ratings:
+            buttons.append((
+                rating.name,
+                MenuRatingEvent(sender_id=self.sender.id, rating_id=rating.id).save_get_id()
+            ))
+
+        buttons = Helper.make_buttons_layout(
+            buttons,
+            ("<< К меню рейтингов", GeneralMenuRatingEvent(self.sender.id).save_get_id())
+        )
+        text = "Список рейтингов:"
+
+        if new_message:
+            await self.client.send_message(self.chat, text, buttons=buttons)
+        else:
+            await self.menu_message.edit(text, buttons=buttons)
+
+    async def get_rating_params(self, conv):
+        response = conv.wait_event(
+            events.NewMessage(forwards=False, chats=self.chat, from_users=self.sender.id),
+            timeout=self.INPUT_TIMEOUT
+        )
+        await conv.send_message('Введи команду и название для рейтинга через запятую\n(Command, name)')
+        response_event_name = await response
+
+        command, name = Rating.parse_from_message(response_event_name.message.text)
+        chat = Chat.get(Chat.telegram_id == self.chat.id)
+
+        if Rating.get_or_none(Rating.chat == chat, Rating.command == command):
+            return None
+        else:
+            return name, command, chat
+
+    async def action_create(self):
+        async with self.client._client.conversation(self.chat) as conv:
+            try:
+                params = await self.get_rating_params(conv)
+
+                if params:
+                    Rating.create(name=params[0], command=params[1], chat=params[2]).save()
+                    await conv.send_message(f"Создан рейтинг: {params[0]} (__{params[1]}__)")
+                else:
+                    await conv.send_message("Такой рейтинг уже существует")
+                    return
+            except TimeoutError:
+                await conv.send_message(ConversationTimeoutError.message)
+            except InputValueError as ex:
+                await conv.send_message(ex.message)
+
+    async def action_change(self):
+        rating = self.query_event.get_rating()
+
+        async with self.client._client.conversation(self.chat) as conv:
+            try:
+                params = await self.get_rating_params(conv)
+
+                if params:
+                    old_name = rating.name
+                    old_command = rating.command
+                    rating.name = params[0]
+                    rating.command = params[1]
+                    rating.save()
+                    await conv.send_message(
+                        f"Изменен рейтинг с {old_name} (__{old_command}__) на {rating.name} (__{rating.command}__)"
+                    )
+                else:
+                    await conv.send_message("Такой рейтинг уже существует")
+                    return
+            except TimeoutError:
+                await conv.send_message(ConversationTimeoutError.message)
+            except InputValueError as ex:
+                await conv.send_message(ex.message)
+
+    async def action_delete(self):
+        rating = self.query_event.get_rating()
+        rating.delete_instance()
+        await self.client.send_message(self.chat, f"Удалена роль: {rating.name} (__{rating.command}__)")
+        await self.action_list()
+
+    async def action_menu(self, new_message: bool = False):
+        rating = self.query_event.get_rating()
+        members = Helper.collect_members(
+            await self.client.get_dialog_members(self.chat),
+            RatingMember.select().where(RatingMember.rating == rating)
+        )
+        members_names = []
+
+        for tg_member, db_member in members:
+            members_names.append(Helper.make_member_name(tg_member))
+
+        text = f"Меню рейтинга **{rating.name}** ({rating.command})\n\n**Участники:**\n" \
+            + '\n'.join(members_names)
+        back_button = Button.inline('<< К списку ролей', ListRatingEvent(self.sender.id).save_get_id())
+
+        if rating.command in [RatingService.PIDOR_KEYWORD, RatingService.CHAD_KEYWORD]:
+            buttons = back_button
+        else:
+            buttons = [
+                [
+                    Button.inline('Изменить', ChangeRatingEvent(self.sender.id, rating.id).save_get_id()),
+                    Button.inline('Удалить', DeleteRatingEvent(self.sender.id, rating.id).save_get_id()),
+                ],
+                [back_button],
+            ]
+
+        if new_message:
+            await self.client.send_message(self.chat, text, buttons=buttons)
+        else:
+            await self.menu_message.edit(text, buttons=buttons)
