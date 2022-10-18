@@ -36,7 +36,7 @@ class RatingsSettingsCommandHandler(CommandHandler):
                     Member.chat == Chat.get(Chat.telegram_id == self.chat.id)
                 ),
             )
-            ratings_list = [rating.name for rating in ratings]
+            ratings_list = [f'{rating.command} (__{rating.name}__)' for rating in ratings]
         except DoesNotExist:
             ratings_list = []
         text, buttons = GeneralMenuRatingEvent.get_message_and_buttons(self.sender.id, ratings_list)
@@ -150,7 +150,7 @@ class RatingsSettingsQueryHandler(MenuHandler):
                     Member.chat == Chat.get(Chat.telegram_id == self.chat.id)
                 ),
             ).order_by(Rating.id)
-            ratings_list = [rating.name for rating in ratings]
+            ratings_list = [f'{rating.command} (__{rating.name}__)' for rating in ratings]
         except DoesNotExist:
             ratings_list = []
         text, buttons = GeneralMenuRatingEvent.get_message_and_buttons(self.sender.id, ratings_list)
@@ -172,7 +172,7 @@ class RatingsSettingsQueryHandler(MenuHandler):
         buttons = []
         for rating in ratings:
             buttons.append((
-                f"{rating.name}",
+                f"{rating.command}",
                 RegRatingEvent(sender_id=self.sender.id, rating_id=rating.id, member_id=member.id).save_get_id()
             ))
         buttons = Helper.make_buttons_layout(buttons, (
@@ -210,7 +210,7 @@ class RatingsSettingsQueryHandler(MenuHandler):
         buttons = []
         for rating in ratings:
             buttons.append((
-                f"{rating.name}",
+                f"{rating.command}",
                 UnregRatingEvent(sender_id=self.sender.id, rating_id=rating.id, member_id=member.id).save_get_id()
             ))
         buttons = Helper.make_buttons_layout(buttons, (
@@ -241,7 +241,7 @@ class RatingsSettingsQueryHandler(MenuHandler):
 
         for rating in ratings:
             buttons.append((
-                rating.name,
+                rating.command,
                 MenuRatingEvent(sender_id=self.sender.id, rating_id=rating.id).save_get_id()
             ))
 
@@ -302,7 +302,7 @@ class RatingsSettingsQueryHandler(MenuHandler):
                     rating.command = params[1]
                     rating.save()
                     await conv.send_message(
-                        f"Изменен рейтинг с {old_name} (__{old_command}__) на {rating.name} (__{rating.command}__)"
+                        f"Изменен рейтинг с {old_command} (__{old_name}__) на {rating.command} (__{rating.name}__)"
                     )
                 else:
                     await conv.send_message("Такой рейтинг уже существует")
@@ -315,7 +315,7 @@ class RatingsSettingsQueryHandler(MenuHandler):
     async def action_delete(self):
         rating = self.query_event.get_rating()
         rating.delete_instance()
-        await self.client.send_message(self.chat, f"Удалена роль: {rating.name} (__{rating.command}__)")
+        await self.client.send_message(self.chat, f"Удалена роль: {rating.command} (__{rating.name}__)")
         await self.action_list()
 
     async def action_menu(self, new_message: bool = False):
@@ -329,7 +329,7 @@ class RatingsSettingsQueryHandler(MenuHandler):
         for tg_member, db_member in members:
             members_names.append(Helper.make_member_name(tg_member))
 
-        text = f"Меню рейтинга **{rating.name}** ({rating.command})\n\n**Участники:**\n" \
+        text = f"Меню рейтинга **{rating.command}** ({rating.name})\n\n**Участники:**\n" \
             + '\n'.join(members_names)
         back_button = Button.inline('<< К списку ролей', ListRatingEvent(self.sender.id).save_get_id())
 

@@ -4,6 +4,7 @@ import inspect
 import re
 from asyncio import sleep
 from typing import Type
+from peewee import DoesNotExist
 
 from fsb import logger
 from fsb.config import Config
@@ -31,7 +32,7 @@ from fsb.telegram.client import TelegramApiClient
 
 
 class Controller:
-    MAX_WAITING = 60 * 2
+    MAX_WAITING = 60
 
     _event_class = EventDTO
     _from_bot = False
@@ -79,11 +80,14 @@ class Controller:
                 event = self._event_class(event)
                 await callback(self, event)
             except ExitControllerException as ex:
-                if ex.controller_class:
+                if ex.class_name or ex.reason:
                     logger.warning(ex.message)
-                pass
-            except AttributeError as ex:
+            except DoesNotExist as ex:
+                logger.warning(ex.__class__.__name__.replace(DoesNotExist.__name__, '') + ' does not exist')
+            except Exception as ex:
                 logger.exception(ex.args)
+            finally:
+                self.stop_wait(event.chat.id)
         return handle
 
     async def _init_filter(self, event: EventDTO):
@@ -101,8 +105,15 @@ class Controller:
         if not area_check:
             raise ExitControllerException
 
-    def set_wait(self, chat_id: int, value: bool):
+    def _set_wait(self, chat_id: int, value: bool):
         self._waiting_list[chat_id] = value
+
+    def start_wait(self, chat_id: int):
+        self._set_wait(chat_id, True)
+
+    def stop_wait(self, chat_id: int):
+        if chat_id in self._waiting_list:
+            self._set_wait(chat_id, False)
 
     async def run_handler(self, event: EventDTO, handler_class: Type[Handler]):
         await handler_class(event, self._client).run()
@@ -196,7 +207,7 @@ class ChatActionController(Controller):
 
     @Controller.handle_decorator
     async def join_chat_pipeline_handle(self, event: ChatActionEventDTO):
-        await super().handle(event)
+        await self.handle(event)
         if not event.user_joined and not event.user_added:
             return
         await self._join_chat_handle(event.telegram_event)
@@ -204,12 +215,12 @@ class ChatActionController(Controller):
 
     @Controller.handle_decorator
     async def _join_chat_handle(self, event):
-        await super().handle(event)
+        await self.handle(event)
         await self.run_handler(event, JoinChatHandler)
 
     @Controller.handle_decorator
     async def _create_ratings_on_join_chat_handle(self, event):
-        await super().handle(event)
+        await self.handle(event)
         await self.run_handler(event, CreateRatingsOnJoinChatHandler)
 
 
@@ -279,9 +290,9 @@ class CommandController(MessageController):
         ]
         event.area = event.ONLY_CHAT
         await super().handle(event)
-        self.set_wait(event.chat.id, True)
+        self.start_wait(event.chat.id)
         await self.run_handler(event, RatingCommandHandler)
-        self.set_wait(event.chat.id, False)
+        self.stop_wait(event.chat.id)
 
     @Controller.handle_decorator
     async def ratings_stats_handle(self, event: CommandEventDTO):

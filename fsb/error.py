@@ -1,6 +1,7 @@
 # !/usr/bin/env python
 
 from asyncio.exceptions import TimeoutError
+from typing import Union
 
 
 class BaseFsbException(Exception):
@@ -17,13 +18,16 @@ class DisconnectFailedError(BaseFsbException):
 
 
 class ExitControllerException(BaseFsbException):
-    def __init__(self, controller_class: str = None, reason: str = None):
-        message = f"Exit from {controller_class if controller_class else 'Controller'}"
+    def __init__(self, object_context: Union[str, object] = None, reason: str = None):
+        if isinstance(object_context, object) and object_context is not None:
+            object_context = object_context.__class__.__name__
+
+        message = f"Exit{' from ' + object_context if object_context else ''}"
         if reason:
             message += f". Reason: {reason}"
         super().__init__(message)
         self.reason = reason
-        self.controller_class = controller_class
+        self.class_name = object_context
 
 
 class RequiredAttributeError(BaseFsbException, AttributeError):
