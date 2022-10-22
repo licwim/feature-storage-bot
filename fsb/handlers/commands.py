@@ -4,12 +4,17 @@ from telethon.tl.functions.users import GetFullUserRequest
 
 from fsb.handlers import CommandHandler
 from fsb.helpers import InfoBuilder
+from fsb.services import ChatService, RatingService
 
 
 class StartCommandHandler(CommandHandler):
     async def run(self):
         await super().run()
-        await self.client.send_message(self.chat, "Ну дарова!")
+
+        chat_service = ChatService(self.client)
+        rating_service = RatingService(self.client)
+        chat = await chat_service.create_chat(event=self.telegram_event, update=True)
+        rating_service.create_system_ratings(chat)
 
 
 class PingCommandHandler(CommandHandler):

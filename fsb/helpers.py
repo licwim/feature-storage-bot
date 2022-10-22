@@ -78,7 +78,18 @@ class InfoBuilder:
 
         if isinstance(event, (MessageEventDTO, CallbackQueryEventDTO)):
             match event.chat_type:
-                case 'Chat' | 'Channel':
+                case 'Chat':
+                    chat_info = {
+                        'id': event.chat.id,
+                        'name': event.chat.name,
+                        'type': event.chat_type,
+                        'sender': {
+                            'id': event.sender.id,
+                            'username': event.sender.username,
+                        },
+                        'input_peer': event.telegram_event.input_chat.to_dict()
+                    }
+                case 'Channel':
                     chat_info = {
                         'id': event.chat.id,
                         'title': event.chat.title,
@@ -86,7 +97,8 @@ class InfoBuilder:
                         'sender': {
                             'id': event.sender.id,
                             'username': event.sender.username,
-                        }
+                        },
+                        'input_peer': event.telegram_event.input_chat.to_dict()
                     }
                 case 'User':
                     chat_info = {
@@ -101,7 +113,13 @@ class InfoBuilder:
     @builder_decorator
     def build_entity_info(entity, view_type: int = None):
         match entity.__class__.__name__:
-            case 'Chat' | 'Channel':
+            case 'Chat':
+                data_info = {
+                    'id': entity.id,
+                    'name': entity.name,
+                    'type': entity.__class__.__name__,
+                }
+            case 'Channel':
                 data_info = {
                     'id': entity.id,
                     'title': entity.title,
@@ -122,7 +140,13 @@ class InfoBuilder:
     @builder_decorator
     def build_debug_message_info(entity, message, reply_to: Message):
         match entity.__class__.__name__:
-            case 'Chat' | 'Channel':
+            case 'Chat':
+                entity_info = {
+                    'id': entity.id,
+                    'name': entity.name,
+                    'type': entity.__class__.__name__,
+                }
+            case 'Channel':
                 entity_info = {
                     'id': entity.id,
                     'title': entity.title,
@@ -135,7 +159,7 @@ class InfoBuilder:
                     'type': entity.__class__.__name__,
                 }
             case _:
-                entity_info = None
+                entity_info = entity
 
         if reply_to:
             reply_info = {
@@ -197,9 +221,10 @@ class Helper:
             return None
 
     @staticmethod
-    def make_count_str(count: int) -> str:
+    def make_count_str(count: int, advanced_count: int = None) -> str:
         dozens = count % 100
         units = count % 10
+
         if 10 < dozens < 20:
             count_word = 'раз'
         else:
@@ -207,7 +232,13 @@ class Helper:
                 count_word = 'раза'
             else:
                 count_word = 'раз'
-        return f"{str(count)} {count_word}"
+
+        if advanced_count is None:
+            advanced_count_msg = ''
+        else:
+            advanced_count_msg = f' ({advanced_count})'
+
+        return f'{count}' + advanced_count_msg + f' {count_word}'
 
     @staticmethod
     def make_buttons_layout(data: list, closing_button: tuple = None):

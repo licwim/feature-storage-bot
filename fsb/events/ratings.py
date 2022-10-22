@@ -71,8 +71,17 @@ class GeneralMenuRatingEvent(RatingQueryEvent):
         else:
             text = "Список твоих рейтингов пуст"
         buttons = [
-            Button.inline("Зарегаться", RegMenuRatingEvent(sender_id).save_get_id()),
-            Button.inline("Разрегаться", UnregMenuRatingEvent(sender_id).save_get_id())
+            [
+                Button.inline("Зарегаться", RegMenuRatingEvent(sender_id).save_get_id()),
+                Button.inline("Разрегаться", UnregMenuRatingEvent(sender_id).save_get_id())
+            ],
+            [
+                Button.inline("Создать рейтинг", CreateRatingEvent(sender_id).save_get_id()),
+                Button.inline("Список рейтингов", ListRatingEvent(sender_id).save_get_id()),
+            ],
+            [
+                Button.inline("Закрыть", CloseGeneralMenuRatingEvent(sender_id).save_get_id())
+            ]
         ]
         return text, buttons
 
@@ -90,4 +99,28 @@ class RegMenuRatingEvent(RatingQueryEvent):
 
 
 class UnregMenuRatingEvent(RatingQueryEvent):
+    pass
+
+
+class CloseGeneralMenuRatingEvent(RatingQueryEvent):
+    pass
+
+
+class ListRatingEvent(RatingQueryEvent):
+    pass
+
+
+class CreateRatingEvent(RatingQueryEvent):
+    pass
+
+
+class DeleteRatingEvent(RatingQueryEvent):
+    pass
+
+
+class ChangeRatingEvent(RatingQueryEvent):
+    pass
+
+
+class MenuRatingEvent(RatingQueryEvent):
     pass

@@ -1,14 +1,17 @@
 # !/usr/bin/env python
 
+import json
 from time import sleep
-from typing import Any
-from typing import Union
+from typing import Any, Union
 
-from telethon import TelegramClient
-from telethon import errors
-from telethon import events
-from telethon.tl.types import Message
+from telethon import TelegramClient, errors, events, functions
+from telethon.tl.types import (
+    Message,
+    InputPeerUser, InputPeerChat, InputPeerChannel,
+    InputChannel, InputUser
+)
 
+from fsb.db.models import User, Chat
 from .. import FSB_DEV_MODE
 from .. import logger
 from ..config import Config
@@ -56,6 +59,8 @@ class TelegramApiClient:
 
     async def send_message(self, entity, message: Any, reply_to: Message = None, force: bool = False, buttons=None):
         try:
+            if isinstance(entity, Union[str, int]):
+                entity = await self.get_entity(entity)
             if not force and FSB_DEV_MODE:
                 return await self._send_debug_message(entity, message, reply_to, buttons)
             if isinstance(message, str):
@@ -82,13 +87,33 @@ class TelegramApiClient:
         if entity.id in Config.dev_chats:
             return await self.send_message(entity, message, reply_to, True, buttons)
 
-    async def get_entity(self, uid: Union[str, int]):
+    async def get_entity(self, uid: Union[str, int], with_full: bool = True):
+        entity = None
         try:
-            if not uid:
-                raise ValueError
-            return await self._client.get_entity(uid)
+            if uid:
+                entity = await self._client.get_entity(uid)
         except ValueError:
-            return None
+            if with_full:
+                db_entity = Chat.get_or_none(Chat.telegram_id == uid)
+                if not db_entity:
+                    db_entity = User.select().where(
+                        (User.nickname == uid) | (User.telegram_id == uid)
+                    ).get_or_none()
+
+                if db_entity and db_entity.input_peer:
+                    metadata = json.loads(db_entity.input_peer)
+                    match metadata['_']:
+                        case InputPeerUser.__name__:
+                            input_peer = InputUser(metadata['user_id'], metadata['access_hash'])
+                            await self.request(functions.users.GetFullUserRequest(input_peer))
+                        case InputPeerChat.__name__:
+                            await self.request(functions.messages.GetFullChatRequest(metadata['chat_id']))
+                        case InputPeerChannel.__name__:
+                            input_peer = InputChannel(metadata['channel_id'], metadata['access_hash'])
+                            await self.request(functions.channels.GetFullChannelRequest(input_peer))
+
+                entity = await self.get_entity(uid, False)
+        return entity
 
     def add_message_handler(self, handler: callable, *args, **kwargs):
         if FSB_DEV_MODE:
@@ -124,6 +149,9 @@ class TelegramApiClient:
         return await self._client(data)
 
     async def get_dialog_members(self, entity, with_bot: bool = False) -> list:
+        if isinstance(entity, Union[str, int]):
+            entity = await self.get_entity(entity)
+
         members = []
 
         for member in await self._client.get_participants(entity):
@@ -132,3 +160,12 @@ class TelegramApiClient:
             members.append(member)
 
         return members
+
+    def sync_get_dialog_members(self, entity, with_bot: bool = False) -> list:
+        return self.loop.run_until_complete(self.get_dialog_members(entity, with_bot))
+
+    def sync_get_entity(self, uid: Union[str, int]):
+        return self.loop.run_until_complete(self.get_entity(uid))
+
+    def sync_send_message(self, entity, message: Any, reply_to: Message = None, force: bool = False, buttons=None):
+        return self.loop.run_until_complete(self.send_message(entity, message, reply_to, force, buttons))

@@ -1,15 +1,18 @@
 # !/usr/bin/env python
 
 import inspect
+
 import click
 
+from fsb.console import client, exit_with_message
 from fsb.db import migrations
 from fsb.db.migrations import Migration
-from fsb.console import client, exit_with_message
 
 
 @click.group('migrator')
 def migrator_cli():
+    """Migrator"""
+
     if not Migration.table_exists():
         Migration.create_table()
 
@@ -40,8 +43,17 @@ def get_migrations():
 
 def get_migration_by_classname(ctx, param, migration_name):
     try:
-        migration_object = get_migrations()[migration_name]['cls'](client)
-        assert migration_object
+        migration_list = get_migrations()
+        migration_object = None
+
+        for migration in migration_list:
+            if migration_name == migration['cls'].__name__:
+                if migration['obj']:
+                    migration_object = migration['obj']
+                else:
+                    migration_object = migration['cls'](client)
+
+        assert isinstance(migration_object, Migration)
         return migration_object
     except AttributeError or AssertionError:
         exit_with_message("Migration not found: " + migration_name)
@@ -62,8 +74,9 @@ def action_down(migration: Migration):
 
 
 @click.command('migrate')
+@click.argument('count', type=int, default=0)
 @click.option('-y', help='Force confirm', is_flag=True, default=False)
-def action_migrate(y: bool):
+def action_migrate(count: int, y: bool):
     migration_list = get_migrations()
     migration_names = []
     for migration in migration_list.copy():
@@ -74,6 +87,10 @@ def action_migrate(y: bool):
     if not migration_list:
         click.echo('No new migrations')
         return
+
+    if count:
+        del migration_list[count:]
+        del migration_names[count:]
 
     click.echo(f"Migrate next migrations:\n" + "\n".join(migration_names))
 
@@ -89,7 +106,6 @@ def action_migrate(y: bool):
 def action_rollback(count: int, y: bool):
     migration_list = get_migrations()
     migration_list.reverse()
-    del migration_list[count:]
     migration_names = []
     for migration in migration_list.copy():
         if not migration['obj'] or migration['obj'].apply == 0:
@@ -99,6 +115,9 @@ def action_rollback(count: int, y: bool):
     if not migration_list:
         click.echo('No applied migrations')
         return
+
+    del migration_list[count:]
+    del migration_names[count:]
 
     click.echo(f"Rollback next migrations:\n" + "\n".join(migration_names))
 

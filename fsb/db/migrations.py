@@ -5,10 +5,14 @@ from peewee import (
     CharField,
     BooleanField,
     TimestampField,
+    SQL,
+    DateTimeField,
+    TextField,
 )
+from playhouse.migrate import migrate
 
 from fsb import logger
-from fsb.db import base_migrator
+from fsb.db import base_migrator as migrator
 from fsb.db.models import (
     BaseModel,
     Chat,
@@ -20,8 +24,6 @@ from fsb.db.models import (
     Role,
     User,
 )
-from fsb.handlers.ratings import PIDOR_KEYWORD, CHAD_KEYWORD
-from fsb.helpers import Helper
 from fsb.telegram.client import TelegramApiClient
 
 
@@ -37,7 +39,7 @@ class Migration(BaseModel):
     def __init__(self, client: TelegramApiClient = None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.client = client
-        self.db = base_migrator.database
+        self.db = migrator.database
 
     def is_applied(self):
         return self.apply == 1
@@ -137,65 +139,112 @@ class CreateTablesForRatingsMigration(CreatingTables):
         RatingMember,
     ]
 
+    def up(self):
+        super().up()
+        migrate(
+            migrator.add_foreign_key_constraint(
+                Rating.TABLE_NAME,
+                'last_winner_id',
+                RatingMember.TABLE_NAME,
+                'id',
+                on_delete='SET NULL'
+            )
+        )
 
-class AddPidorAndChadRatingsMigration(Migration):
-    _chats = [
-        1511700614
-    ]
+    def down(self):
+        migrate(
+            migrator.drop_foreign_key_constraint(
+                Rating.TABLE_NAME,
+                'last_winner_id',
+            )
+        )
+        super().down()
 
+
+class AddMonthRatingMigration(Migration):
+    @Migration.migrate_decorator
+    async def up(self):
+        migrate(
+            migrator.add_column(
+                Rating.TABLE_NAME,
+                'last_month_winner_id',
+                IntegerField(null=True, constraints=[SQL('AFTER last_winner_id')])
+            ),
+            migrator.add_foreign_key_constraint(
+                Rating.TABLE_NAME,
+                'last_month_winner_id',
+                RatingMember.TABLE_NAME,
+                'id',
+                on_delete='SET NULL'
+            ),
+            migrator.add_column(
+                Rating.TABLE_NAME,
+                'last_month_run',
+                DateTimeField(null=True, constraints=[SQL('AFTER last_run')])
+            ),
+            migrator.add_column(
+                RatingMember.TABLE_NAME,
+                'month_count',
+                IntegerField(default=0, constraints=[SQL('AFTER count')])
+            ),
+            migrator.add_column(
+                RatingMember.TABLE_NAME,
+                'current_month_count',
+                IntegerField(default=0, constraints=[SQL('AFTER month_count')])
+            )
+        )
+
+    @Migration.rollback_decorator
+    async def down(self):
+        migrate(
+            migrator.drop_foreign_key_constraint(Rating.TABLE_NAME, 'last_month_winner_id'),
+            migrator.drop_column(Rating.TABLE_NAME, 'last_month_winner_id'),
+            migrator.drop_column(RatingMember.TABLE_NAME, 'month_count'),
+            migrator.drop_column(RatingMember.TABLE_NAME, 'current_month_count')
+        )
+
+
+class AddInputPeerColumnForChatAndUserMigration(Migration):
     @Migration.migrate_decorator
     async def up(self):
         await super().up()
-        for chat_id in self._chats:
-            tg_chat = await self.client.get_entity(chat_id)
-            db_chat = Chat.get_or_create(
-                telegram_id=tg_chat.id,
-                defaults={
-                    'name': tg_chat.title,
-                    'type': Chat.get_chat_type(tg_chat)
-                }
-            )[0]
-
-            for tg_member in await self.client.get_dialog_members(tg_chat):
-                user = User.get_or_create(
-                    telegram_id=tg_member.id,
-                    defaults={
-                        'name': Helper.make_member_name(tg_member, with_username=False),
-                        'nickname': tg_member.username
-                    }
-                )[0]
-                Member.get_or_create(chat=db_chat, user=user)
-
-            Rating.get_or_create(
-                name=PIDOR_KEYWORD,
-                chat=db_chat,
-                defaults={
-                    'command': PIDOR_KEYWORD
-                }
+        migrate(
+            migrator.add_column(
+                Chat.TABLE_NAME,
+                'input_peer',
+                TextField(null=True)
+            ),
+            migrator.add_column(
+                User.TABLE_NAME,
+                'input_peer',
+                TextField(null=True)
             )
-
-            Rating.get_or_create(
-                name=CHAD_KEYWORD,
-                chat=db_chat,
-                defaults={
-                    'command': CHAD_KEYWORD
-                }
-            )
+        )
 
     @Migration.rollback_decorator
     async def down(self):
         await super().down()
-        for chat_id in self._chats:
-            tg_chat = await self.client.get_entity(chat_id)
-            db_chat = Chat.get(telegram_id=tg_chat.id)
+        migrate(
+            migrator.drop_column(Chat.TABLE_NAME, 'input_peer'),
+            migrator.drop_column(User.TABLE_NAME, 'input_peer')
+        )
 
-            for tg_member in await self.client.get_dialog_members(tg_chat):
-                user = User.get(telegram_id=tg_member.id)
-                member = Member.get(chat=db_chat, user=user)
-                member.delete_instance()
-                user.delete_instance()
 
-            for rating in Rating.select().where(Rating.chat == db_chat):
-                rating.delete_instance()
+class AddAutorunRatingColumnMigration(Migration):
+    @Migration.migrate_decorator
+    async def up(self):
+        await super().up()
+        migrate(
+            migrator.add_column(
+                Rating.TABLE_NAME,
+                'autorun',
+                BooleanField(default=False)
+            )
+        )
 
-            db_chat.delete_instance()
+    @Migration.rollback_decorator
+    async def down(self):
+        await super().down()
+        migrate(
+            migrator.drop_column(Rating.TABLE_NAME, 'autorun')
+        )
