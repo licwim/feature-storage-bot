@@ -63,7 +63,7 @@ jobs:
           -e RELEASE=${{ steps.release-info.outputs.release }} \
           -e PIPENV_DOTENV_LOCATION="$ADMIN_CONTAINER_LOCATION/env" \
           -d \
-          --restart on-failure:10
+          --restart on-failure:10 \
           --network "$NETWORK_NAME" \
           --name "$CONTAINER_NAME" \
           "$IMAGE_NAME"
