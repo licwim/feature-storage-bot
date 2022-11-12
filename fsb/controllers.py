@@ -12,7 +12,7 @@ from fsb.db.models import QueryEvent
 from fsb.error import ExitControllerException
 from fsb.events.common import (
     EventDTO, MessageEventDTO, CallbackQueryEventDTO, MenuEventDTO, ChatActionEventDTO, CommandEventDTO,
-    WatcherEventDTO
+    MentionEventDTO
 )
 from fsb.events.ratings import RatingQueryEvent
 from fsb.events.roles import RoleQueryEvent
@@ -26,7 +26,7 @@ from fsb.handlers.ratings import (
     RatingsSettingsQueryHandler
 )
 from fsb.handlers.roles import RolesSettingsCommandHandler, RolesSettingsQueryHandler
-from fsb.handlers.watchers import MentionWatcherHandler
+from fsb.handlers.mentions import MentionWatcherHandler
 from fsb.helpers import InfoBuilder
 from fsb.telegram.client import TelegramApiClient
 
@@ -306,16 +306,17 @@ class CommandController(MessageController):
         await self.run_handler(event, StatRatingCommandHandler)
 
 
-class WatcherController(MessageController):
-    _event_class = WatcherEventDTO
+class MentionController(MessageController):
+    _event_class = MentionEventDTO
 
-    async def _init_filter(self, event: WatcherEventDTO):
+    async def _init_filter(self, event: MentionEventDTO):
         await super()._init_filter(event)
-        if event.message.text.startswith(CommandController.PREFIX) and '@' not in event.message.text:
+        if event.message.text.startswith(CommandController.PREFIX) \
+                or not re.search(r"(\s+|^)@([^\s]+)", event.message.text):
             raise ExitControllerException
+        event.mentions = [matches[1] for matches in re.findall(r"(\s+|^)@([^\s@]+)", event.message.text)]
 
     @Controller.handle_decorator
-    async def mention_handle(self, event: WatcherEventDTO):
+    async def mention_handle(self, event: MentionEventDTO):
         await super().handle(event)
-        if re.search(r"(\s+|^)@([^\s]+)", event.message.text):
-            await self.run_handler(event, MentionWatcherHandler)
+        await self.run_handler(event, MentionWatcherHandler)

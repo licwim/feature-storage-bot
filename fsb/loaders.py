@@ -1,6 +1,6 @@
 # !/usr/bin/env python
 
-from fsb.controllers import Controller, CommandController, WatcherController, MenuController, ChatActionController
+from fsb.controllers import Controller, CommandController, MentionController, MenuController, ChatActionController
 from fsb.factories import ControllerFactory
 from fsb.telegram.client import TelegramApiClient
 
@@ -28,7 +28,7 @@ class Loader:
 class ControllerLoader(Loader):
     _loaded_classes = [
         CommandController,
-        WatcherController,
+        MentionController,
         MenuController,
         ChatActionController
     ]

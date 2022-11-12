@@ -1,7 +1,7 @@
 # !/usr/bin/env python
 
 from fsb import logger
-from fsb.events.common import EventDTO, CommandEventDTO, WatcherEventDTO, MenuEventDTO, ChatActionEventDTO
+from fsb.events.common import EventDTO, CommandEventDTO, MentionEventDTO, MenuEventDTO, ChatActionEventDTO
 from fsb.telegram.client import TelegramApiClient
 
 
@@ -22,8 +22,8 @@ class CommandHandler(Handler, CommandEventDTO):
     event_class = CommandEventDTO
 
 
-class WatcherHandler(Handler, WatcherEventDTO):
-    event_class = WatcherEventDTO
+class MentionHandler(Handler, MentionEventDTO):
+    event_class = MentionEventDTO
 
 
 class MenuHandler(Handler, MenuEventDTO):

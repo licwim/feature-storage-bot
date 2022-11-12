@@ -75,6 +75,7 @@ class CommandEventDTO(MessageEventDTO):
         self.command_names = []
 
 
-class WatcherEventDTO(MessageEventDTO):
+class MentionEventDTO(MessageEventDTO):
     def __init__(self, event):
         super().__init__(event)
+        self.mentions = []

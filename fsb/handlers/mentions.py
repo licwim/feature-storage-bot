@@ -5,10 +5,10 @@ import re
 from peewee import DoesNotExist
 
 from fsb.db.models import Chat, MemberRole, Role
-from fsb.handlers import WatcherHandler
+from fsb.handlers import MentionHandler
 
 
-class MentionWatcherHandler(WatcherHandler):
+class MentionWatcherHandler(MentionHandler):
     UNKNOWN_NAME_REPLACEMENT = "ты"
 
     async def run(self):
