@@ -52,6 +52,10 @@ class User(BaseModel):
     phone = CharField(null=True)
     input_peer = TextField(null=True)
 
+    @staticmethod
+    def get_by_telegram_id(telegram_id: Union[int, str]) -> 'User':
+        return User.get(User.telegram_id == telegram_id)
+
 
 class Chat(BaseModel):
     TABLE_NAME = 'chats'
@@ -79,6 +83,10 @@ class Chat(BaseModel):
                 chat_type = 0
 
         return chat_type
+
+    @staticmethod
+    def get_by_telegram_id(telegram_id: Union[int, str]) -> 'Chat':
+        return Chat.get(Chat.telegram_id == telegram_id)
 
 
 class Member(BaseModel):
@@ -120,6 +128,10 @@ class Role(BaseModel):
             raise InputValueError
 
         return name, nickname
+
+    @staticmethod
+    def find_by_chat(chat: Chat):
+        return Role.select().where(Role.chat == chat)
 
 
 class MemberRole(BaseModel):

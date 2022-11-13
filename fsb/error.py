@@ -19,7 +19,7 @@ class DisconnectFailedError(BaseFsbException):
 
 class ExitControllerException(BaseFsbException):
     def __init__(self, object_context: Union[str, object] = None, reason: str = None):
-        if isinstance(object_context, object) and object_context is not None:
+        if not isinstance(object_context, str) and object_context is not None:
             object_context = object_context.__class__.__name__
 
         message = f"Exit{' from ' + object_context if object_context else ''}"

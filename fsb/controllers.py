@@ -3,12 +3,14 @@
 import inspect
 import re
 from asyncio import sleep
+from collections import OrderedDict
 from typing import Type
+
 from peewee import DoesNotExist
 
 from fsb import logger
 from fsb.config import Config
-from fsb.db.models import QueryEvent
+from fsb.db.models import QueryEvent, Role, Chat
 from fsb.error import ExitControllerException
 from fsb.events.common import (
     EventDTO, MessageEventDTO, CallbackQueryEventDTO, MenuEventDTO, ChatActionEventDTO, CommandEventDTO,
@@ -21,12 +23,12 @@ from fsb.handlers.chats import JoinChatHandler
 from fsb.handlers.commands import (
     StartCommandHandler, PingCommandHandler, EntityInfoCommandHandler, AboutInfoCommandHandler
 )
+from fsb.handlers.mentions import AllMentionHandler, CustomMentionHandler
 from fsb.handlers.ratings import (
     CreateRatingsOnJoinChatHandler, RatingsSettingsCommandHandler, RatingCommandHandler, StatRatingCommandHandler,
     RatingsSettingsQueryHandler
 )
 from fsb.handlers.roles import RolesSettingsCommandHandler, RolesSettingsQueryHandler
-from fsb.handlers.mentions import MentionWatcherHandler
 from fsb.helpers import InfoBuilder
 from fsb.telegram.client import TelegramApiClient
 
@@ -116,7 +118,7 @@ class Controller:
             self._set_wait(chat_id, False)
 
     async def run_handler(self, event: EventDTO, handler_class: Type[Handler]):
-        await handler_class(event, self._client).run()
+        return await handler_class(event, self._client).run()
 
 
 class MessageController(Controller):
@@ -319,4 +321,36 @@ class MentionController(MessageController):
     @Controller.handle_decorator
     async def mention_handle(self, event: MentionEventDTO):
         await super().handle(event)
-        await self.run_handler(event, MentionWatcherHandler)
+        members_mentions = []
+        members_mentions += await self._all_mention_handle(event)
+        members_mentions += await self._custom_mention_handle(event)
+
+        members_mentions = list(OrderedDict.fromkeys(members_mentions))
+        await self._client.send_message(
+            event.chat,
+            ' '.join(members_mentions),
+            event.message
+        )
+
+    def _mention_filter(self, mention_list: list, event: MentionEventDTO):
+        for mention in mention_list:
+            if mention in event.mentions:
+                return True
+        return False
+
+    async def _all_mention_handle(self, event: MentionEventDTO):
+        members_mentions = []
+
+        if self._mention_filter(['all', 'allrank'], event):
+            members_mentions = await self.run_handler(event, AllMentionHandler)
+
+        return members_mentions
+
+    async def _custom_mention_handle(self, event: MentionEventDTO):
+        members_mentions = []
+        mention_list = [role.nickname for role in Role.find_by_chat(Chat.get_by_telegram_id(event.chat.id))]
+
+        if self._mention_filter(mention_list, event):
+            members_mentions = await self.run_handler(event, CustomMentionHandler)
+
+        return members_mentions

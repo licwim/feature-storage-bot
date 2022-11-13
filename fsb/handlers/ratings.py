@@ -8,11 +8,11 @@ from telethon import events
 from telethon.tl.custom.button import Button
 
 from fsb.db.models import Chat, Member, Rating, RatingMember, User
+from fsb.error import ExitControllerException, InputValueError
 from fsb.events.ratings import (
     RatingQueryEvent, GeneralMenuRatingEvent, RegRatingEvent, UnregRatingEvent,
-    CreateRatingEvent, ChangeRatingEvent, DeleteRatingEvent, ListRatingEvent, MenuRatingEvent,
+    ChangeRatingEvent, DeleteRatingEvent, ListRatingEvent, MenuRatingEvent,
 )
-from fsb.error import ExitControllerException, InputValueError
 from fsb.handlers import ChatActionHandler, CommandHandler, MenuHandler
 from fsb.helpers import Helper
 from fsb.services import RatingService
@@ -21,7 +21,7 @@ from fsb.services import RatingService
 class CreateRatingsOnJoinChatHandler(ChatActionHandler):
     async def run(self):
         await super().run()
-        chat = Chat.get(telegram_id=self.chat.id)
+        chat = Chat.get_by_telegram_id(self.chat.id)
         rating_service = RatingService(self.client)
         rating_service.create_system_ratings(chat)
 
@@ -32,8 +32,8 @@ class RatingsSettingsCommandHandler(CommandHandler):
         try:
             ratings = Rating.select().join(RatingMember, on=(RatingMember.rating_id == Rating.id)).where(
                 RatingMember.member == Member.get(
-                    Member.user == User.get(User.telegram_id == self.sender.id),
-                    Member.chat == Chat.get(Chat.telegram_id == self.chat.id)
+                    Member.user == User.get_by_telegram_id(self.sender.id),
+                    Member.chat == Chat.get_by_telegram_id(self.chat.id)
                 ),
             )
             ratings_list = [f'{rating.command} (__{rating.name}__)' for rating in ratings]
@@ -70,7 +70,7 @@ class RatingCommandHandler(CommandHandler):
         is_month = self.command in [self.PIDOR_MONTH_COMMAND, self.CHAD_MONTH_COMMAND, self.ROLL_MONTH_COMMAND]
         rating = Rating.get(
             Rating.command == rating_command,
-            Rating.chat == Chat.get(Chat.telegram_id == self.chat.id)
+            Rating.chat == Chat.get_by_telegram_id(self.chat.id)
         )
 
         if is_month \
@@ -108,7 +108,7 @@ class StatRatingCommandHandler(CommandHandler):
         is_month = self.command in [self.PIDOR_MONTH_STAT_COMMAND, self.CHAD_MONTH_STAT_COMMAND, self.STAT_MONTH_COMMAND]
         rating = Rating.get(
             Rating.command == rating_command,
-            Rating.chat == Chat.get(Chat.telegram_id == self.chat.id)
+            Rating.chat == Chat.get_by_telegram_id(self.chat.id)
         )
 
         order = RatingMember.month_count.desc() if is_month else RatingMember.count.desc()
@@ -146,8 +146,8 @@ class RatingsSettingsQueryHandler(MenuHandler):
         try:
             ratings = Rating.select().join(RatingMember, on=(RatingMember.rating_id == Rating.id)).where(
                 RatingMember.member == Member.get(
-                    Member.user == User.get(User.telegram_id == self.sender.id),
-                    Member.chat == Chat.get(Chat.telegram_id == self.chat.id)
+                    Member.user == User.get_by_telegram_id(self.sender.id),
+                    Member.chat == Chat.get_by_telegram_id(self.chat.id)
                 ),
             ).order_by(Rating.id)
             ratings_list = [f'{rating.command} (__{rating.name}__)' for rating in ratings]
@@ -157,9 +157,9 @@ class RatingsSettingsQueryHandler(MenuHandler):
         await self.menu_message.edit(text, buttons=buttons)
 
     async def action_reg_menu(self):
-        chat = Chat.get(Chat.telegram_id == self.chat.id)
+        chat = Chat.get_by_telegram_id(self.chat.id)
         member = Member.get(
-            Member.user == User.get(User.telegram_id == self.sender.id),
+            Member.user == User.get_by_telegram_id(self.sender.id),
             Member.chat == chat
         )
         chat_ratings = list(Rating.select().where(Rating.chat == chat).execute())
@@ -197,9 +197,9 @@ class RatingsSettingsQueryHandler(MenuHandler):
             await self.action_reg_menu()
 
     async def action_unreg_menu(self):
-        chat = Chat.get(Chat.telegram_id == self.chat.id)
+        chat = Chat.get_by_telegram_id(self.chat.id)
         member = Member.get(
-            Member.user == User.get(User.telegram_id == self.sender.id),
+            Member.user == User.get_by_telegram_id(self.sender.id),
             Member.chat == chat
         )
         ratings = Rating.select().join(RatingMember, on=(RatingMember.rating_id == Rating.id)).where(
@@ -235,7 +235,7 @@ class RatingsSettingsQueryHandler(MenuHandler):
             return
 
     async def action_list(self, new_message: bool=False):
-        chat = Chat.get(Chat.telegram_id == self.chat.id)
+        chat = Chat.get_by_telegram_id(self.chat.id)
         ratings = Rating.select().where(Rating.chat == chat).order_by(Rating.id)
         buttons = []
 
@@ -265,7 +265,7 @@ class RatingsSettingsQueryHandler(MenuHandler):
         response_event_name = await response
 
         command, name = Rating.parse_from_message(response_event_name.message.text)
-        chat = Chat.get(Chat.telegram_id == self.chat.id)
+        chat = Chat.get_by_telegram_id(self.chat.id)
 
         if Rating.get_or_none(Rating.chat == chat, Rating.command == command):
             return None

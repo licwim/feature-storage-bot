@@ -63,6 +63,7 @@ class TelegramApiClient:
                 entity = await self.get_entity(entity)
             if not force and FSB_DEV_MODE:
                 return await self._send_debug_message(entity, message, reply_to, buttons)
+            new_message = None
             if isinstance(message, str):
                 message = message.rstrip('\t \n')
                 if message:

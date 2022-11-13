@@ -24,6 +24,29 @@ class CommandHandler(Handler, CommandEventDTO):
 
 class MentionHandler(Handler, MentionEventDTO):
     event_class = MentionEventDTO
+    UNKNOWN_NAME_REPLACEMENT = "ты"
+
+    def get_members_mentions(self, members: list, rank_mention: bool = False) -> list:
+        members_mentions = []
+
+        for member in members:
+            rank = None
+
+            if rank_mention:
+                try:
+                    rank = member.participant.rank
+                except AttributeError:
+                    pass
+
+            if rank:
+                members_mentions.append(f"[{rank}](tg://user?id={str(member.id)})")
+            elif member.username:
+                members_mentions.append('@' + member.username)
+            else:
+                member_name = member.first_name if member.first_name else self.UNKNOWN_NAME_REPLACEMENT
+                members_mentions.append(f"[{member_name}](tg://user?id={str(member.id)})")
+
+        return members_mentions
 
 
 class MenuHandler(Handler, MenuEventDTO):
