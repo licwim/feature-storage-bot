@@ -69,6 +69,7 @@ class Chat(BaseModel):
     name = CharField(null=True)
     type = IntegerField()
     input_peer = TextField(null=True)
+    dude = BooleanField(default=False)
 
     @staticmethod
     def get_chat_type(chat):
