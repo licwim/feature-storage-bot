@@ -92,7 +92,7 @@ class RolesSettingsQueryHandler(MenuHandler):
                 'type': Chat.get_chat_type(self.chat)
             }
         )[0]
-        roles = Role.select().where(Role.chat == chat)
+        roles = Role.find_by_chat(chat)
         buttons = []
         buttons_line = []
         for role in roles:
@@ -120,7 +120,7 @@ class RolesSettingsQueryHandler(MenuHandler):
                 'type': Chat.get_chat_type(self.chat)
             }
         )[0]
-        roles = Role.select().where(Role.chat == chat)
+        roles = Role.find_by_chat(chat)
         buttons = []
         buttons_line = []
         for role in roles:
@@ -221,7 +221,7 @@ class RolesSettingsQueryHandler(MenuHandler):
 
     async def action_add_member_menu(self, new_message: bool = False):
         role = self.query_event.get_role()
-        chat = Chat.get(Chat.telegram_id == self.chat.id)
+        chat = Chat.get_by_telegram_id(self.chat.id)
 
         role_members_tg_ids = [tg_member.id for tg_member, db_member in await self.get_role_members(role)]
         members = []
