@@ -250,7 +250,7 @@ class AddAutorunRatingColumnMigration(Migration):
         )
 
 
-class AlterDudeToChat(Migration):
+class AlterDudeToChatMigration(Migration):
     @Migration.migrate_decorator
     async def up(self):
         await super().up()

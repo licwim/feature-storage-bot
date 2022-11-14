@@ -28,5 +28,5 @@ async def dude_broadcast():
     """Sending a dude message to all chats"""
 
     for chat in Chat.select().where(Chat.dude):
-        await client.send_message(chat.telegram_id, text)
+        await client.send_message(chat.telegram_id, '', is_file=True)
         sleep(1)
