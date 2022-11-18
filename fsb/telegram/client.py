@@ -64,13 +64,13 @@ class TelegramApiClient:
             if not force and FSB_DEV_MODE:
                 return await self._send_debug_message(entity, message, reply_to, buttons, is_file)
             new_message = None
-            if not is_file:
+            if isinstance(message, str):
                 message = message.rstrip('\t \n')
-                if message:
-                    new_message = await self._client.send_message(entity=entity, message=message, reply_to=reply_to, buttons=buttons)
-            else:
-                if message:
+            if message:
+                if is_file:
                     new_message = await self._client.send_file(entity=entity, file=message, reply_to=reply_to, buttons=buttons)
+                else:
+                    new_message = await self._client.send_message(entity=entity, message=message, reply_to=reply_to, buttons=buttons)
             return new_message
         except errors.PeerFloodError as e:
             logger.error(f"{entity}: PeerFloodError")
