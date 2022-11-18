@@ -29,7 +29,7 @@ async def broadcast_message(text):
 @click.command('dude-broadcast')
 @coro
 async def dude_broadcast():
-    """Sending a dude message to all chats"""
+    """Sending a dude message to chats"""
 
     sticker_set_name = Config.dudes_sticker_set_name
     stickers_ids = Config.dudes_sticker_set_documents_ids
