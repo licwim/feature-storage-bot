@@ -12,6 +12,7 @@ from fsb.error import ExitControllerException, InputValueError
 from fsb.events.ratings import (
     RatingQueryEvent, GeneralMenuRatingEvent, RegRatingEvent, UnregRatingEvent,
     ChangeRatingEvent, DeleteRatingEvent, ListRatingEvent, MenuRatingEvent,
+    DailyRollRatingEvent,
 )
 from fsb.handlers import ChatActionHandler, CommandHandler, MenuHandler
 from fsb.helpers import Helper
@@ -332,14 +333,22 @@ class RatingsSettingsQueryHandler(MenuHandler):
         text = f"Меню рейтинга **{rating.command}** ({rating.name})\n\n**Участники:**\n" \
             + '\n'.join(members_names)
         back_button = Button.inline('<< К списку ролей', ListRatingEvent(self.sender.id).save_get_id())
+        autorun_button = Button.inline(
+            f'Авторолл: {"ВКЛ" if rating.autorun else "ВЫКЛ"}',
+            DailyRollRatingEvent(self.sender.id, rating.id).save_get_id()
+        )
 
         if rating.command in [RatingService.PIDOR_KEYWORD, RatingService.CHAD_KEYWORD]:
-            buttons = back_button
+            buttons = [
+                [autorun_button],
+                [back_button],
+            ]
         else:
             buttons = [
                 [
                     Button.inline('Изменить', ChangeRatingEvent(self.sender.id, rating.id).save_get_id()),
                     Button.inline('Удалить', DeleteRatingEvent(self.sender.id, rating.id).save_get_id()),
+                    autorun_button,
                 ],
                 [back_button],
             ]
@@ -348,3 +357,9 @@ class RatingsSettingsQueryHandler(MenuHandler):
             await self.client.send_message(self.chat, text, buttons=buttons)
         else:
             await self.menu_message.edit(text, buttons=buttons)
+
+    async def action_daily_roll(self):
+        rating = self.query_event.get_rating()
+        rating.autorun = not rating.autorun
+        rating.save()
+        await self.action_menu()
