@@ -29,10 +29,8 @@ from fsb.telegram.client import TelegramApiClient
 
 class Migration(BaseModel):
     TABLE_NAME = 'migrations'
-    position = 0
 
-    id = IntegerField(primary_key=True)
-    migration_name = CharField(null=False, unique=True)
+    title = CharField(null=False, primary_key=True)
     apply = BooleanField(default=False)
     updated_at = TimestampField()
 
@@ -53,15 +51,15 @@ class Migration(BaseModel):
     @staticmethod
     def migrate_decorator(callback: callable):
         def up(self):
-            migration = Migration.get_or_none(Migration.migration_name == self.__class__.__name__)
+            migration = Migration.get_or_none(Migration.title == self.__class__.__name__)
             if migration and migration.is_applied():
                 logger.info("Migration already applied")
                 return
             logger.info(f"Migrate {self.__class__.__name__} ...")
             self.client.loop.run_until_complete(callback(self))
             Migration \
-                .insert(id=self.position, migration_name=self.__class__.__name__, apply=1) \
-                .on_conflict(update={Migration.apply: 1}) \
+                .insert(title=self.__class__.__name__, apply=True) \
+                .on_conflict(update={Migration.apply: True}) \
                 .execute()
             logger.info(f"Migrate {self.__class__.__name__} is done")
         return up
@@ -69,7 +67,7 @@ class Migration(BaseModel):
     @staticmethod
     def rollback_decorator(callback: callable):
         def down(self):
-            migration = Migration.get_or_none(Migration.migration_name == self.__class__.__name__)
+            migration = Migration.get_or_none(Migration.title == self.__class__.__name__)
             if not migration or not migration.is_applied():
                 logger.info("Migration not applied")
                 return
@@ -112,7 +110,7 @@ class CreatingTables(Migration):
         logger.info(f"Dropped tables: {', '.join([table.TABLE_NAME for table in tables])}")
 
 
-class CreateMainTablesMigration(CreatingTables):
+class m220101000001_CreateMainTablesMigration(CreatingTables):
     _tables = [
         User,
         Chat,
@@ -120,20 +118,20 @@ class CreateMainTablesMigration(CreatingTables):
     ]
 
 
-class CreateRolesTablesMigration(CreatingTables):
+class m220101000002_CreateRolesTablesMigration(CreatingTables):
     _tables = [
         Role,
         MemberRole,
     ]
 
 
-class CreateEventsTableMigration(CreatingTables):
+class m220101000003_CreateEventsTableMigration(CreatingTables):
     _tables = [
         QueryEvent,
     ]
 
 
-class CreateTablesForRatingsMigration(CreatingTables):
+class m220101000004_CreateTablesForRatingsMigration(CreatingTables):
     _tables = [
         Rating,
         RatingMember,
@@ -161,7 +159,7 @@ class CreateTablesForRatingsMigration(CreatingTables):
         super().down()
 
 
-class AddMonthRatingMigration(Migration):
+class m220101000005_AddMonthRatingMigration(Migration):
     @Migration.migrate_decorator
     async def up(self):
         migrate(
@@ -199,12 +197,13 @@ class AddMonthRatingMigration(Migration):
         migrate(
             migrator.drop_foreign_key_constraint(Rating.TABLE_NAME, 'last_month_winner_id'),
             migrator.drop_column(Rating.TABLE_NAME, 'last_month_winner_id'),
+            migrator.drop_column(Rating.TABLE_NAME, 'last_month_run'),
             migrator.drop_column(RatingMember.TABLE_NAME, 'month_count'),
             migrator.drop_column(RatingMember.TABLE_NAME, 'current_month_count')
         )
 
 
-class AddInputPeerColumnForChatAndUserMigration(Migration):
+class m220101000006_AddInputPeerColumnForChatAndUserMigration(Migration):
     @Migration.migrate_decorator
     async def up(self):
         await super().up()
@@ -230,7 +229,7 @@ class AddInputPeerColumnForChatAndUserMigration(Migration):
         )
 
 
-class AddAutorunRatingColumnMigration(Migration):
+class m220101000007_AddAutorunRatingColumnMigration(Migration):
     @Migration.migrate_decorator
     async def up(self):
         await super().up()
