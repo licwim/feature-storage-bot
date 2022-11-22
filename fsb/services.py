@@ -227,7 +227,6 @@ class RatingService:
                     member_name=member_name
                 ))
             else:
-                random.seed()
                 pos = random.randint(0, len(members_collection) - 1)
                 run_msg_pos = random.randint(0, len(run_messages) - 1)
                 tg_member, db_member = members_collection[pos]
