@@ -40,10 +40,7 @@ async def day_roll():
 
     ratings_service = RatingService(client)
 
-    for rating in Rating.select():
-        if not rating.autorun:
-            continue
-
+    for rating in Rating.select().where(Rating.autorun):
         if rating.last_run \
                 and rating.last_run >= datetime.today().replace(hour=0, minute=0, second=0, microsecond=0):
             continue

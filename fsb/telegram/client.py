@@ -57,20 +57,20 @@ class TelegramApiClient:
             logger.info("Connection error")
         logger.info("Logout")
 
-    async def send_message(self, entity, message: Any, reply_to: Message = None, force: bool = False, buttons=None):
+    async def send_message(self, entity, message: Any, reply_to: Message = None, force: bool = False, buttons=None, is_file: bool = False):
         try:
             if isinstance(entity, Union[str, int]):
                 entity = await self.get_entity(entity)
             if not force and FSB_DEV_MODE:
-                return await self._send_debug_message(entity, message, reply_to, buttons)
+                return await self._send_debug_message(entity, message, reply_to, buttons, is_file)
             new_message = None
             if isinstance(message, str):
                 message = message.rstrip('\t \n')
-                if message:
-                    new_message = await self._client.send_message(entity=entity, message=message, reply_to=reply_to, buttons=buttons)
-            else:
-                if message:
+            if message:
+                if is_file:
                     new_message = await self._client.send_file(entity=entity, file=message, reply_to=reply_to, buttons=buttons)
+                else:
+                    new_message = await self._client.send_message(entity=entity, message=message, reply_to=reply_to, buttons=buttons)
             return new_message
         except errors.PeerFloodError as e:
             logger.error(f"{entity}: PeerFloodError")
@@ -82,11 +82,11 @@ class TelegramApiClient:
             logger.error(f"{entity}: ValueError")
             raise e
 
-    async def _send_debug_message(self, entity, message: Any, reply_to: Message = None, buttons=None):
+    async def _send_debug_message(self, entity, message: Any, reply_to: Message = None, buttons=None, is_file: bool = False):
         logger.debug(InfoBuilder.build_debug_message_info(entity, message, reply_to))
 
         if entity.id in Config.dev_chats:
-            return await self.send_message(entity, message, reply_to, True, buttons)
+            return await self.send_message(entity, message, reply_to, True, buttons, is_file)
 
     async def get_entity(self, uid: Union[str, int], with_full: bool = True):
         entity = None

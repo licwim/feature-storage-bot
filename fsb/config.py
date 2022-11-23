@@ -7,7 +7,15 @@ from fsb.error import OptionalAttributeError
 from fsb.error import RequiredAttributeError
 
 
-class Config:
+class MetaConfig(type):
+    def __getattr__(cls, key):
+        if key in cls.__annotations__.keys():
+            return None
+        else:
+            raise AttributeError(key)
+
+
+class Config(metaclass=MetaConfig):
     CONFIG_FILE = os.getenv('FSB_CONFIG_FILE')
 
     bot_token: str
@@ -26,6 +34,9 @@ class Config:
     MAX_DB_CONNECTIONS = 10
 
     dev_chats: list
+
+    dudes_sticker_set_name: str
+    dudes_sticker_set_documents_ids: list
 
     REQUIRED_ATTRIBUTES = [
         'bot_token',

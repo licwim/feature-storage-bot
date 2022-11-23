@@ -159,7 +159,7 @@ class InfoBuilder:
                     'type': entity.__class__.__name__,
                 }
             case _:
-                entity_info = entity
+                entity_info = entity.__class__.__name__
 
         if reply_to:
             reply_info = {
@@ -173,6 +173,8 @@ class InfoBuilder:
 
         if isinstance(message, str):
             message = message.replace('\n', '\n ')
+        else:
+            message = message.__class__.__name__
 
         data_info = {
             'entity': entity_info,

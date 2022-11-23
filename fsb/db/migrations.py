@@ -247,3 +247,23 @@ class m220101000007_AddAutorunRatingColumnMigration(Migration):
         migrate(
             migrator.drop_column(Rating.TABLE_NAME, 'autorun')
         )
+
+
+class AlterDudeToChatMigration(Migration):
+    @Migration.migrate_decorator
+    async def up(self):
+        await super().up()
+        migrate(
+            migrator.add_column(
+                Chat.TABLE_NAME,
+                'dude',
+                BooleanField(default=False)
+            )
+        )
+
+    @Migration.rollback_decorator
+    async def down(self):
+        await super().down()
+        migrate(
+            migrator.drop_column(Chat.TABLE_NAME, 'dude')
+        )

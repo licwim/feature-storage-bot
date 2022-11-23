@@ -21,7 +21,7 @@ from fsb.events.roles import RoleQueryEvent
 from fsb.handlers import Handler
 from fsb.handlers.chats import JoinChatHandler
 from fsb.handlers.commands import (
-    StartCommandHandler, PingCommandHandler, EntityInfoCommandHandler, AboutInfoCommandHandler
+    StartCommandHandler, PingCommandHandler, EntityInfoCommandHandler, AboutInfoCommandHandler, WednesdayCommandHandler
 )
 from fsb.handlers.mentions import AllMentionHandler, CustomMentionHandler
 from fsb.handlers.ratings import (
@@ -306,6 +306,12 @@ class CommandController(MessageController):
         await super().handle(event)
         event.area = event.ONLY_CHAT
         await self.run_handler(event, StatRatingCommandHandler)
+
+    @Controller.handle_decorator
+    async def wednesday_handle(self, event: CommandEventDTO):
+        event.command_names = ['wednesday']
+        await super().handle(event)
+        await self.run_handler(event, WednesdayCommandHandler)
 
 
 class MentionController(MessageController):
