@@ -249,7 +249,7 @@ class m220101000007_AddAutorunRatingColumnMigration(Migration):
         )
 
 
-class AlterDudeToChatMigration(Migration):
+class m220101000008_AlterDudeToChatMigration(Migration):
     @Migration.migrate_decorator
     async def up(self):
         await super().up()
