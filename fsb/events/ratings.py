@@ -124,3 +124,7 @@ class ChangeRatingEvent(RatingQueryEvent):
 
 class MenuRatingEvent(RatingQueryEvent):
     pass
+
+
+class DailyRollRatingEvent(RatingQueryEvent):
+    pass

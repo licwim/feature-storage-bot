@@ -1,4 +1,4 @@
 # Monthly rating
 0 10 1 * * root cd /var/app && /usr/local/bin/python -m pipenv run console ratings month-roll 2>>/var/log/cron/month-rating-calc.log
-0 9 1 * * root cd /var/app && /usr/local/bin/python -m pipenv run console ratings day-roll 2>>/var/log/cron/day-rating-roll.log
+0 9 * * * root cd /var/app && /usr/local/bin/python -m pipenv run console ratings day-roll 2>>/var/log/cron/day-rating-roll.log
 * * * * * root cd /var/app && /usr/local/bin/python -m pipenv run console dude-broadcast 2>>/var/log/cron/dude-broadcast.log

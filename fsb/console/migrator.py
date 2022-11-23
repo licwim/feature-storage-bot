@@ -1,8 +1,9 @@
 # !/usr/bin/env python
 
 import inspect
-
 import click
+from convert_case import pascal_case
+from datetime import datetime
 
 from fsb.console import client, exit_with_message
 from fsb.db import migrations
@@ -25,36 +26,37 @@ def get_migrations():
     ))
     class_members.sort(key=lambda m: inspect.getsourcelines(m[1])[1])
 
-    position = 0
-    result = []
+    result = {}
     for migration_name, migration_class in class_members:
-        position += 1
-        migration_class.position = position
-        result.append({
+        result[migration_name] = {
             'cls': migration_class,
             'obj': None,
-        })
+        }
 
     for migration in Migration.select():
-        result[migration.id - 1]['obj'] = migration
+        if migration.title in result.keys():
+            result[migration.title]['obj'] = migration
+        else:
+            result[migration.title] = {
+                'cls': None,
+                'obj': migration
+            }
 
-    return result
+    return [item[1] for item in sorted(result.items(), key=lambda item: item[0])]
 
 
 def get_migration_by_classname(ctx, param, migration_name):
     try:
         migration_list = get_migrations()
-        migration_object = None
+        resulted_migration = None
 
         for migration in migration_list:
             if migration_name == migration['cls'].__name__:
-                if migration['obj']:
-                    migration_object = migration['obj']
-                else:
-                    migration_object = migration['cls'](client)
+                resulted_migration = migration
+                break
 
-        assert isinstance(migration_object, Migration)
-        return migration_object
+        assert issubclass(resulted_migration['cls'], Migration)
+        return resulted_migration
     except AttributeError or AssertionError:
         exit_with_message("Migration not found: " + migration_name)
 
@@ -63,14 +65,14 @@ def get_migration_by_classname(ctx, param, migration_name):
 @click.argument('migration', callback=get_migration_by_classname)
 def action_up(migration: Migration):
     click.echo(f"Migrate {migration.__class__.__name__} ...")
-    migration.up()
+    migration['cls'](client).up()
 
 
 @click.command('down')
 @click.argument('migration', callback=get_migration_by_classname)
 def action_down(migration: Migration):
     click.echo(f"Rollback {migration.__class__.__name__} ...")
-    migration.down()
+    migration['cls'](client).down()
 
 
 @click.command('migrate')
@@ -136,8 +138,30 @@ def action_list():
     click.echo('\n'.join(result))
 
 
+@click.command('create')
+@click.argument('name', type=str)
+def action_create(name):
+    name = datetime.today().strftime('m%y%m%d%H%M%S_') \
+        + pascal_case(name) + 'Migration'
+    filename = inspect.getsourcefile(migrations)
+    up = inspect.getsource(Migration.up)
+    down = inspect.getsource(Migration.down)
+    migration_template = f"\n\nclass {name}(Migration):\n" \
+                         f"    @Migration.migrate_decorator\n" \
+                         f"{up}\n" \
+                         f"    @Migration.rollback_decorator\n" \
+                         f"{down}"
+    click.confirm(f'Create a migration titled {name}?', abort=True)
+    with open(filename, 'a', encoding='utf-8') as fd:
+        if fd.write(migration_template):
+            click.echo('Migration is created.')
+        else:
+            click.echo('Failed.')
+
+
 migrator_cli.add_command(action_up)
 migrator_cli.add_command(action_down)
 migrator_cli.add_command(action_migrate)
 migrator_cli.add_command(action_rollback)
 migrator_cli.add_command(action_list)
+migrator_cli.add_command(action_create)
