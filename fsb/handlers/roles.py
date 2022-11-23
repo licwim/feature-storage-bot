@@ -71,12 +71,16 @@ class RolesSettingsQueryHandler(MenuHandler):
         async with self.client._client.conversation(self.chat) as conv:
             try:
                 params = await self.get_role_params(conv)
+
                 if params:
-                    Role.create(name=params[0], nickname=params[1], chat=params[2]).save()
+                    role_id = Role.create(name=params[0], nickname=params[1], chat=params[2]).save_get_id()
                     await conv.send_message(f"Создана роль: {params[0]} (__{params[1]}__)")
                 else:
                     await conv.send_message("Такая роль уже существует")
                     return
+
+                self.query_event.role_id = role_id
+                await self.action_menu()
             except TimeoutError:
                 await conv.send_message(ConversationTimeoutError.message)
             except InputValueError as ex:

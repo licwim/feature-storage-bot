@@ -279,11 +279,14 @@ class RatingsSettingsQueryHandler(MenuHandler):
                 params = await self.get_rating_params(conv)
 
                 if params:
-                    Rating.create(name=params[0], command=params[1], chat=params[2]).save()
+                    rating_id = Rating.create(name=params[0], command=params[1], chat=params[2]).save_get_id()
                     await conv.send_message(f"Создан рейтинг: {params[0]} (__{params[1]}__)")
                 else:
                     await conv.send_message("Такой рейтинг уже существует")
                     return
+
+                self.query_event.rating_id = rating_id
+                await self.action_menu()
             except TimeoutError:
                 await conv.send_message(ConversationTimeoutError.message)
             except InputValueError as ex:
