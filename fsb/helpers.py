@@ -81,7 +81,7 @@ class InfoBuilder:
                 case 'Chat' | 'Channel':
                     chat_info = {
                         'id': event.chat.id,
-                        'name': event.chat.title,
+                        'title': event.chat.title,
                         'type': event.chat_type,
                         'sender': {
                             'id': event.sender.id,
@@ -105,7 +105,7 @@ class InfoBuilder:
             case 'Chat' | 'Channel':
                 data_info = {
                     'id': entity.id,
-                    'name': entity.title,
+                    'title': entity.title,
                     'type': entity.__class__.__name__,
                 }
             case 'User':
@@ -126,7 +126,7 @@ class InfoBuilder:
             case 'Chat' | 'Channel':
                 entity_info = {
                     'id': entity.id,
-                    'name': entity.title,
+                    'title': entity.title,
                     'type': entity.__class__.__name__,
                 }
             case 'User':
