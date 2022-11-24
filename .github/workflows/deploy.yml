@@ -15,6 +15,7 @@ on:
 jobs:
   prod-deploy:
     runs-on: self-hosted
+    continue-on-error: true
     if: github.event.inputs.stand == 'prod'
     environment: production
     env:
@@ -26,7 +27,7 @@ jobs:
       DB_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
       DOCKER_HUB_USERNAME: licwim
       DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
-      ADMIN_LOCAL_LOCATION: /var/apps/feature_storage_bot/admin
+      ADMIN_LOCAL_LOCATION: /var/apps/feature-storage-bot/admin
       ADMIN_CONTAINER_LOCATION: /var/app/admin
     steps:
     - name: Login to DockerHub
@@ -63,6 +64,7 @@ jobs:
           -e RELEASE=${{ steps.release-info.outputs.release }} \
           -e PIPENV_DOTENV_LOCATION="$ADMIN_CONTAINER_LOCATION/env" \
           -d \
+          --restart on-failure:10 \
           --network "$NETWORK_NAME" \
           --name "$CONTAINER_NAME" \
           "$IMAGE_NAME"
