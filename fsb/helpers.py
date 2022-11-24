@@ -78,18 +78,7 @@ class InfoBuilder:
 
         if isinstance(event, (MessageEventDTO, CallbackQueryEventDTO)):
             match event.chat_type:
-                case 'Chat':
-                    chat_info = {
-                        'id': event.chat.id,
-                        'name': event.chat.name,
-                        'type': event.chat_type,
-                        'sender': {
-                            'id': event.sender.id,
-                            'username': event.sender.username,
-                        },
-                        'input_peer': event.telegram_event.input_chat.to_dict()
-                    }
-                case 'Channel':
+                case 'Chat' | 'Channel':
                     chat_info = {
                         'id': event.chat.id,
                         'title': event.chat.title,
@@ -113,13 +102,7 @@ class InfoBuilder:
     @builder_decorator
     def build_entity_info(entity, view_type: int = None):
         match entity.__class__.__name__:
-            case 'Chat':
-                data_info = {
-                    'id': entity.id,
-                    'name': entity.name,
-                    'type': entity.__class__.__name__,
-                }
-            case 'Channel':
+            case 'Chat' | 'Channel':
                 data_info = {
                     'id': entity.id,
                     'title': entity.title,
@@ -140,13 +123,7 @@ class InfoBuilder:
     @builder_decorator
     def build_debug_message_info(entity, message, reply_to: Message):
         match entity.__class__.__name__:
-            case 'Chat':
-                entity_info = {
-                    'id': entity.id,
-                    'name': entity.name,
-                    'type': entity.__class__.__name__,
-                }
-            case 'Channel':
+            case 'Chat' | 'Channel':
                 entity_info = {
                     'id': entity.id,
                     'title': entity.title,
