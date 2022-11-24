@@ -4,6 +4,7 @@ import json
 import random
 from asyncio import sleep
 from datetime import datetime
+
 from peewee import DoesNotExist
 from telethon.tl.types import InputPeerUser, InputPeerChat, InputPeerChannel
 
@@ -31,7 +32,7 @@ class ChatService:
                 if not input_chat:
                     input_chat = InputPeerUser(entity.id, entity.access_hash).to_json()
             case Chat.CHAT_TYPE:
-                name = entity.name
+                name = entity.title
                 if not input_chat:
                     input_chat = InputPeerChat(entity.id).to_json()
             case Chat.CHANNEL_TYPE:
