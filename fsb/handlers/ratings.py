@@ -120,7 +120,7 @@ class StatRatingCommandHandler(CommandHandler):
             return
 
         message = f"**Результаты {rating.name.upper()} следующего месяца:**\n" if is_month \
-            else f"**Результаты {rating.name.upper()} дня:**\n"
+            else f"**Результаты {rating.name.upper()} дня (месяца):**\n"
         pos = 1
 
         for member in members_collection:
