@@ -31,6 +31,7 @@ class TelegramApiClient:
         self.loop = self._client.loop
         self._relogin_count = 0
         self._current_user = None
+        self.cli = False
 
     def start(self):
         self._client.run_until_disconnected()
@@ -61,8 +62,15 @@ class TelegramApiClient:
         try:
             if isinstance(entity, Union[str, int]):
                 entity = await self.get_entity(entity)
-            if not force and FSB_DEV_MODE:
-                return await self._send_debug_message(entity, message, reply_to, buttons, is_file)
+
+            if FSB_DEV_MODE:
+                logger.debug(InfoBuilder.build_debug_message_info(entity, message, reply_to))
+
+                if not force and entity.id not in Config.dev_chats:
+                    return None
+            elif self.cli:
+                logger.info(InfoBuilder.build_debug_message_info(entity, message, reply_to))
+
             new_message = None
             if isinstance(message, str):
                 message = message.rstrip('\t \n')
@@ -81,12 +89,6 @@ class TelegramApiClient:
         except ValueError as e:
             logger.error(f"{entity}: ValueError")
             raise e
-
-    async def _send_debug_message(self, entity, message: Any, reply_to: Message = None, buttons=None, is_file: bool = False):
-        logger.debug(InfoBuilder.build_debug_message_info(entity, message, reply_to))
-
-        if entity.id in Config.dev_chats:
-            return await self.send_message(entity, message, reply_to, True, buttons, is_file)
 
     async def get_entity(self, uid: Union[str, int], with_full: bool = True):
         entity = None
@@ -161,12 +163,3 @@ class TelegramApiClient:
             members.append(member)
 
         return members
-
-    def sync_get_dialog_members(self, entity, with_bot: bool = False) -> list:
-        return self.loop.run_until_complete(self.get_dialog_members(entity, with_bot))
-
-    def sync_get_entity(self, uid: Union[str, int]):
-        return self.loop.run_until_complete(self.get_entity(uid))
-
-    def sync_send_message(self, entity, message: Any, reply_to: Message = None, force: bool = False, buttons=None):
-        return self.loop.run_until_complete(self.send_message(entity, message, reply_to, force, buttons))
