@@ -4,6 +4,7 @@ from datetime import datetime
 
 from inflection import underscore
 from peewee import DoesNotExist
+from pymorphy3 import MorphAnalyzer
 from telethon import events
 from telethon.tl.custom.button import Button
 
@@ -85,48 +86,57 @@ class RatingCommandHandler(CommandHandler):
 
 class StatRatingCommandHandler(CommandHandler):
     STAT_POSTFIX = 'stat'
+    STAT_ALL_POSTFIX = 'all'
     PIDOR_STAT_COMMAND = RatingCommandHandler.PIDOR_COMMAND + STAT_POSTFIX
     CHAD_STAT_COMMAND = RatingCommandHandler.CHAD_COMMAND + STAT_POSTFIX
-    PIDOR_MONTH_STAT_COMMAND = PIDOR_STAT_COMMAND + RatingCommandHandler.MONTH_POSTFIX
-    CHAD_MONTH_STAT_COMMAND = CHAD_STAT_COMMAND + RatingCommandHandler.MONTH_POSTFIX
+    PIDOR_STAT_ALL_COMMAND = PIDOR_STAT_COMMAND + STAT_ALL_POSTFIX
+    CHAD_STAT_ALL_COMMAND = CHAD_STAT_COMMAND + STAT_ALL_POSTFIX
     STAT_COMMAND = STAT_POSTFIX
-    STAT_MONTH_COMMAND = STAT_COMMAND + RatingCommandHandler.MONTH_POSTFIX
+    STAT_ALL_COMMAND = STAT_COMMAND + STAT_ALL_POSTFIX
 
     async def run(self):
         await super().run()
         match self.command:
-            case self.PIDOR_STAT_COMMAND | self.PIDOR_MONTH_STAT_COMMAND:
+            case self.PIDOR_STAT_COMMAND | self.PIDOR_STAT_ALL_COMMAND:
                 rating_command = RatingService.PIDOR_KEYWORD
-            case self.CHAD_STAT_COMMAND | self.CHAD_MONTH_STAT_COMMAND:
+            case self.CHAD_STAT_COMMAND | self.CHAD_STAT_ALL_COMMAND:
                 rating_command = RatingService.CHAD_KEYWORD
-            case self.STAT_COMMAND | self.STAT_MONTH_COMMAND:
+            case self.STAT_COMMAND | self.STAT_ALL_COMMAND:
                 if not self.args:
                     raise ExitControllerException
                 rating_command = self.args[0]
             case _:
                 raise RuntimeError
 
-        is_month = self.command in [self.PIDOR_MONTH_STAT_COMMAND, self.CHAD_MONTH_STAT_COMMAND, self.STAT_MONTH_COMMAND]
+        is_all = self.command in [self.PIDOR_STAT_ALL_COMMAND, self.CHAD_STAT_ALL_COMMAND, self.STAT_ALL_COMMAND]
         rating = Rating.get(
             Rating.command == rating_command,
             Rating.chat == Chat.get_by_telegram_id(self.chat.id)
         )
 
-        order = RatingMember.month_count.desc() if is_month else RatingMember.count.desc()
+        order = RatingMember.count.desc() if is_all else RatingMember.current_month_count.desc()
         actual_members = await self.client.get_dialog_members(self.chat)
         rating_members = RatingMember.select().where(RatingMember.rating == rating).order_by(order)
         members_collection = Helper.collect_members(actual_members, rating_members)
         if not members_collection:
             return
 
-        message = f"**Результаты {rating.name.upper()} следующего месяца:**\n" if is_month \
-            else f"**Результаты {rating.name.upper()} дня (месяца):**\n"
+        rating_name = MorphAnalyzer(lang='ru').parse(rating.name)[0]
+        rating_name = rating_name.inflect({'gent', 'plur'})
+
+        if rating_name:
+            rating_name = rating_name.word
+        else:
+            rating_name = rating.name
+
+        message = f"**Статистика {rating_name.upper()} __(дни / месяцы)__:**\n" if is_all \
+            else f"**Статистика {rating_name.upper()} этого месяца:**\n"
         pos = 1
 
         for member in members_collection:
             tg_member, db_member = member
-            count_msg = f"{Helper.make_count_str(db_member.current_month_count)}\n" if is_month \
-                     else f"{Helper.make_count_str(db_member.count, db_member.month_count)}\n"
+            count_msg = f"{Helper.make_count_str(db_member.count, db_member.month_count)}\n" if is_all \
+                     else f"{Helper.make_count_str(db_member.current_month_count)}\n"
             message += f"#**{pos}**   {Helper.make_member_name(tg_member)} - {count_msg}"
             pos += 1
         await self.client.send_message(self.chat, message)

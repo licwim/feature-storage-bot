@@ -157,7 +157,7 @@ class Rating(BaseModel):
     id = AutoField()
     name = CharField()
     chat = ForeignKeyField(Chat)
-    command = CharField(null=True)
+    command = CharField()
     last_run = DateTimeField(null=True)
     last_month_run = DateTimeField(null=True)
     last_winner = DeferredForeignKey('RatingMember', null=True, on_delete='SET NULL')

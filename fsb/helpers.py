@@ -215,7 +215,7 @@ class Helper:
         if advanced_count is None:
             advanced_count_msg = ''
         else:
-            advanced_count_msg = f' ({advanced_count})'
+            advanced_count_msg = f' / {advanced_count}'
 
         return f'{count}' + advanced_count_msg + f' {count_word}'
 
