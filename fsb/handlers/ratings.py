@@ -121,8 +121,7 @@ class StatRatingCommandHandler(CommandHandler):
         if not members_collection:
             return
 
-        rating_name = MorphAnalyzer(lang='ru').parse(rating.name)[0]
-        rating_name = rating_name.inflect({'gent', 'plur'})
+        rating_name = MorphAnalyzer(lang='ru').parse(rating.name)[0].inflect({'gent', 'plur'})
 
         if rating_name:
             rating_name = rating_name.word

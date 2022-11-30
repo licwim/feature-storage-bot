@@ -8,6 +8,8 @@ from datetime import datetime
 from peewee import DoesNotExist
 from telethon.tl.types import InputPeerUser, InputPeerChat, InputPeerChannel
 
+from fsb import logger
+from fsb.config import Config
 from fsb.db.models import Chat, User, Member, Rating, RatingMember
 from fsb.helpers import Helper
 from fsb.telegram.client import TelegramApiClient
@@ -102,71 +104,11 @@ class RatingService:
 
     MESSAGE_WAIT = 2
 
-    PIDOR_RUN_MESSAGES = [
-        [
-            '«Великан сидит в пещере», —',
-            'Говорят в лесу все звери.',
-            'Великан голодный ищет,',
-            'Кто ему сгодится в пищу,',
-            'Звери спрятались в кусты —',
-            'Значит, геем будешь ты!',
-        ],
-        [
-            'Вышел месяц из тумана,',
-            'Вынул ножик из кармана.',
-            'Буду резать, буду бить,',
-            'Всё равно ты пидор!',
-        ],
-        [
-            'Шёл котик по лавочке,',
-            'Раздавал булавочки.',
-            'Шёл по скамеечке —',
-            'Раздавал копеечки:',
-            'Кому десять, кому пять —',
-            'Выходи, ПИДОР!',
-        ],
-        [
-            'Высоко‑превысоко',
-            'Кинул я свой мяч легко.',
-            'Но упал мой мяч с небес,',
-            'Закатился в тёмный лес.',
-            'Раз, два, три, четыре, пять,',
-            'Пидора иду искать.',
-
-        ],
-        [
-            'На печи калачи,',
-            'Как огонь, горячи.',
-            'Пришёл мальчик,',
-            'Обжёг пальчик.',
-            'Пошёл на базар,',
-            'Пидором стал.',
-        ],
-        [
-            'Вдаль бежит река лесная,',
-            'Вдоль неё растут кусты.',
-            'Всех в игру я приглашаю,',
-            'Мы играем — пидор ты!',
-        ]
-    ]
-
-    CHAD_RUN_MESSAGES = [
-        [
-            'Сидел король на лавочке,',
-            'Считал свои булавочки:',
-            '«Раз, два, три»',
-            'Королевой будешь ты!',
-
-        ],
-    ]
-
-    CUSTOM_RUN_MESSAGES = [
-        [
-            'На окне стоит бутылка,',
-            'А в бутылке лимонад.',
-            'Кто скорей возьмёт бутылку,',
-            'Тот победе будет рад.',
-        ],
+    RUN_MESSAGE = [
+        'На окне стоит бутылка,',
+        'А в бутылке лимонад.',
+        'Кто скорей возьмёт бутылку,',
+        'Тот победе будет рад.',
     ]
 
     WINNER_MESSAGE_PATTERN = "Сегодня {msg_name} дня - {member_name}!"
@@ -179,11 +121,27 @@ class RatingService:
     async def roll(self, rating: Rating, chat, is_month: bool = False):
         match rating.command:
             case self.PIDOR_KEYWORD:
-                run_messages = self.PIDOR_RUN_MESSAGES
+                run_messages_file = Config.pidor_messages_file
             case self.CHAD_KEYWORD:
-                run_messages = self.CHAD_RUN_MESSAGES
+                run_messages_file = Config.chad_messages_file
             case _:
-                run_messages = self.CUSTOM_RUN_MESSAGES
+                run_messages_file = Config.custom_rating_messages_file
+
+        try:
+            with open(run_messages_file, 'r') as file:
+                run_messages = []
+                run_message = []
+
+                for line in file.readlines():
+                    if line == '\n':
+                        if run_message:
+                            run_messages.append(run_message)
+                            run_message = []
+                    else:
+                        run_message.append(line.strip('\n '))
+        except Exception as ex:
+            logger.exception(ex)
+            run_messages = [self.RUN_MESSAGE]
 
         actual_members = await self.client.get_dialog_members(chat)
         rating_members = RatingMember.select().where(RatingMember.rating == rating)
