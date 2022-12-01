@@ -114,27 +114,22 @@ class StatRatingCommandHandler(CommandHandler):
             Rating.chat == Chat.get_by_telegram_id(self.chat.id)
         )
 
-        order = RatingMember.count.desc() if is_all else RatingMember.current_month_count.desc()
+        order = RatingMember.total_count.desc() if is_all else RatingMember.current_month_count.desc()
         actual_members = await self.client.get_dialog_members(self.chat)
         rating_members = RatingMember.select().where(RatingMember.rating == rating).order_by(order)
         members_collection = Helper.collect_members(actual_members, rating_members)
+
         if not members_collection:
             return
 
-        rating_name = MorphAnalyzer(lang='ru').parse(rating.name)[0].inflect({'gent', 'plur'})
-
-        if rating_name:
-            rating_name = rating_name.word
-        else:
-            rating_name = rating.name
-
+        rating_name = Helper.inflect_word(rating.name, {'gent', 'plur'})
         message = f"**Статистика {rating_name.upper()} __(дни / месяцы)__:**\n" if is_all \
             else f"**Статистика {rating_name.upper()} этого месяца:**\n"
         pos = 1
 
         for member in members_collection:
             tg_member, db_member = member
-            count_msg = f"{Helper.make_count_str(db_member.count, db_member.month_count)}\n" if is_all \
+            count_msg = f"{Helper.make_count_str(db_member.total_count, db_member.month_count)}\n" if is_all \
                      else f"{Helper.make_count_str(db_member.current_month_count)}\n"
             message += f"#**{pos}**   {Helper.make_member_name(tg_member)} - {count_msg}"
             pos += 1

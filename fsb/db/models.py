@@ -189,7 +189,7 @@ class RatingMember(BaseModel):
     id = AutoField()
     member = ForeignKeyField(Member, on_delete='CASCADE')
     rating = ForeignKeyField(Rating, on_delete='CASCADE')
-    count = IntegerField(default=0)
+    total_count = IntegerField(default=0)
     month_count = IntegerField(default=0)
     current_month_count = IntegerField(default=0)
     created_at = DateTimeField(default=datetime.now())
