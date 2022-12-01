@@ -300,8 +300,8 @@ class CommandController(MessageController):
     async def ratings_stats_handle(self, event: CommandEventDTO):
         event.command_names = [
             StatRatingCommandHandler.PIDOR_STAT_COMMAND, StatRatingCommandHandler.CHAD_STAT_COMMAND,
-            StatRatingCommandHandler.PIDOR_MONTH_STAT_COMMAND, StatRatingCommandHandler.CHAD_MONTH_STAT_COMMAND,
-            StatRatingCommandHandler.STAT_COMMAND, StatRatingCommandHandler.STAT_MONTH_COMMAND,
+            StatRatingCommandHandler.PIDOR_STAT_ALL_COMMAND, StatRatingCommandHandler.CHAD_STAT_ALL_COMMAND,
+            StatRatingCommandHandler.STAT_COMMAND, StatRatingCommandHandler.STAT_ALL_COMMAND,
         ]
         await super().handle(event)
         event.area = event.ONLY_CHAT

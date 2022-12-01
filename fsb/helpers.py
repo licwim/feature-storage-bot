@@ -1,7 +1,9 @@
 # !/usr/bin/env python
 
+from datetime import datetime
 import json
 from typing import Union, Iterable
+from pymorphy3 import MorphAnalyzer
 
 import yaml
 from telethon.tl.custom.button import Button
@@ -169,6 +171,9 @@ class InfoBuilder:
 
 
 class Helper:
+    MONTHS = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь',
+           'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь']
+
     @staticmethod
     def make_member_name(member, with_username: bool = True, with_mention: bool = False):
         first_name = member.first_name if member.first_name else ''
@@ -215,7 +220,7 @@ class Helper:
         if advanced_count is None:
             advanced_count_msg = ''
         else:
-            advanced_count_msg = f' ({advanced_count})'
+            advanced_count_msg = f' / {advanced_count}'
 
         return f'{count}' + advanced_count_msg + f' {count_word}'
 
@@ -233,3 +238,28 @@ class Helper:
         if closing_button and len(closing_button) >= 2:
             buttons.append([Button.inline(closing_button[0], closing_button[1])])
         return buttons
+
+    @staticmethod
+    def inflect_word(word, grammemes):
+        inflected_word = MorphAnalyzer(lang='ru').parse(word)[0].inflect(grammemes)
+
+        if inflected_word:
+            result = inflected_word.word
+        else:
+            result = word
+
+        return result
+
+    @staticmethod
+    def get_month_name(month: int = None, grammemes = None):
+        if not month:
+            month = datetime.now().month
+
+        month_name = Helper.MONTHS[month - 1]
+
+        if grammemes:
+            result = Helper.inflect_word(month_name, grammemes)
+        else:
+            result = month_name
+
+        return result

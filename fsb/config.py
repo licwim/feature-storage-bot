@@ -10,7 +10,14 @@ from fsb.error import RequiredAttributeError
 class MetaConfig(type):
     def __getattr__(cls, key):
         if key in cls.__annotations__.keys():
-            return None
+            if cls.__annotations__[key] == list:
+                value = []
+            elif cls.__annotations__[key] == dict:
+                value = {}
+            else:
+                value = None
+
+            return value
         else:
             raise AttributeError(key)
 
@@ -37,6 +44,10 @@ class Config(metaclass=MetaConfig):
 
     dudes_sticker_set_name: str
     dudes_sticker_set_documents_ids: list
+
+    pidor_messages_file: str
+    chad_messages_file: str
+    custom_rating_messages_file: str
 
     REQUIRED_ATTRIBUTES = [
         'bot_token',
