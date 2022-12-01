@@ -129,10 +129,8 @@ class MessageController(Controller):
 
     async def _init_filter(self, event: MessageEventDTO):
         await super()._init_filter(event)
-        if event.debug and event.sender.username not in Config.contributors:
-            raise ExitControllerException(self._controller_name, "Debug handler. Sender not in contributors")
-
-        if (event.message.out and not self._from_bot) or (not event.message.out and not self._from_user):
+        if (event.debug and event.sender.username not in Config.contributors) \
+                or (event.message.out and not self._from_bot) or (not event.message.out and not self._from_user):
             raise ExitControllerException
 
     async def handle(self, event: MessageEventDTO):
