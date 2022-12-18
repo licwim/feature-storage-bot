@@ -1,9 +1,9 @@
 # !/usr/bin/env python
 
-import random
 from time import sleep
 
 import click
+from quantumrand import randint
 from telethon.tl.functions.messages import GetStickerSetRequest
 from telethon.tl.types import InputStickerSetShortName
 
@@ -37,7 +37,7 @@ async def dude_broadcast():
     if sticker_set_name and stickers_ids:
         sticker_set = await client.request(GetStickerSetRequest(InputStickerSetShortName(sticker_set_name)))
         stickers = [sticker for sticker in sticker_set.documents if sticker.id in stickers_ids]
-        message = stickers[random.randint(0, len(stickers) - 1)]
+        message = stickers[randint(0, len(stickers) - 1)]
         is_file = True
     else:
         message = 'It is Wednesday, my dudes!'

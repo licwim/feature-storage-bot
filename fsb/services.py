@@ -1,11 +1,11 @@
 # !/usr/bin/env python
 
 import json
-import random
 from asyncio import sleep
 from datetime import datetime
 
 from peewee import DoesNotExist, fn
+from quantumrand import randint
 from telethon.tl.types import InputPeerUser, InputPeerChat, InputPeerChannel
 
 from fsb import logger
@@ -164,7 +164,7 @@ class RatingService:
                         month_name=Helper.get_month_name(datetime.now().month - 1, {'loct'}),
                     ))
                 await self._send_rolling_message(rating, chat)
-                pos = random.randint(0, winners_len - 1)
+                pos = randint(0, winners_len - 1)
                 win_tg_member, win_db_member = winners[pos]
             elif winners_len == 1:
                 win_tg_member, win_db_member = winners[0]
@@ -194,7 +194,7 @@ class RatingService:
                 member_name=member_name
             ))
         else:
-            pos = random.randint(0, len(members_collection) - 1)
+            pos = randint(0, len(members_collection) - 1)
             tg_member, db_member = members_collection[pos]
             db_member.total_count += 1
             db_member.current_month_count += 1
@@ -263,7 +263,7 @@ class RatingService:
             logger.exception(ex)
             run_messages = [self.RUN_MESSAGE]
 
-        run_msg_pos = random.randint(0, len(run_messages) - 1)
+        run_msg_pos = randint(0, len(run_messages) - 1)
         message = await self.client.send_message(entity=chat, message='Итаааааак...')
         await sleep(self.MESSAGE_WAIT)
         text = ''

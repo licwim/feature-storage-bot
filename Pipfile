@@ -19,6 +19,7 @@ anyio = "==3.6.1"
 convert_case = "==1.1.1"
 pymorphy3 = "==1.1.0"
 pymorphy3-dicts-ru = ">=2.4.0,<3.0.0"
+quantumrand = "==2.2.0"
 
 [requires]
 python_version = "3.10"
