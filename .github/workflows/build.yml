@@ -15,7 +15,6 @@ on:
 jobs:
   build:
     runs-on: self-hosted
-    environment: build
     env:
       DOCKER_HUB_USERNAME: licwim
       DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
