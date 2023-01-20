@@ -1,34 +1,24 @@
 version: '3.3'
 services:
   fsb-app:
-    image: licwim/feature-storage-bot:${TAG:-master}
+#    image: licwim/feature-storage-bot:master
+    build: .
     volumes:
-      - /var/apps/feature-storage-bot/admin:/var/app/admin
-    logging:
-      driver: "journald"
-    labels:
-      branch: ${BRANCH}
-    networks:
-      - fsb-network
-    deploy:
-      restart_policy:
-        condition: on-failure
-        max_attempts: 10
-        window: 10s
+      - ./:/var/app
+      - /var/app/.venv/
     environment:
       - DB_HOST=fsb-db
       - DB_NAME=feature_storage
-      - DB_USER=fsb-app-user
-      - DB_PASSWORD=${DB_PASSWORD}
-      - FSB_CONFIG_FILE=/var/app/admin/config.json
-      - BOT_TOKEN=${BOT_TOKEN}
-      - API_ID=${API_ID}
-      - API_HASH=${API_HASH}
-      - BUILD_VERSION=${BUILD_VERSION}
-      - RELEASE=${RELEASE}
-      - FSB_DEV_MODE=0
+      - DB_USER=root
+      - DB_PASSWORD=111111
+      - FSB_CONFIG_FILE=/var/app/config.json
 
-networks:
-  fsb-network:
-    external:
-      name: feature-storage-bot-network
+  fsb-db:
+    image: mysql/mysql-server:latest
+    volumes:
+      - fsb-db:/var/lib/mysql
+    ports:
+      - 3306:3306
+
+volumes:
+  fsb-db:

@@ -19,12 +19,16 @@ jobs:
     if: github.event.inputs.stand == 'prod'
     environment: production
     env:
+      CONTAINER_NAME: fsb-app
+      NETWORK_NAME: feature-storage-bot-network
       BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       API_ID: ${{ secrets.TELEGRAM_API_ID }}
       API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
       DB_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
       DOCKER_HUB_USERNAME: licwim
       DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
+      ADMIN_LOCAL_LOCATION: /var/apps/feature-storage-bot/admin
+      ADMIN_CONTAINER_LOCATION: /var/app/admin
     steps:
     - name: Login to DockerHub
       uses: docker/login-action@v2
@@ -38,8 +42,7 @@ jobs:
         repository: ${{ github.repository }}
     - name: Start app container
       env:
-        RELEASE: ${{ steps.release-info.outputs.release }}
-        BRANCH: ${{ github.ref_name }}
+        IMAGE_NAME: ${{ env.IMAGE_NAME }}
       run: |
         TAG=$(echo "${{ github.ref_name }}" | sed 's|/|-|g')
         IMAGE_NAME="${{ github.repository }}:$TAG"
@@ -47,5 +50,23 @@ jobs:
         docker pull "$IMAGE_NAME"
         BUILD_VERSION=$(docker image inspect "$IMAGE_NAME" --format='{{.Config.Labels.build}}')
         echo "BUILD_VERSION = $BUILD_VERSION"
-        docker compose down
-        docker compose up -d
+        docker stop "$CONTAINER_NAME" || true
+        docker rm "$CONTAINER_NAME" || true
+        docker run \
+          --log-driver=journald \
+          --label branch=${{ github.ref_name }} \
+          -v "$ADMIN_LOCAL_LOCATION":"$ADMIN_CONTAINER_LOCATION" \
+          -e BOT_TOKEN="$BOT_TOKEN" \
+          -e API_ID="$API_ID" \
+          -e API_HASH="$API_HASH" \
+          -e DB_PASSWORD="$DB_PASSWORD" \
+          -e BUILD_VERSION="$BUILD_VERSION" \
+          -e RELEASE=${{ steps.release-info.outputs.release }} \
+          -e PIPENV_DOTENV_LOCATION="$ADMIN_CONTAINER_LOCATION/env" \
+          -d \
+          --restart on-failure:10 \
+          --network "$NETWORK_NAME" \
+          --name "$CONTAINER_NAME" \
+          "$IMAGE_NAME"
+    - name: Prune unused images
+      run: docker image prune -af
