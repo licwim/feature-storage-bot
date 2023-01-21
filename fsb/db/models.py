@@ -5,15 +5,19 @@ import sys
 from datetime import datetime
 from typing import Union
 
-from peewee import AutoField, DoesNotExist
-from peewee import CharField
-from peewee import CompositeKey
-from peewee import DateTimeField
-from peewee import DeferredForeignKey
-from peewee import ForeignKeyField
-from peewee import IntegerField
-from peewee import Model
-from peewee import TextField
+from peewee import (
+    AutoField,
+    DoesNotExist,
+    CharField,
+    CompositeKey,
+    DateTimeField,
+    DeferredForeignKey,
+    ForeignKeyField,
+    IntegerField,
+    Model,
+    TextField,
+    BooleanField,
+)
 
 from fsb.db import base_db
 from fsb.error import InputValueError
@@ -46,6 +50,11 @@ class User(BaseModel):
     name = CharField(null=True)
     nickname = CharField(null=True)
     phone = CharField(null=True)
+    input_peer = TextField(null=True)
+
+    @staticmethod
+    def get_by_telegram_id(telegram_id: Union[int, str]) -> 'User':
+        return User.get(User.telegram_id == telegram_id)
 
 
 class Chat(BaseModel):
@@ -59,6 +68,8 @@ class Chat(BaseModel):
     telegram_id = IntegerField(unique=True)
     name = CharField(null=True)
     type = IntegerField()
+    input_peer = TextField(null=True)
+    dude = BooleanField(default=False)
 
     @staticmethod
     def get_chat_type(chat):
@@ -73,6 +84,10 @@ class Chat(BaseModel):
                 chat_type = 0
 
         return chat_type
+
+    @staticmethod
+    def get_by_telegram_id(telegram_id: Union[int, str]) -> 'Chat':
+        return Chat.get(Chat.telegram_id == telegram_id)
 
 
 class Member(BaseModel):
@@ -115,6 +130,10 @@ class Role(BaseModel):
 
         return name, nickname
 
+    @staticmethod
+    def find_by_chat(chat: Chat):
+        return Role.select().where(Role.chat == chat)
+
 
 class MemberRole(BaseModel):
     TABLE_NAME = 'chats_members_roles'
@@ -140,16 +159,39 @@ class Rating(BaseModel):
     chat = ForeignKeyField(Chat)
     command = CharField(null=True)
     last_run = DateTimeField(null=True)
+    last_month_run = DateTimeField(null=True)
     last_winner = DeferredForeignKey('RatingMember', null=True, on_delete='SET NULL')
+    last_month_winner = DeferredForeignKey('RatingMember', null=True, on_delete='SET NULL')
+    autorun = BooleanField(default=False)
+
+    @staticmethod
+    def parse_from_message(message: str) -> tuple:
+        message = message.split(',')
+
+        if len(message) >= 2:
+            command = message[0].strip(' \n\t').lower()
+            name = message[1].strip(' \n\t')
+        elif len(message) >= 1:
+            command = name = message[0].strip(' \n\t')
+            command = command.lower()
+        else:
+            name = command = None
+
+        if not name or not command:
+            raise InputValueError
+
+        return command, name
 
 
 class RatingMember(BaseModel):
     TABLE_NAME = 'ratings_members'
 
     id = AutoField()
-    member = ForeignKeyField(Member)
-    rating = ForeignKeyField(Rating)
+    member = ForeignKeyField(Member, on_delete='CASCADE')
+    rating = ForeignKeyField(Rating, on_delete='CASCADE')
     count = IntegerField(default=0)
+    month_count = IntegerField(default=0)
+    current_month_count = IntegerField(default=0)
     created_at = DateTimeField(default=datetime.now())
 
     def get_telegram_id(self):
@@ -168,9 +210,9 @@ class QueryEvent(BaseModel):
     data = TextField(null=True)
     created_at = DateTimeField(default=datetime.now())
 
-    def __init__(self, sender: int = None, data_value=None, *args, **kwargs):
+    def __init__(self, sender_id: int = None, data_value=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.sender = sender
+        self.sender_id = sender_id
         self._data_value = data_value
         if '__no_default__' not in kwargs:
             self.module_name = self.__class__.__module__
@@ -186,14 +228,14 @@ class QueryEvent(BaseModel):
 
     def to_dict(self) -> dict:
         return {
-            'sender': self.sender,
+            'sender_id': self.sender_id,
             'data': self._data_value
         }
 
     @classmethod
     def normalize_data_dict(cls, data_dict: dict) -> dict:
-        if 'sender' not in data_dict:
-            data_dict['sender'] = None
+        if 'sender_id' not in data_dict:
+            data_dict['sender_id'] = None
         if 'data' not in data_dict:
             data_dict['data'] = None
         return data_dict
@@ -201,7 +243,7 @@ class QueryEvent(BaseModel):
     @classmethod
     def from_dict(cls, data_dict: dict) -> 'QueryEvent':
         data_dict = cls.normalize_data_dict(data_dict)
-        return cls(data_dict['sender'], data_dict['data'])
+        return cls(data_dict['sender_id'], data_dict['data'])
 
     @classmethod
     def find_and_create(cls, id: int) -> Union['QueryEvent', None]:

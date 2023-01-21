@@ -1,89 +1,64 @@
 # !/usr/bin/env python
 
-from typing import Union
-
 from telethon.tl.functions.users import GetFullUserRequest
 
-from fsb.error import ExitHandlerException
-from fsb.handlers import Handler
-from fsb.handlers import MessageHandler
+from fsb.db.models import Chat
+from fsb.handlers import CommandHandler
 from fsb.helpers import InfoBuilder
-from fsb.telegram.client import TelegramApiClient
+from fsb.services import ChatService, RatingService
 
 
-class BaseCommand(MessageHandler):
-    PREFIX = '/'
+class StartCommandHandler(CommandHandler):
+    async def run(self):
+        await super().run()
 
-    def __init__(self, client: TelegramApiClient, names: Union[str, list]):
-        super().__init__(client)
-        if isinstance(names, str):
-            self.names = [names]
-        else:
-            self.names = names
-        self.command = None
-        self.args = []
-
-    async def _init_filter(self, event):
-        await super()._init_filter(event)
-        if self.message.text:
-            args = self.message.text.split(' ')
-            command = args[0].replace(f'@{self._client._current_user.username}', '').replace(self.PREFIX, '', 1)
-            if args[0].startswith(self.PREFIX) and command in self.names:
-                args.pop(0)
-                self.args = args
-                self.command = command
-                return
-        raise ExitHandlerException
+        chat_service = ChatService(self.client)
+        rating_service = RatingService(self.client)
+        chat = await chat_service.create_chat(event=self.telegram_event, update=True)
+        rating_service.create_system_ratings(chat)
 
 
-class StartCommand(BaseCommand):
-    def __init__(self, client: TelegramApiClient):
-        super().__init__(client, 'start')
-
-    @Handler.handle_decorator
-    async def handle(self, event):
-        await super().handle(event)
-        await self._client.send_message(self.entity, "Ну дарова!")
+class PingCommandHandler(CommandHandler):
+    async def run(self):
+        await super().run()
+        await self.client.send_message(self.chat, 'pong')
 
 
-class PingCommand(BaseCommand):
-    def __init__(self, client: TelegramApiClient):
-        super().__init__(client, 'ping')
-
-    @Handler.handle_decorator
-    async def handle(self, event):
-        await super().handle(event)
-        await self._client.send_message(self.entity, 'pong')
-
-
-class EntityInfoCommand(BaseCommand):
-    def __init__(self, client: TelegramApiClient):
-        super().__init__(client, 'entityinfo')
-        self._debug = True
-
-    @Handler.handle_decorator
-    async def handle(self, event):
-        await super().handle(event)
+class EntityInfoCommandHandler(CommandHandler):
+    async def run(self):
+        await super().run()
         self.args = ['this'] if not self.args else self.args
         entity_uid = ' '.join(self.args)
         try:
             entity_uid = int(entity_uid)
         except ValueError:
             pass
-        entity = event.chat if entity_uid == 'this' else await self._client.get_entity(entity_uid)
-        await self._client.send_message(
-            self.entity,
+        entity = self.chat if entity_uid == 'this' else await self.client.get_entity(entity_uid)
+        await self.client.send_message(
+            self.chat,
             InfoBuilder.build_entity_info(entity, view_type=InfoBuilder.YAML)
         )
 
 
-class AboutInfoCommand(BaseCommand):
-    def __init__(self, client: TelegramApiClient):
-        super().__init__(client, 'about')
+class AboutInfoCommandHandler(CommandHandler):
+    async def run(self):
+        await super().run()
+        bot = await self.client.request(GetFullUserRequest(self.client._current_user))
+        await self.client.send_message(self.chat, InfoBuilder.build_about_info(bot))
 
-    @Handler.handle_decorator
-    async def handle(self, event):
-        await super().handle(event)
 
-        bot = await self._client.request(GetFullUserRequest(self._client._current_user))
-        await self._client.send_message(self.entity, InfoBuilder.build_about_info(bot))
+class WednesdayCommandHandler(CommandHandler):
+    MESSAGE_PATTERN = 'Дюдсовая среда теперь {state}!'
+
+    async def run(self):
+        await super().run()
+        chat = Chat.get_by_telegram_id(self.chat.id)
+        chat.dude = not chat.dude
+        chat.save()
+
+        if chat.dude:
+            message = self.MESSAGE_PATTERN.format(state='ВКЛЮЧЕНА')
+        else:
+            message = self.MESSAGE_PATTERN.format(state='ВЫКЛЮЧЕНА')
+
+        await self.client.send_message(self.chat, message)
