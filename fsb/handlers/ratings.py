@@ -1,10 +1,10 @@
 # !/usr/bin/env python
 
+from asyncio.exceptions import TimeoutError
 from datetime import datetime
 
 from inflection import underscore
 from peewee import DoesNotExist
-from pymorphy3 import MorphAnalyzer
 from telethon import events
 from telethon.tl.custom.button import Button
 
