@@ -41,8 +41,6 @@ jobs:
       with:
         repository: ${{ github.repository }}
     - name: Start app container
-      env:
-        IMAGE_NAME: ${{ env.IMAGE_NAME }}
       run: |
         TAG=$(echo "${{ github.ref_name }}" | sed 's|/|-|g')
         IMAGE_NAME="${{ github.repository }}:$TAG"
@@ -63,10 +61,9 @@ jobs:
           -e BUILD_VERSION="$BUILD_VERSION" \
           -e RELEASE=${{ steps.release-info.outputs.release }} \
           -e PIPENV_DOTENV_LOCATION="$ADMIN_CONTAINER_LOCATION/env" \
+          -e TZ="Europe/Moscow" \
           -d \
           --restart on-failure:10 \
           --network "$NETWORK_NAME" \
           --name "$CONTAINER_NAME" \
           "$IMAGE_NAME"
-    - name: Prune unused images
-      run: docker image prune -af

@@ -16,6 +16,7 @@ class StartCommandHandler(CommandHandler):
         rating_service = RatingService(self.client)
         chat = await chat_service.create_chat(event=self.telegram_event, update=True)
         rating_service.create_system_ratings(chat)
+        await self.client.send_message(self.chat, 'OK')
 
 
 class PingCommandHandler(CommandHandler):
