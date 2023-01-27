@@ -11,7 +11,7 @@ from peewee import DoesNotExist
 from fsb import logger
 from fsb.config import Config
 from fsb.db.models import QueryEvent, Role, Chat
-from fsb.error import ExitControllerException
+from fsb.errors import ExitControllerException
 from fsb.events.common import (
     EventDTO, MessageEventDTO, CallbackQueryEventDTO, MenuEventDTO, ChatActionEventDTO, CommandEventDTO,
     MentionEventDTO

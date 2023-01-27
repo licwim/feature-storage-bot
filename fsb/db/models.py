@@ -20,7 +20,7 @@ from peewee import (
 )
 
 from fsb.db import base_db
-from fsb.error import InputValueError
+from fsb.errors import InputValueError
 
 
 class BaseModel(Model):

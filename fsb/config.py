@@ -3,8 +3,8 @@ import json
 import os
 from logging import Logger
 
-from fsb.error import OptionalAttributeError
-from fsb.error import RequiredAttributeError
+from fsb.errors import OptionalAttributeError
+from fsb.errors import RequiredAttributeError
 
 
 class MetaConfig(type):
