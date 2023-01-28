@@ -1,9 +1,9 @@
 # !/usr/bin/env python
 
+from random import randint
 from time import sleep
 
 import click
-from quantumrand import randint
 from telethon.tl.functions.messages import GetStickerSetRequest
 from telethon.tl.types import InputStickerSetShortName
 

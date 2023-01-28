@@ -1,11 +1,12 @@
 # !/usr/bin/env python
 
-from datetime import datetime
 import json
+from datetime import datetime
+from threading import Thread
 from typing import Union, Iterable
-from pymorphy3 import MorphAnalyzer
 
 import yaml
+from pymorphy3 import MorphAnalyzer
 from telethon.tl.custom.button import Button
 from telethon.tl.patched import Message
 
@@ -263,3 +264,18 @@ class Helper:
             result = month_name
 
         return result
+
+
+class ReturnedThread(Thread):
+    TIMEOUT = 60
+    result = None
+
+    def run(self):
+        try:
+            if self._target is not None:
+                self.result = self._target(*self._args, **self._kwargs)
+        finally:
+            del self._target, self._args, self._kwargs
+
+    def join(self, timeout=TIMEOUT):
+        super().join(timeout)
