@@ -54,9 +54,19 @@ class User(BaseModel):
     phone = CharField(null=True)
     input_peer = TextField(null=True)
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.telegram_member = None
+
     @staticmethod
     def get_by_telegram_id(telegram_id: Union[int, str]) -> 'User':
         return User.get(User.telegram_id == telegram_id)
+
+    async def get_telegram_member(self, client):
+        if self.telegram_member is None:
+            self.telegram_member = await client.get_entity(self.telegram_id)
+
+        return self.telegram_member
 
 
 MemberDeferred = DeferredThroughModel()
@@ -110,6 +120,9 @@ class Member(BaseModel):
             telegram_id = self.user.telegram_id
         return telegram_id
 
+    async def get_telegram_member(self, client):
+        return await self.user.get_telegram_member(client)
+
 
 MemberDeferred.set_model(Member)
 
@@ -158,6 +171,9 @@ class MemberRole(BaseModel):
         if self.member:
             telegram_id = self.member.user.telegram_id
         return telegram_id
+
+    async def get_telegram_member(self, client):
+        return await self.member.user.get_telegram_member(client)
 
 
 class Rating(BaseModel):
@@ -222,6 +238,9 @@ class RatingMember(BaseModel):
         if self.member:
             telegram_id = self.member.user.telegram_id
         return telegram_id
+
+    async def get_telegram_member(self, client):
+        return await self.member.user.get_telegram_member(client)
 
 
 class QueryEvent(BaseModel):

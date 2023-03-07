@@ -1,7 +1,6 @@
 # !/usr/bin/env python
 
 from asyncio.exceptions import TimeoutError
-from datetime import datetime
 
 from inflection import underscore
 from peewee import DoesNotExist
@@ -75,13 +74,16 @@ class RatingCommandHandler(CommandHandler):
             Rating.chat == Chat.get_by_telegram_id(self.chat.id)
         )
 
-        if is_month \
-                and (not rating.last_month_winner \
-                or not rating.last_month_run \
-                or rating.last_month_run < datetime.today().replace(hour=0, minute=0, second=0, microsecond=0, day=1)):
-            await self.client.send_message(self.chat, f"{rating.name.upper()} этого месяца еще не объявился.")
+        if is_month:
+            if ratings_service.get_month_winner(rating):
+                await ratings_service.send_last_month_winner_message(rating, self.chat)
+            else:
+                await self.client.send_message(self.chat, f"{rating.name.upper()} этого месяца еще не объявился.")
         else:
-            await ratings_service.roll(rating, self.chat, is_month)
+            if ratings_service.get_day_winner(rating):
+                await ratings_service.send_last_day_winner_message(rating, self.chat)
+            else:
+                await self.client.send_message(self.chat, f"Сегодняшний {rating.name.upper()} еще не объявился.")
 
 
 class StatRatingCommandHandler(CommandHandler):

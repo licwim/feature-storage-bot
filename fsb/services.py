@@ -6,7 +6,7 @@ from asyncio import sleep
 from datetime import datetime
 
 import quantumrand as qr
-from peewee import DoesNotExist, fn
+from peewee import fn
 from telethon.tl.types import InputPeerUser, InputPeerChat, InputPeerChannel
 
 from fsb import logger
@@ -114,10 +114,9 @@ class RatingService:
 
     WINNER_MESSAGE_PATTERN = "Сегодня {rating_name} дня - {member_name}!"
     MONTH_WINNER_MESSAGE_PATTERN = "{rating_name} {month_name} - {member_name}!"
-    UNKNOWN_PERSON = "__какой-то неизвестный хер__"
     FEW_MONTH_WINNERS_MESSAGE_PATTERN = 'В {month_name} оказалось несколько лидирующих {rating_name}, но придется выбрать одного.'
-    NO_MEMBERS = 'Не из кого выбирать'
-    NO_NON_WINNER_MEMBERS = 'Похоже сегодня больше никто не достоин быть лидером'
+    NO_MEMBERS = 'Не из кого выбирать.'
+    NO_NON_WINNER_MEMBERS = 'Похоже сегодня больше никто не достоин быть лидером среди {rating_name}.'
 
     def __init__(self, client: TelegramApiClient):
         self.client = client
@@ -132,7 +131,8 @@ class RatingService:
         members_collection = Helper.collect_members(actual_members, rating_members)
 
         if not members_collection:
-            await self.client.send_message(chat, self.NO_NON_WINNER_MEMBERS)
+            rating_name = Helper.inflect_word(rating.name, {'gent', 'plur'})
+            await self.client.send_message(chat, self.NO_NON_WINNER_MEMBERS.format(rating_name=rating_name.upper()))
             return
 
         if is_month:
@@ -141,15 +141,8 @@ class RatingService:
             await self._day_roll(members_collection, rating, chat)
 
     async def _month_roll(self, members_collection: list, rating: Rating, chat):
-        if rating.last_month_winner \
-                and rating.last_month_run \
-                and rating.last_month_run >= datetime.today().replace(hour=0, minute=0, second=0, microsecond=0, day=1):
-            member_name = self._get_last_winner_name(rating.last_month_winner, members_collection)
-            await self.client.send_message(chat, self.MONTH_WINNER_MESSAGE_PATTERN.format(
-                rating_name=rating.name.upper(),
-                member_name=member_name,
-                month_name=Helper.get_month_name(datetime.now().month - 1, {'gent'}),
-            ))
+        if self.get_month_winner(rating):
+            await self.send_last_month_winner_message(rating, chat)
         else:
             win_count = RatingMember.select(fn.MAX(RatingMember.current_month_count))\
                 .where(RatingMember.rating == rating).scalar()
@@ -177,28 +170,17 @@ class RatingService:
             else:
                 return
 
-            member_name = Helper.make_member_name(win_tg_member, with_mention=True)
             win_db_member.month_count += 1
             win_db_member.save()
             rating.last_month_winner = win_db_member
             rating.last_month_run = datetime.now()
             rating.save()
 
-            await self.client.send_message(chat, self.MONTH_WINNER_MESSAGE_PATTERN.format(
-                rating_name=rating.name.upper(),
-                member_name=member_name,
-                month_name=Helper.get_month_name(datetime.now().month - 1, {'gent'}),
-            ) + " 🎉")
+            await self.send_last_month_winner_message(rating, chat, True)
 
     async def _day_roll(self, members_collection: list, rating: Rating, chat):
-        if rating.last_winner \
-                and rating.last_run \
-                and rating.last_run >= datetime.today().replace(hour=0, minute=0, second=0, microsecond=0):
-            member_name = self._get_last_winner_name(rating.last_winner, members_collection)
-            await self.client.send_message(chat, self.WINNER_MESSAGE_PATTERN.format(
-                rating_name=rating.name.upper(),
-                member_name=member_name
-            ))
+        if self.get_day_winner(rating):
+            await self.send_last_day_winner_message(rating, chat)
         else:
             tg_member, db_member = await self._determine_winner(members_collection, rating, chat)
             db_member.total_count += 1
@@ -207,23 +189,8 @@ class RatingService:
             rating.last_winner = db_member
             rating.last_run = datetime.now()
             rating.save()
-            await self.client.send_message(chat, self.WINNER_MESSAGE_PATTERN.format(
-                rating_name=rating.name.upper(),
-                member_name=Helper.make_member_name(tg_member, with_mention=True)
-            ))
 
-    def _get_last_winner_name(self, winner, members_collection):
-        try:
-            tg_member = db_member = None
-            for member in members_collection:
-                tg_member, db_member = member
-                if winner == db_member:
-                    break
-            member_name = Helper.make_member_name(tg_member)
-        except DoesNotExist or AssertionError:
-            member_name = self.UNKNOWN_PERSON
-
-        return member_name
+            await self.send_last_day_winner_message(rating, chat, True)
 
     def create_system_ratings(self, chat: Chat):
         Rating.get_or_create(
@@ -285,3 +252,40 @@ class RatingService:
             text += line + '\n'
             await message.edit(text)
             await sleep(self.MESSAGE_WAIT)
+
+    async def send_last_day_winner_message(self, rating: Rating, chat, announcing: bool = False):
+        tg_member = await rating.last_winner.get_telegram_member(self.client)
+        await self.client.send_message(chat, self.WINNER_MESSAGE_PATTERN.format(
+            rating_name=rating.name.upper(),
+            member_name=Helper.make_member_name(tg_member, with_mention=announcing)
+        ))
+
+    async def send_last_month_winner_message(self, rating: Rating, chat, announcing: bool = False):
+        tg_member = await rating.last_month_winner.get_telegram_member(self.client)
+        await self.client.send_message(chat, self.MONTH_WINNER_MESSAGE_PATTERN.format(
+            rating_name=rating.name.upper(),
+            member_name=Helper.make_member_name(tg_member, with_mention=announcing),
+            month_name=Helper.get_month_name(datetime.now().month - 1, {'gent'}),
+        ) + (" 🎉" if announcing else ""))
+
+    @staticmethod
+    def get_day_winner(rating: Rating):
+        winner = None
+
+        if rating.last_winner \
+                and rating.last_run \
+                and rating.last_run >= datetime.today().replace(hour=0, minute=0, second=0, microsecond=0):
+            winner = rating.last_winner
+
+        return winner
+
+    @staticmethod
+    def get_month_winner(rating: Rating):
+        winner = None
+
+        if rating.last_month_winner \
+                and rating.last_month_run \
+                and rating.last_month_run >= datetime.today().replace(hour=0, minute=0, second=0, microsecond=0, day=1):
+            winner = rating.last_month_winner
+
+        return winner
