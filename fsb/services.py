@@ -116,16 +116,23 @@ class RatingService:
     MONTH_WINNER_MESSAGE_PATTERN = "{rating_name} {month_name} - {member_name}!"
     UNKNOWN_PERSON = "__какой-то неизвестный хер__"
     FEW_MONTH_WINNERS_MESSAGE_PATTERN = 'В {month_name} оказалось несколько лидирующих {rating_name}, но придется выбрать одного.'
+    NO_MEMBERS = 'Не из кого выбирать'
+    NO_NON_WINNER_MEMBERS = 'Похоже сегодня больше никто не достоин быть лидером'
 
     def __init__(self, client: TelegramApiClient):
         self.client = client
 
     async def roll(self, rating: Rating, chat, is_month: bool = False):
+        if not rating.members.exists():
+            await self.client.send_message(chat, self.NO_MEMBERS)
+            return
+
         actual_members = await self.client.get_dialog_members(chat)
-        rating_members = RatingMember.select().where(RatingMember.rating == rating)
+        rating_members = rating.get_non_winners(is_month)
         members_collection = Helper.collect_members(actual_members, rating_members)
 
         if not members_collection:
+            await self.client.send_message(chat, self.NO_NON_WINNER_MEMBERS)
             return
 
         if is_month:

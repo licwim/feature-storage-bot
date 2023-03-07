@@ -17,6 +17,8 @@ from peewee import (
     Model,
     TextField,
     BooleanField,
+    ManyToManyField,
+    DeferredThroughModel,
 )
 
 from fsb.db import base_db
@@ -57,6 +59,9 @@ class User(BaseModel):
         return User.get(User.telegram_id == telegram_id)
 
 
+MemberDeferred = DeferredThroughModel()
+
+
 class Chat(BaseModel):
     TABLE_NAME = 'chats'
 
@@ -70,6 +75,7 @@ class Chat(BaseModel):
     type = IntegerField()
     input_peer = TextField(null=True)
     dude = BooleanField(default=False)
+    users = ManyToManyField(User, backref='chats', through_model=MemberDeferred)
 
     @staticmethod
     def get_chat_type(chat):
@@ -94,8 +100,8 @@ class Member(BaseModel):
     TABLE_NAME = 'chats_members'
 
     id = AutoField()
-    chat = ForeignKeyField(Chat)
-    user = ForeignKeyField(User)
+    chat = ForeignKeyField(Chat, backref='members')
+    user = ForeignKeyField(User, backref='chats_members')
     rang = CharField(null=True)
 
     def get_telegram_id(self):
@@ -103,6 +109,9 @@ class Member(BaseModel):
         if self.user:
             telegram_id = self.user.telegram_id
         return telegram_id
+
+
+MemberDeferred.set_model(Member)
 
 
 class Role(BaseModel):
@@ -182,13 +191,27 @@ class Rating(BaseModel):
 
         return command, name
 
+    def get_non_winners(self, is_month: bool = False):
+        result = []
+        rating_winner_attr = Rating.last_month_winner_id if is_month else Rating.last_winner_id
+
+        for rating_member in self.members:
+            if (not rating_member
+                    .member
+                    .ratings_members
+                    .join(Rating, on=(rating_winner_attr == RatingMember.id))
+                    .exists()):
+                result.append(rating_member)
+
+        return result
+
 
 class RatingMember(BaseModel):
     TABLE_NAME = 'ratings_members'
 
     id = AutoField()
-    member = ForeignKeyField(Member, on_delete='CASCADE')
-    rating = ForeignKeyField(Rating, on_delete='CASCADE')
+    member = ForeignKeyField(Member, on_delete='CASCADE', backref='ratings_members')
+    rating = ForeignKeyField(Rating, on_delete='CASCADE', backref='members')
     total_count = IntegerField(default=0)
     month_count = IntegerField(default=0)
     current_month_count = IntegerField(default=0)
