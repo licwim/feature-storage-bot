@@ -5,13 +5,14 @@ import random
 from asyncio import sleep
 from datetime import datetime
 
+import quantumrand as qr
 from peewee import DoesNotExist, fn
 from telethon.tl.types import InputPeerUser, InputPeerChat, InputPeerChannel
 
 from fsb import logger
 from fsb.config import Config
 from fsb.db.models import Chat, User, Member, Rating, RatingMember
-from fsb.helpers import Helper
+from fsb.helpers import Helper, ReturnedThread
 from fsb.telegram.client import TelegramApiClient
 
 
@@ -163,9 +164,7 @@ class RatingService:
                         rating_name=rating_name.upper(),
                         month_name=Helper.get_month_name(datetime.now().month - 1, {'loct'}),
                     ))
-                await self._send_rolling_message(rating, chat)
-                pos = random.randint(0, winners_len - 1)
-                win_tg_member, win_db_member = winners[pos]
+                win_tg_member, win_db_member = await self._determine_winner(winners, rating, chat)
             elif winners_len == 1:
                 win_tg_member, win_db_member = winners[0]
             else:
@@ -194,15 +193,13 @@ class RatingService:
                 member_name=member_name
             ))
         else:
-            pos = random.randint(0, len(members_collection) - 1)
-            tg_member, db_member = members_collection[pos]
+            tg_member, db_member = await self._determine_winner(members_collection, rating, chat)
             db_member.total_count += 1
             db_member.current_month_count += 1
             db_member.save()
             rating.last_winner = db_member
             rating.last_run = datetime.now()
             rating.save()
-            await self._send_rolling_message(rating, chat)
             await self.client.send_message(chat, self.WINNER_MESSAGE_PATTERN.format(
                 rating_name=rating.name.upper(),
                 member_name=Helper.make_member_name(tg_member, with_mention=True)
@@ -238,6 +235,15 @@ class RatingService:
             }
         )
 
+    async def _determine_winner(self, participants: list, rating: Rating, chat: Chat):
+        participants_len = len(participants)
+        qr_thread = ReturnedThread(target=qr.randint, args=(0, participants_len - 1))
+        qr_thread.start()
+        await self._send_rolling_message(rating, chat)
+        qr_thread.join()
+        pos = qr_thread.result if qr_thread.result is not None else random.randint(0, participants_len - 1)
+        return participants[pos]
+
     async def _send_rolling_message(self, rating: Rating, chat):
         match rating.command:
             case self.PIDOR_KEYWORD:
@@ -248,7 +254,7 @@ class RatingService:
                 run_messages_file = Config.custom_rating_messages_file
 
         try:
-            with open(run_messages_file, 'r') as file:
+            with open(run_messages_file, 'r', encoding='utf-8') as file:
                 run_messages = []
                 run_message = []
 

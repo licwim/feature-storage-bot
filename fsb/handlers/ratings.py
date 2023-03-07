@@ -9,7 +9,7 @@ from telethon import events
 from telethon.tl.custom.button import Button
 
 from fsb.db.models import Chat, Member, Rating, RatingMember, User
-from fsb.error import ExitControllerException, InputValueError, ConversationTimeoutError
+from fsb.errors import ExitControllerException, InputValueError, ConversationTimeoutError
 from fsb.events.ratings import (
     RatingQueryEvent, GeneralMenuRatingEvent, RegRatingEvent, UnregRatingEvent,
     ChangeRatingEvent, DeleteRatingEvent, ListRatingEvent, MenuRatingEvent,

@@ -15,7 +15,7 @@ from fsb.db.models import User, Chat
 from .. import FSB_DEV_MODE
 from .. import logger
 from ..config import Config
-from ..error import (
+from ..errors import (
     DisconnectFailedError
 )
 from ..helpers import InfoBuilder
