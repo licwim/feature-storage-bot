@@ -17,6 +17,8 @@ from peewee import (
     Model,
     TextField,
     BooleanField,
+    ManyToManyField,
+    DeferredThroughModel,
 )
 
 from fsb.db import base_db
@@ -52,9 +54,22 @@ class User(BaseModel):
     phone = CharField(null=True)
     input_peer = TextField(null=True)
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.telegram_member = None
+
     @staticmethod
     def get_by_telegram_id(telegram_id: Union[int, str]) -> 'User':
         return User.get(User.telegram_id == telegram_id)
+
+    async def get_telegram_member(self, client):
+        if self.telegram_member is None:
+            self.telegram_member = await client.get_entity(self.telegram_id)
+
+        return self.telegram_member
+
+
+MemberDeferred = DeferredThroughModel()
 
 
 class Chat(BaseModel):
@@ -70,6 +85,7 @@ class Chat(BaseModel):
     type = IntegerField()
     input_peer = TextField(null=True)
     dude = BooleanField(default=False)
+    users = ManyToManyField(User, backref='chats', through_model=MemberDeferred)
 
     @staticmethod
     def get_chat_type(chat):
@@ -94,8 +110,8 @@ class Member(BaseModel):
     TABLE_NAME = 'chats_members'
 
     id = AutoField()
-    chat = ForeignKeyField(Chat)
-    user = ForeignKeyField(User)
+    chat = ForeignKeyField(Chat, backref='members')
+    user = ForeignKeyField(User, backref='chats_members')
     rang = CharField(null=True)
 
     def get_telegram_id(self):
@@ -103,6 +119,12 @@ class Member(BaseModel):
         if self.user:
             telegram_id = self.user.telegram_id
         return telegram_id
+
+    async def get_telegram_member(self, client):
+        return await self.user.get_telegram_member(client)
+
+
+MemberDeferred.set_model(Member)
 
 
 class Role(BaseModel):
@@ -150,6 +172,9 @@ class MemberRole(BaseModel):
             telegram_id = self.member.user.telegram_id
         return telegram_id
 
+    async def get_telegram_member(self, client):
+        return await self.member.user.get_telegram_member(client)
+
 
 class Rating(BaseModel):
     TABLE_NAME = 'ratings'
@@ -182,13 +207,27 @@ class Rating(BaseModel):
 
         return command, name
 
+    def get_non_winners(self, is_month: bool = False):
+        result = []
+        rating_winner_attr = Rating.last_month_winner_id if is_month else Rating.last_winner_id
+
+        for rating_member in self.members:
+            if (not rating_member
+                    .member
+                    .ratings_members
+                    .join(Rating, on=(rating_winner_attr == RatingMember.id))
+                    .exists()):
+                result.append(rating_member)
+
+        return result
+
 
 class RatingMember(BaseModel):
     TABLE_NAME = 'ratings_members'
 
     id = AutoField()
-    member = ForeignKeyField(Member, on_delete='CASCADE')
-    rating = ForeignKeyField(Rating, on_delete='CASCADE')
+    member = ForeignKeyField(Member, on_delete='CASCADE', backref='ratings_members')
+    rating = ForeignKeyField(Rating, on_delete='CASCADE', backref='members')
     total_count = IntegerField(default=0)
     month_count = IntegerField(default=0)
     current_month_count = IntegerField(default=0)
@@ -199,6 +238,9 @@ class RatingMember(BaseModel):
         if self.member:
             telegram_id = self.member.user.telegram_id
         return telegram_id
+
+    async def get_telegram_member(self, client):
+        return await self.member.user.get_telegram_member(client)
 
 
 class QueryEvent(BaseModel):
