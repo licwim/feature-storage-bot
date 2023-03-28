@@ -3,6 +3,8 @@
 from asyncio.exceptions import TimeoutError
 from typing import Union
 
+from fsb.helpers import Helper
+
 
 class BaseFsbException(Exception):
     message = ''
@@ -49,3 +51,13 @@ class InputValueError(BaseFsbException, ValueError):
 class DuplicateHandlerError(BaseFsbException):
     def __init__(self, handler_name: str, pipeline_name: str = None):
         super().__init__(f"{handler_name} is duplicated in {pipeline_name}")
+
+
+class NoMembersRatingError(BaseFsbException):
+    message = "Не из кого выбирать."
+
+
+class NoApproachableMembers(BaseFsbException):
+    def __init__(self, rating):
+        rating_name = Helper.inflect_word(rating.name, {'gent', 'plur'}).upper()
+        super().__init__(f"Похоже сегодня больше никто не достоин быть лидером среди {rating_name}.")
