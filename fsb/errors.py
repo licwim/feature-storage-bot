@@ -3,8 +3,6 @@
 from asyncio.exceptions import TimeoutError
 from typing import Union
 
-from fsb.helpers import Helper
-
 
 class BaseFsbException(Exception):
     message = ''
@@ -58,6 +56,5 @@ class NoMembersRatingError(BaseFsbException):
 
 
 class NoApproachableMembers(BaseFsbException):
-    def __init__(self, rating):
-        rating_name = Helper.inflect_word(rating.name, {'gent', 'plur'}).upper()
+    def __init__(self, rating_name):
         super().__init__(f"Похоже сегодня больше никто не достоин быть лидером среди {rating_name}.")

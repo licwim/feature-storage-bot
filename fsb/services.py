@@ -144,7 +144,8 @@ class RatingService:
             members_collection = Helper.collect_members(actual_members, rating_members, Helper.COLLECT_RETURN_ONLY_DB)
 
             if not members_collection:
-                raise NoApproachableMembers(rating)
+                rating_name_gent = Helper.inflect_word(rating.name, {'gent', 'plur'}).upper()
+                raise NoApproachableMembers(rating_name_gent)
 
             if is_month:
                 await self._month_roll(members_collection, rating, chat)
@@ -215,17 +216,18 @@ class RatingService:
                     break
 
             RatingMember.update(current_month_count=0).where(RatingMember.rating == rating).execute()
+            rating_name_gent = Helper.inflect_word(rating.name, {'gent', 'plur'}).upper()
 
             if winners_len > 1:
                 await self.client.send_message(chat, self.FEW_MONTH_WINNERS_MESSAGE.format(
-                        rating_name=Helper.inflect_word(rating.name, {'gent', 'plur'}).upper(),
+                        rating_name=rating_name_gent,
                         month_name=Helper.get_month_name(datetime.now().month - 1, {'loct'}),
                     ))
                 win_db_member = await self._determine_winner(winners, rating, chat)
             elif winners_len == 1:
                 win_db_member = winners[0]
             else:
-                await self.client.send_message(chat, NoApproachableMembers(rating).message)
+                await self.client.send_message(chat, NoApproachableMembers(rating_name_gent).message)
                 return
 
             win_db_member.month_count += 1
