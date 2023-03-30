@@ -168,6 +168,7 @@ class RatingService:
         else:
             chat_members_collection = [rating_member.member for rating_member in members_collection]
             current_month = datetime.today().replace(hour=0, minute=0, second=0, microsecond=0, day=1)
+            current_month = current_month.replace(month=current_month.month - 1)
 
             # Участники, которые были лидерами в чате от 2 раз подряд и больше
             excluded_members_query = (RatingLeader
@@ -237,7 +238,7 @@ class RatingService:
             rating.save()
             RatingLeader.create(
                 rating_member=win_db_member,
-                date=datetime.today().replace(hour=0, minute=0, second=0, microsecond=0, day=1),
+                date=current_month,
                 chat=win_db_member.rating.chat
             )
 
