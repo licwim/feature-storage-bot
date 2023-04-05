@@ -309,3 +309,10 @@ class QueryEvent(BaseModel):
             instance = None
 
         return instance
+
+
+class CacheQuantumRand(BaseModel):
+    TABLE_NAME = 'cache_quantum_rand'
+
+    value = IntegerField(null=False)
+    created_at = DateTimeField(default=datetime.now())
