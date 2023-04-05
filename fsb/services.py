@@ -216,7 +216,6 @@ class RatingService:
                     ))
                     break
 
-            RatingMember.update(current_month_count=0).where(RatingMember.rating == rating).execute()
             rating_name_gent = Helper.inflect_word(rating.name, {'gent', 'plur'}).upper()
 
             if winners_len > 1:
@@ -241,6 +240,7 @@ class RatingService:
                 date=current_month,
                 chat=win_db_member.rating.chat
             )
+            RatingMember.update(current_month_count=0).where(RatingMember.rating == rating).execute()
 
             await self.send_last_month_winner_message(rating, chat, True)
 
