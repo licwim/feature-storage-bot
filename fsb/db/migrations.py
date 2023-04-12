@@ -24,6 +24,7 @@ from fsb.db.models import (
     RatingMember,
     Role,
     User,
+    RatingLeader,
     CacheQuantumRand,
 )
 from fsb.telegram.client import TelegramApiClient
@@ -331,6 +332,12 @@ class m220101000008_AlterDudeToChatMigration(AddColumns):
             }
         }
         super().down()
+
+
+class m230324235425_CreateRatingsLeadersTableMigration(CreatingTables):
+    _tables = [
+        RatingLeader,
+    ]
 
 
 class m230330215105_CreateCacheQuantumrandTableMigration(CreatingTables):

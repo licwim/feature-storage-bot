@@ -34,6 +34,15 @@ class InfoBuilder:
 
     @staticmethod
     @builder_decorator
+    def build_log(message: str, data):
+        data_info = {
+            'message': message,
+            'data': data,
+        }
+        return data_info
+
+    @staticmethod
+    @builder_decorator
     def build_message_info_by_message_event(event: MessageEventDTO, view_type: int = None):
         assert isinstance(event, MessageEventDTO)
         chat_info = InfoBuilder.build_chat_info(event)
@@ -173,6 +182,8 @@ class InfoBuilder:
 class Helper:
     MONTHS = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь',
            'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь']
+    COLLECT_RETURN_ONLY_TG = 1
+    COLLECT_RETURN_ONLY_DB = 2
 
     @staticmethod
     def make_member_name(member, with_username: bool = True, with_mention: bool = False):
@@ -187,9 +198,25 @@ class Helper:
             username = ''
         return f"{first_name}{last_name}{username}"
 
+    @staticmethod
+    async def make_members_names_string(client, members: list, with_username: bool = True, with_mention: bool = False):
+        try:
+            members_names = []
+
+            for member in members:
+                members_names.append(Helper.make_member_name(
+                    await member.get_telegram_member(client),
+                    with_username=with_username,
+                    with_mention=with_mention
+                ))
+
+            return ', '.join(members_names)
+        except AttributeError:
+            return ''
+
     # TODO добавить возможность возвращать ассоциативный массив
     @staticmethod
-    def collect_members(tg_members: Iterable, db_members: Iterable) -> Union[list, None]:
+    def collect_members(tg_members: Iterable, db_members: Iterable, flag: int = None) -> Union[list, None]:
         try:
             tmp_tg_members = {}
             for tg_member in tg_members:
@@ -199,7 +226,13 @@ class Helper:
             for db_member in db_members:
                 telegram_id = db_member.get_telegram_id()
                 if telegram_id in tmp_tg_members:
-                    result.append((tmp_tg_members[telegram_id], db_member))
+                    match flag:
+                        case Helper.COLLECT_RETURN_ONLY_TG:
+                            result.append(tmp_tg_members[telegram_id])
+                        case Helper.COLLECT_RETURN_ONLY_DB:
+                            result.append(db_member)
+                        case _:
+                            result.append((tmp_tg_members[telegram_id], db_member))
             return result
         except AttributeError:
             return None

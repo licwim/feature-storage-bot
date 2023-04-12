@@ -19,6 +19,7 @@ from peewee import (
     BooleanField,
     ManyToManyField,
     DeferredThroughModel,
+    DateField,
 )
 
 from fsb.db import base_db
@@ -133,7 +134,7 @@ class Role(BaseModel):
     id = AutoField()
     name = CharField(null=True)
     nickname = CharField(null=True)
-    chat = ForeignKeyField(Chat)
+    chat = ForeignKeyField(Chat, backref='roles')
 
     @staticmethod
     def parse_from_message(message: str) -> tuple:
@@ -163,8 +164,8 @@ class MemberRole(BaseModel):
     class Meta:
         primary_key = CompositeKey('member', 'role')
 
-    member = ForeignKeyField(Member)
-    role = ForeignKeyField(Role, on_delete='CASCADE')
+    member = ForeignKeyField(Member, backref='roles_members')
+    role = ForeignKeyField(Role, backref='members', on_delete='CASCADE')
 
     def get_telegram_id(self):
         telegram_id = None
@@ -181,7 +182,7 @@ class Rating(BaseModel):
 
     id = AutoField()
     name = CharField()
-    chat = ForeignKeyField(Chat)
+    chat = ForeignKeyField(Chat, backref='ratings')
     command = CharField()
     last_run = DateTimeField(null=True)
     last_month_run = DateTimeField(null=True)
@@ -209,13 +210,20 @@ class Rating(BaseModel):
 
     def get_non_winners(self, is_month: bool = False):
         result = []
-        rating_winner_attr = Rating.last_month_winner_id if is_month else Rating.last_winner_id
+
+        if is_month:
+            rating_winner_attr = Rating.last_month_winner_id
+            date_exp = (Rating.last_month_run >= datetime.today().replace(hour=0, minute=0, second=0, microsecond=0, day=1))
+        else:
+            rating_winner_attr = Rating.last_winner_id
+            date_exp = (Rating.last_run >= datetime.today().replace(hour=0, minute=0, second=0, microsecond=0))
 
         for rating_member in self.members:
             if (not rating_member
                     .member
                     .ratings_members
                     .join(Rating, on=(rating_winner_attr == RatingMember.id))
+                    .where(date_exp)
                     .exists()):
                 result.append(rating_member)
 
@@ -309,6 +317,15 @@ class QueryEvent(BaseModel):
             instance = None
 
         return instance
+
+
+class RatingLeader(BaseModel):
+    TABLE_NAME = 'ratings_leaders'
+
+    id = AutoField()
+    rating_member = ForeignKeyField(RatingMember, backref='leaders', on_delete='CASCADE', on_update='CASCADE')
+    date = DateField(null=False)
+    chat = ForeignKeyField(Chat, backref='ratings_leaders', on_update='CASCADE', on_delete='CASCADE')
 
 
 class CacheQuantumRand(BaseModel):
