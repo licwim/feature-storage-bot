@@ -332,5 +332,7 @@ class CacheQuantumRand(BaseModel):
     TABLE_NAME = 'cache_quantum_rand'
 
     value = IntegerField(null=False)
-    range = CharField(null=True)
-    created_at = DateTimeField(default=datetime.now())
+    type = CharField(null=False, default='uint16')
+
+    class Meta:
+        primary_key = False

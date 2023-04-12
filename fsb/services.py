@@ -6,7 +6,7 @@ from asyncio import sleep
 from datetime import datetime
 
 import quantumrand as qr
-from peewee import fn, DoesNotExist
+from peewee import fn
 from telethon.tl.types import InputPeerUser, InputPeerChat, InputPeerChannel
 
 from fsb import logger
@@ -20,13 +20,22 @@ from fsb.telegram.client import TelegramApiClient
 class QuantumRandService:
     @staticmethod
     def randint(min=0, max=10):
-        try:
-            cache = (CacheQuantumRand.select().where(CacheQuantumRand.range == f"{min};{max}")
-                     .order_by(CacheQuantumRand.created_at.asc()).first())
-            value = cache.value
-            cache.delete_instance()
-        except DoesNotExist:
-            qr.randint(min, max)
+        return qr.randint(min, max, QuantumRandService.generator())
+
+    @staticmethod
+    def generator(data_type='uint16', cache_size=1024):
+        while True:
+            if not CacheQuantumRand.select().where(CacheQuantumRand.type == data_type).first():
+                data = qr.get_data(data_type, cache_size, cache_size)
+                CacheQuantumRand.insert_many(
+                    [(data_item, data_type) for data_item in data],
+                    [CacheQuantumRand.value, CacheQuantumRand.type]
+                ).execute()
+
+            for cache in CacheQuantumRand.select().where(CacheQuantumRand.type == data_type):
+                value = cache.value
+                cache.delete_instance()
+                yield value
 
 
 class ChatService:
@@ -296,7 +305,7 @@ class RatingService:
         elif participants_len == 0:
             return None
         else:
-            qr_thread = ReturnedThread(target=qr.randint, args=(0, participants_len - 1))
+            qr_thread = ReturnedThread(target=QuantumRandService.randint, args=(0, participants_len - 1))
             qr_thread.start()
             await self._send_rolling_message(rating, chat)
             qr_thread.join()
