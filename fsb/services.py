@@ -6,14 +6,26 @@ from asyncio import sleep
 from datetime import datetime
 
 import quantumrand as qr
-from peewee import fn
+from peewee import fn, DoesNotExist
 from telethon.tl.types import InputPeerUser, InputPeerChat, InputPeerChannel
 
 from fsb import logger
 from fsb.config import Config
-from fsb.db.models import Chat, User, Member, Rating, RatingMember
+from fsb.db.models import Chat, User, Member, Rating, RatingMember, CacheQuantumRand
 from fsb.helpers import Helper, ReturnedThread
 from fsb.telegram.client import TelegramApiClient
+
+
+class QuantumRandService:
+    @staticmethod
+    def randint(min=0, max=10):
+        try:
+            cache = (CacheQuantumRand.select().where(CacheQuantumRand.range == f"{min};{max}")
+                     .order_by(CacheQuantumRand.created_at.asc()).first())
+            value = cache.value
+            cache.delete_instance()
+        except DoesNotExist:
+            qr.randint(min, max)
 
 
 class ChatService:
