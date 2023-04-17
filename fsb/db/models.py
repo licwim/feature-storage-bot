@@ -14,6 +14,7 @@ from peewee import (
     DeferredForeignKey,
     ForeignKeyField,
     IntegerField,
+    BigIntegerField,
     Model,
     TextField,
     BooleanField,
@@ -49,7 +50,7 @@ class User(BaseModel):
     TABLE_NAME = 'users'
 
     id = AutoField()
-    telegram_id = IntegerField(unique=True)
+    telegram_id = BigIntegerField(unique=True)
     name = CharField(null=True)
     nickname = CharField(null=True)
     phone = CharField(null=True)
