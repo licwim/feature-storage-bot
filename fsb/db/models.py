@@ -82,7 +82,7 @@ class Chat(BaseModel):
     USER_TYPE = 3
 
     id = AutoField()
-    telegram_id = IntegerField(unique=True)
+    telegram_id = BigIntegerField(unique=True)
     name = CharField(null=True)
     type = IntegerField()
     input_peer = TextField(null=True)
