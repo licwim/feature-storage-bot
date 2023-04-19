@@ -332,8 +332,6 @@ class RatingLeader(BaseModel):
 class CacheQuantumRand(BaseModel):
     TABLE_NAME = 'cache_quantum_rand'
 
+    id = AutoField()
     value = IntegerField(null=False)
     type = CharField(null=False, default='uint16')
-
-    class Meta:
-        primary_key = False
