@@ -130,3 +130,4 @@ config.json
 
 # Debug files
 test.py
+logs/

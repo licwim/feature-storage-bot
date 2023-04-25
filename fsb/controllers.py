@@ -1,14 +1,12 @@
 # !/usr/bin/env python
 
 import inspect
+import logging
 import re
 from asyncio import sleep
 from collections import OrderedDict
 from typing import Type
 
-from peewee import DoesNotExist
-
-from fsb import logger
 from fsb.config import Config
 from fsb.db.models import QueryEvent, Role, Chat
 from fsb.errors import ExitControllerException
@@ -31,6 +29,7 @@ from fsb.handlers.ratings import (
 from fsb.handlers.roles import RolesSettingsCommandHandler, RolesSettingsQueryHandler
 from fsb.helpers import InfoBuilder
 from fsb.telegram.client import TelegramApiClient
+from peewee import DoesNotExist
 
 
 class Controller:
@@ -45,13 +44,14 @@ class Controller:
         self._loop = client.loop
         self._controller_name = self.__class__.__name__
         self._waiting_list = {}
+        self.logger = logging.getLogger('main')
 
     def listen(self):
         handle_names = []
         for handle_name, handle in self.get_handle_list():
             self._listen_handle(handle)
             handle_names.append(handle_name.replace('_handle', '', -1))
-        logger.info(f"Add controller: {self._controller_name} [{', '.join(handle_names)}]")
+        self.logger.info(f"Add controller: {self._controller_name} [{', '.join(handle_names)}]")
 
     def _listen_handle(self, handle: callable):
         pass
@@ -73,7 +73,7 @@ class Controller:
                 if time >= self.MAX_WAITING:
                     raise TimeoutError
         await self._init_filter(event)
-        logger.info(f"Start controller {self._controller_name}")
+        self.logger.info(f"Start controller {self._controller_name}")
 
     @staticmethod
     def handle_decorator(callback: callable):
@@ -83,11 +83,11 @@ class Controller:
                 await callback(self, event)
             except ExitControllerException as ex:
                 if ex.class_name or ex.reason:
-                    logger.warning(ex.message)
+                    self.logger.warning(ex.message)
             except DoesNotExist as ex:
-                logger.warning(ex.__class__.__name__.replace(DoesNotExist.__name__, '') + ' does not exist')
+                self.logger.warning(ex.__class__.__name__.replace(DoesNotExist.__name__, '') + ' does not exist')
             except Exception as ex:
-                logger.exception(ex.args)
+                self.logger.exception(ex.args)
             finally:
                 self.stop_wait(event.chat.id)
         return handle
@@ -135,7 +135,7 @@ class MessageController(Controller):
 
     async def handle(self, event: MessageEventDTO):
         await super().handle(event)
-        logger.info(
+        self.logger.info(
             "Message event:\n" +
             InfoBuilder.build_message_info_by_message_event(event)
         )
@@ -156,7 +156,7 @@ class CallbackQueryController(Controller):
 
     async def handle(self, event: CallbackQueryEventDTO):
         await super().handle(event)
-        logger.info(
+        self.logger.info(
             "Callback Query event:\n" +
             InfoBuilder.build_message_info_by_query_event(event)
         )
@@ -200,7 +200,7 @@ class ChatActionController(Controller):
 
     async def handle(self, event: ChatActionEventDTO):
         await super().handle(event)
-        logger.info(
+        self.logger.info(
             f"Chat Action event:\n" +
             InfoBuilder.build_message_info_by_chat_action(event)
         )

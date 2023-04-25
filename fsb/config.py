@@ -1,7 +1,7 @@
 # !/usr/bin/env python
 import json
+import logging
 import os
-from logging import Logger
 
 from fsb.errors import OptionalAttributeError
 from fsb.errors import RequiredAttributeError
@@ -24,6 +24,10 @@ class MetaConfig(type):
 
 class Config(metaclass=MetaConfig):
     CONFIG_FILE = os.getenv('FSB_CONFIG_FILE')
+    VERSION = os.getenv('RELEASE') if os.getenv('RELEASE') else 'Unknown'
+    BUILD = os.getenv('BUILD_VERSION') if os.getenv('BUILD_VERSION') else 'Unknown'
+    FSB_DEV_MODE = bool(int(os.getenv('FSB_DEV_MODE'))) if os.getenv('FSB_DEV_MODE') else False
+    ROOT_FOLDER = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
     bot_token: str
     api_id: int
@@ -64,7 +68,7 @@ class Config(metaclass=MetaConfig):
         return Config.__annotations__
 
 
-def init_config(logger: Logger):
+def init_config():
     try:
         if not Config.CONFIG_FILE:
             raise EnvironmentError
@@ -100,4 +104,4 @@ def init_config(logger: Logger):
     except RequiredAttributeError as err:
         exit(err.message)
     except OptionalAttributeError as err:
-        logger.warning(err.message)
+        logging.getLogger('main').warning(err.message)

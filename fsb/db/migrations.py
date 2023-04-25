@@ -1,18 +1,7 @@
 # !/usr/bin/env python
 
-from peewee import (
-    IntegerField,
-    CharField,
-    BooleanField,
-    TimestampField,
-    SQL,
-    DateTimeField,
-    TextField,
-)
-from playhouse.migrate import migrate
-from playhouse.reflection import Introspector
+import logging
 
-from fsb import logger
 from fsb.db import base_migrator as migrator
 from fsb.db.models import (
     BaseModel,
@@ -27,6 +16,17 @@ from fsb.db.models import (
     RatingLeader,
 )
 from fsb.telegram.client import TelegramApiClient
+from peewee import (
+    IntegerField,
+    CharField,
+    BooleanField,
+    TimestampField,
+    SQL,
+    DateTimeField,
+    TextField,
+)
+from playhouse.migrate import migrate
+from playhouse.reflection import Introspector
 
 
 class Migration(BaseModel):
@@ -41,6 +41,7 @@ class Migration(BaseModel):
         self.client = client
         self.db = migrator.database
         self.meta = Introspector.from_database(self.db).metadata
+        self.logger = logging.getLogger('main')
 
     def is_applied(self):
         return self.apply == 1
@@ -56,15 +57,15 @@ class Migration(BaseModel):
         def up(self):
             migration = Migration.get_or_none(Migration.title == self.__class__.__name__)
             if migration and migration.is_applied():
-                logger.info("Migration already applied")
+                self.logger.info("Migration already applied")
                 return
-            logger.info(f"Migrate {self.__class__.__name__} ...")
+            self.logger.info(f"Migrate {self.__class__.__name__} ...")
             self.client.loop.run_until_complete(callback(self))
             Migration \
                 .insert(title=self.__class__.__name__, apply=True) \
                 .on_conflict(update={Migration.apply: True}) \
                 .execute()
-            logger.info(f"Migrate {self.__class__.__name__} is done")
+            self.logger.info(f"Migrate {self.__class__.__name__} is done")
         return up
 
     @staticmethod
@@ -72,13 +73,13 @@ class Migration(BaseModel):
         def down(self):
             migration = Migration.get_or_none(Migration.title == self.__class__.__name__)
             if not migration or not migration.is_applied():
-                logger.info("Migration not applied")
+                self.logger.info("Migration not applied")
                 return
-            logger.info(f"Rollback {self.__class__.__name__} ...")
+            self.logger.info(f"Rollback {self.__class__.__name__} ...")
             self.client.loop.run_until_complete(callback(self))
             migration.apply = False
             migration.save()
-            logger.info(f"Rollback {self.__class__.__name__} is done")
+            self.logger.info(f"Rollback {self.__class__.__name__} is done")
         return down
 
     def async_run(self, coro, *args, **kwargs):
@@ -99,7 +100,7 @@ class CreatingTables(Migration):
                 raise RuntimeError(f"Table `{table.TABLE_NAME}` already exist")
 
         self.db.create_tables(self._tables)
-        logger.info("Creating tables is done")
+        self.logger.info("Creating tables is done")
 
     @Migration.rollback_decorator
     async def down(self):
@@ -113,7 +114,7 @@ class CreatingTables(Migration):
             raise RuntimeError("All tables already dropped")
 
         self.db.drop_tables(tables)
-        logger.info(f"Dropped tables: {', '.join([table.TABLE_NAME for table in tables])}")
+        self.logger.info(f"Dropped tables: {', '.join([table.TABLE_NAME for table in tables])}")
 
 
 class AddColumns(Migration):
@@ -141,9 +142,9 @@ class AddColumns(Migration):
                     for operation in operations_list:
                         ops = ops + (operation,)
 
-                    logger.info(f"Column `{column_name}` added to `{table_name}`")
+                    self.logger.info(f"Column `{column_name}` added to `{table_name}`")
                 else:
-                    logger.info(f"Column `{column_name}` already exist in `{table_name}`")
+                    self.logger.info(f"Column `{column_name}` already exist in `{table_name}`")
 
         migrate(*ops)
 
@@ -158,9 +159,9 @@ class AddColumns(Migration):
                     for operation in operations_list:
                         ops = ops + (operation,)
 
-                    logger.info(f"Column `{column_name}` dropped from `{table_name}`")
+                    self.logger.info(f"Column `{column_name}` dropped from `{table_name}`")
                 else:
-                    logger.info(f"Column `{column_name}` already dropped from `{table_name}`")
+                    self.logger.info(f"Column `{column_name}` already dropped from `{table_name}`")
 
         migrate(*ops)
 
