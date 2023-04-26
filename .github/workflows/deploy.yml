@@ -29,6 +29,10 @@ jobs:
       DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
       ADMIN_LOCAL_LOCATION: /var/apps/feature-storage-bot/admin
       ADMIN_CONTAINER_LOCATION: /var/app/admin
+      APPLICATION_LOGS_LOCAL_LOCATION: /var/apps/feature-storage-bot/logs/app
+      APPLICATION_LOGS_CONTAINER_LOCATION: /var/log/app
+      CRON_LOGS_LOCAL_LOCATION: /var/apps/feature-storage-bot/logs/cron
+      CRON_LOGS_CONTAINER_LOCATION: /var/log/cron
     steps:
     - name: Login to DockerHub
       uses: docker/login-action@v2
@@ -54,6 +58,8 @@ jobs:
           --log-driver=journald \
           --label branch=${{ github.ref_name }} \
           -v "$ADMIN_LOCAL_LOCATION":"$ADMIN_CONTAINER_LOCATION" \
+          -v "$APPLICATION_LOGS_LOCAL_LOCATION":"$APPLICATION_LOGS_CONTAINER_LOCATION":rw \
+          -v "$CRON_LOGS_LOCAL_LOCATION":"$CRON_LOGS_CONTAINER_LOCATION":rw \
           -e BOT_TOKEN="$BOT_TOKEN" \
           -e API_ID="$API_ID" \
           -e API_HASH="$API_HASH" \
