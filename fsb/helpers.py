@@ -1,16 +1,18 @@
 # !/usr/bin/env python
 
 import json
+import logging
 from datetime import datetime
 from threading import Thread
 from typing import Union, Iterable
 
 import yaml
-from fsb.config import Config
-from fsb.events.common import CallbackQueryEventDTO, EventDTO, MessageEventDTO, ChatActionEventDTO
 from pymorphy3 import MorphAnalyzer
 from telethon.tl.custom.button import Button
 from telethon.tl.patched import Message
+
+from fsb.config import Config
+from fsb.events.common import CallbackQueryEventDTO, EventDTO, MessageEventDTO, ChatActionEventDTO
 
 
 class InfoBuilder:
@@ -300,12 +302,13 @@ class Helper:
 class ReturnedThread(Thread):
     TIMEOUT = 60
     result = None
+    logger = logging.getLogger('main')
 
     def run(self):
         try:
             if self._target is not None:
                 self.result = self._target(*self._args, **self._kwargs)
-                logger.info(f'Thread result: {self.result}')
+                self.logger.info(f'Thread result: {self.result}')
         finally:
             del self._target, self._args, self._kwargs
 
