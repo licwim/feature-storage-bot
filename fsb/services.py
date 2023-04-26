@@ -7,13 +7,14 @@ from asyncio import sleep
 from datetime import datetime
 
 import quantumrand as qr
+from peewee import fn
+from telethon.tl.types import InputPeerUser, InputPeerChat, InputPeerChannel
+
 from fsb.config import Config
 from fsb.db.models import Chat, User, Member, Rating, RatingMember, RatingLeader, CacheQuantumRand
 from fsb.errors import BaseFsbException, NoMembersRatingError, NoApproachableMembers
 from fsb.helpers import Helper, ReturnedThread, InfoBuilder
 from fsb.telegram.client import TelegramApiClient
-from peewee import fn
-from telethon.tl.types import InputPeerUser, InputPeerChat, InputPeerChannel
 
 
 class QuantumRandService:
@@ -23,6 +24,8 @@ class QuantumRandService:
 
     @staticmethod
     def generator(data_type='uint16', cache_size=1024):
+        logger = logging.getLogger('main')
+
         while True:
             if not CacheQuantumRand.select().where(CacheQuantumRand.type == data_type).first():
                 data = qr.get_data(data_type, cache_size, cache_size)
@@ -34,6 +37,7 @@ class QuantumRandService:
             for cache in CacheQuantumRand.select().where(CacheQuantumRand.type == data_type):
                 value = cache.value
                 cache.delete_instance()
+                logger.info('QuantumRandService generator value: ' + value)
                 yield value
 
 
