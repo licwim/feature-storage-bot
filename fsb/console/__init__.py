@@ -3,12 +3,10 @@
 from functools import update_wrapper
 
 import click
-from fsb.config import init_config, Config
-from fsb.logger import init_logger
+
+from fsb.config import Config
 from fsb.telegram.client import TelegramApiClient
 
-init_logger(True, Config)
-init_config()
 client = TelegramApiClient(Config.bot_username + '-cli', True)
 
 
