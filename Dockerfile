@@ -22,6 +22,8 @@ RUN touch /var/log/cron.log \
     && chmod 644 /var/log/cron \
     && chmod 644 /etc/cron.d/cron
 RUN crontab /etc/cron.d/cron
+RUN touch /var/log/app \
+    && chmod 644 /var/log/app
 
 RUN chmod 777 /var/app/run.sh
 CMD /var/app/run.sh
