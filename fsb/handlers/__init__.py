@@ -1,6 +1,7 @@
 # !/usr/bin/env python
 
-from fsb import logger
+import logging
+
 from fsb.events.common import EventDTO, CommandEventDTO, MentionEventDTO, MenuEventDTO, ChatActionEventDTO
 from fsb.telegram.client import TelegramApiClient
 
@@ -11,11 +12,12 @@ class Handler:
     def __init__(self, event: EventDTO, client: TelegramApiClient):
         assert isinstance(event, self.event_class)
         self.client = client
+        self.logger = logging.getLogger('main')
         for attr, value in event.get_attributes().items():
             setattr(self, attr, value)
 
     async def run(self):
-        logger.info(f"Run handler {self.__class__.__name__}")
+        self.logger.info(f"Run handler {self.__class__.__name__}")
 
 
 class CommandHandler(Handler, CommandEventDTO):
