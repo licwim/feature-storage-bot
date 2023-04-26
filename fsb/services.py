@@ -37,7 +37,7 @@ class QuantumRandService:
             for cache in CacheQuantumRand.select().where(CacheQuantumRand.type == data_type):
                 value = cache.value
                 cache.delete_instance()
-                logger.info('QuantumRandService generator value: ' + value)
+                logger.info(f'QuantumRandService generator value: {value}')
                 yield value
 
 
