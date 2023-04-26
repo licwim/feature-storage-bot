@@ -6,12 +6,11 @@ from threading import Thread
 from typing import Union, Iterable
 
 import yaml
+from fsb.config import Config
+from fsb.events.common import CallbackQueryEventDTO, EventDTO, MessageEventDTO, ChatActionEventDTO
 from pymorphy3 import MorphAnalyzer
 from telethon.tl.custom.button import Button
 from telethon.tl.patched import Message
-
-from fsb import BUILD, VERSION, logger
-from fsb.events.common import CallbackQueryEventDTO, EventDTO, MessageEventDTO, ChatActionEventDTO
 
 
 class InfoBuilder:
@@ -175,8 +174,8 @@ class InfoBuilder:
     def build_about_info(bot):
         return f"{bot.user.first_name} Bot (@{bot.user.username})\n" \
                f"{bot.about}\n" \
-               f"Version: {VERSION}\n" \
-               f"Build: {BUILD}"
+               f"Version: {Config.VERSION}\n" \
+               f"Build: {Config.BUILD}"
 
 
 class Helper:

@@ -1,20 +1,19 @@
 # !/usr/bin/env python
 
 import json
+import logging
 import random
 from asyncio import sleep
 from datetime import datetime
 
 import quantumrand as qr
-from peewee import fn
-from telethon.tl.types import InputPeerUser, InputPeerChat, InputPeerChannel
-
-from fsb import logger
 from fsb.config import Config
 from fsb.db.models import Chat, User, Member, Rating, RatingMember, RatingLeader, CacheQuantumRand
 from fsb.errors import BaseFsbException, NoMembersRatingError, NoApproachableMembers
 from fsb.helpers import Helper, ReturnedThread, InfoBuilder
 from fsb.telegram.client import TelegramApiClient
+from peewee import fn
+from telethon.tl.types import InputPeerUser, InputPeerChat, InputPeerChannel
 
 
 class QuantumRandService:
@@ -148,9 +147,10 @@ class RatingService:
 
     def __init__(self, client: TelegramApiClient):
         self.client = client
+        self.logger = logging.getLogger('main')
 
     async def roll(self, rating: Rating, chat, is_month: bool = False):
-        logger.info(InfoBuilder.build_log(f"{'Month' if is_month else 'Day'} rolling rating", {
+        self.logger.info(InfoBuilder.build_log(f"{'Month' if is_month else 'Day'} rolling rating", {
             'rating': rating.id,
             'stats': self.get_month_stat(rating)
         }))
@@ -334,7 +334,7 @@ class RatingService:
                     else:
                         run_message.append(line.strip('\n '))
         except Exception as ex:
-            logger.exception(ex)
+            self.logger.exception(ex)
             run_messages = [self.RUN_MESSAGE]
 
         run_msg_pos = random.randint(0, len(run_messages) - 1)
