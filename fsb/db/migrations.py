@@ -14,6 +14,7 @@ from fsb.db.models import (
     Role,
     User,
     RatingLeader,
+    CacheQuantumRand,
 )
 from fsb.telegram.client import TelegramApiClient
 from peewee import (
@@ -337,4 +338,10 @@ class m220101000008_AlterDudeToChatMigration(AddColumns):
 class m230324235425_CreateRatingsLeadersTableMigration(CreatingTables):
     _tables = [
         RatingLeader,
+    ]
+
+
+class m230330215105_CreateCacheQuantumrandTableMigration(CreatingTables):
+    _tables = [
+        CacheQuantumRand
     ]

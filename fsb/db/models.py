@@ -14,6 +14,7 @@ from peewee import (
     DeferredForeignKey,
     ForeignKeyField,
     IntegerField,
+    BigIntegerField,
     Model,
     TextField,
     BooleanField,
@@ -49,7 +50,7 @@ class User(BaseModel):
     TABLE_NAME = 'users'
 
     id = AutoField()
-    telegram_id = IntegerField(unique=True)
+    telegram_id = BigIntegerField(unique=True)
     name = CharField(null=True)
     nickname = CharField(null=True)
     phone = CharField(null=True)
@@ -81,7 +82,7 @@ class Chat(BaseModel):
     USER_TYPE = 3
 
     id = AutoField()
-    telegram_id = IntegerField(unique=True)
+    telegram_id = BigIntegerField(unique=True)
     name = CharField(null=True)
     type = IntegerField()
     input_peer = TextField(null=True)
@@ -326,3 +327,11 @@ class RatingLeader(BaseModel):
     rating_member = ForeignKeyField(RatingMember, backref='leaders', on_delete='CASCADE', on_update='CASCADE')
     date = DateField(null=False)
     chat = ForeignKeyField(Chat, backref='ratings_leaders', on_update='CASCADE', on_delete='CASCADE')
+
+
+class CacheQuantumRand(BaseModel):
+    TABLE_NAME = 'cache_quantum_rand'
+
+    id = AutoField()
+    value = IntegerField(null=False)
+    type = CharField(null=False, default='uint16')
