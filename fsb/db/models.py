@@ -219,7 +219,7 @@ class Rating(BaseModel):
             rating_winner_attr = Rating.last_winner_id
             date_exp = (Rating.last_run >= datetime.today().replace(hour=0, minute=0, second=0, microsecond=0))
 
-        for rating_member in self.members:
+        for rating_member in self.members.order_by(RatingMember.id):
             if (not rating_member
                     .member
                     .ratings_members

@@ -142,7 +142,7 @@ class RatingService:
     FEW_MONTH_WINNERS_MESSAGE = 'В {month_name} оказалось несколько лидирующих {rating_name}, ' \
                                 'но придется выбрать одного.'
 
-    LEADERSHIP_TIME = 1
+    LEADERSHIP_TIME = 2
     LEADERSHIP_TIME_OVER_MESSAGE = 'Одно и то же лицо не может занимать должность Лидера Чата более ' \
                                    'двух сроков подряд.\n\nПоэтому {excluded_members} ' \
                                    'автоматически {out_word}.'
@@ -195,7 +195,7 @@ class RatingService:
             current_month = datetime.today().replace(hour=0, minute=0, second=0, microsecond=0, day=1)
             current_month = current_month.replace(month=current_month.month - 1)
 
-            # Участники, которые были лидерами в чате от 2 раз подряд и больше
+            # Участники чата, которые были лидерами в чате от 2 раз подряд и больше
             excluded_members_query = (RatingLeader
                                       .select()
                                       .join(RatingMember)
@@ -229,7 +229,7 @@ class RatingService:
             for member in excluded_members:
                 rating_member = member.ratings_members.where(RatingMember.rating == rating).get()
 
-                if rating_member.current_month_count >= win_count:
+                if rating_member.current_month_count >= win_count or win_count is None:
                     if len(excluded_members) > 1:
                         out_word = Helper.inflect_word(self.LEADERSHIP_TIME_OVER_OUT_WORD, {'plur'})
                     else:
