@@ -122,12 +122,10 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# Configs
-config.json
-
 # Sessions
 *.session
 
 # Debug files
-test.py
+test.*
+*.test.*
 logs/

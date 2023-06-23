@@ -3,7 +3,7 @@
 import logging
 import logging.config
 
-import yaml
+from fsb.config import config
 
 
 class LevelFilter(logging.Filter):
@@ -16,14 +16,13 @@ class LevelFilter(logging.Filter):
         return record.levelno < self.level
 
 
-def init_logger(console: bool, config):
-    with open(config.ROOT_FOLDER + '/config/logging.yml', 'rt') as file:
-        logging_config = yaml.safe_load(file.read())
-        logger_config_key = 'console' if console else 'app'
-        logging_config['loggers']['main'] = logging_config['loggers'][logger_config_key]
-        logging_config['loggers'].pop('app')
-        logging_config['loggers'].pop('console')
-        logging.config.dictConfig(logging_config)
+def init_logger(console: bool):
+    logging_config = config.logging
+    logger_config_key = 'console' if console else 'app'
+    logging_config['loggers']['main'] = logging_config['loggers'][logger_config_key]
+    logging_config['loggers'].pop('app')
+    logging_config['loggers'].pop('console')
+    logging.config.dictConfig(logging_config)
 
     logger = logging.getLogger('main')
 

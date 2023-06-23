@@ -5,16 +5,17 @@ import logging
 from time import sleep
 from typing import Any, Union
 
-from fsb.config import Config
-from fsb.db.models import User, Chat
-from fsb.errors import (
-    DisconnectFailedError
-)
 from telethon import TelegramClient, errors, events, functions
 from telethon.tl.types import (
     Message,
     InputPeerUser, InputPeerChat, InputPeerChannel,
     InputChannel, InputUser
+)
+
+from fsb.config import config
+from fsb.db.models import User, Chat
+from fsb.errors import (
+    DisconnectFailedError
 )
 from ..helpers import InfoBuilder
 
@@ -25,7 +26,7 @@ class TelegramApiClient:
 
     def __init__(self, name: str = None, cli: bool = False):
         self.name = name
-        self._client = TelegramClient(name, Config.api_id, Config.api_hash)
+        self._client = TelegramClient(name, config.API_ID, config.API_HASH)
         self.loop = self._client.loop
         self._relogin_count = 0
         self._current_user = None
@@ -37,7 +38,7 @@ class TelegramApiClient:
 
     async def connect(self, is_bot: bool = False):
         await self._client.connect()
-        bot_token = None if await self._client.is_user_authorized() or not is_bot else Config.bot_token
+        bot_token = None if await self._client.is_user_authorized() or not is_bot else config.BOT_TOKEN
         await self._client.start(bot_token=bot_token)
         self._current_user = await self._client.get_me()
         self.logger.info(f"Welcome, {self.name}! Telegram Client is connected")
@@ -62,7 +63,7 @@ class TelegramApiClient:
             if isinstance(entity, Union[str, int]):
                 entity = await self.get_entity(entity)
 
-            if Config.FSB_DEV_MODE:
+            if config.FSB_DEV_MODE:
                 self.logger.debug(InfoBuilder.build_debug_message_info(entity, message, reply_to))
 
                 if not force and entity.id not in Config.dev_chats:

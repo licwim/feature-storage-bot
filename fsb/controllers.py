@@ -7,7 +7,9 @@ from asyncio import sleep
 from collections import OrderedDict
 from typing import Type
 
-from fsb.config import Config
+from peewee import DoesNotExist
+
+from fsb.config import config
 from fsb.db.models import QueryEvent, Role, Chat
 from fsb.errors import ExitControllerException
 from fsb.events.common import (
@@ -29,7 +31,6 @@ from fsb.handlers.ratings import (
 from fsb.handlers.roles import RolesSettingsCommandHandler, RolesSettingsQueryHandler
 from fsb.helpers import InfoBuilder
 from fsb.telegram.client import TelegramApiClient
-from peewee import DoesNotExist
 
 
 class Controller:
@@ -129,7 +130,7 @@ class MessageController(Controller):
 
     async def _init_filter(self, event: MessageEventDTO):
         await super()._init_filter(event)
-        if (event.debug and event.sender.username not in Config.contributors) \
+        if (event.debug and event.sender.username not in config.contributors) \
                 or (event.message.out and not self._from_bot) or (not event.message.out and not self._from_user):
             raise ExitControllerException
 

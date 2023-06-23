@@ -4,10 +4,10 @@ from functools import update_wrapper
 
 import click
 
-from fsb.config import Config
+from fsb.config import config
 from fsb.telegram.client import TelegramApiClient
 
-client = TelegramApiClient(Config.bot_username + '-cli', True)
+client = TelegramApiClient(config.BOT_USERNAME + '-cli', True)
 
 
 @click.group()

@@ -11,7 +11,7 @@ from pymorphy3 import MorphAnalyzer
 from telethon.tl.custom.button import Button
 from telethon.tl.patched import Message
 
-from fsb.config import Config
+from fsb.config import config
 from fsb.events.common import CallbackQueryEventDTO, EventDTO, MessageEventDTO, ChatActionEventDTO
 
 
@@ -176,8 +176,8 @@ class InfoBuilder:
     def build_about_info(bot):
         return f"{bot.user.first_name} Bot (@{bot.user.username})\n" \
                f"{bot.about}\n" \
-               f"Version: {Config.VERSION}\n" \
-               f"Build: {Config.BUILD}"
+               f"Version: {config.VERSION}\n" \
+               f"Build: {config.BUILD}"
 
 
 class Helper:

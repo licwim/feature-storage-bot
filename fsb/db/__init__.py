@@ -4,7 +4,7 @@ from peewee_async import PooledMySQLDatabase
 from playhouse.migrate import MySQLMigrator
 from playhouse.shortcuts import ReconnectMixin
 
-from fsb.config import Config
+from fsb.config import config
 
 
 class ReconnectedPooledDatabase(ReconnectMixin, PooledMySQLDatabase):
@@ -12,12 +12,12 @@ class ReconnectedPooledDatabase(ReconnectMixin, PooledMySQLDatabase):
 
 
 base_db = ReconnectedPooledDatabase(
-    database=Config.db_name,
-    user=Config.db_user,
-    password=Config.db_password,
-    host=Config.db_host,
+    database=config.DB_NAME,
+    user=config.DB_USER,
+    password=config.DB_PASSWORD,
+    host=config.DB_HOST,
     port=3306,
-    max_connections=Config.MAX_DB_CONNECTIONS,
+    max_connections=config.MAX_DB_CONNECTIONS,
     charset='utf8mb4'
 )
 
