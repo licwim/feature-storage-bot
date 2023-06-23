@@ -86,11 +86,7 @@ logging:
       class: logging.handlers.RotatingFileHandler
       level: NOTSET
       formatter: with_time
-#      filename: c:\acode\feature-storage-bot\logs\logstash.log
-#      filename: /var/log/app/logstash.log
-      filename:
-        (): os.getenv
-        key: LOG_PATH
+      filename: "{dir}logstash.log"
       maxBytes: 104857600 # 100MB
       backupCount: 10
       encoding: utf8

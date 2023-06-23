@@ -22,6 +22,11 @@ def init_logger(console: bool):
     logging_config['loggers']['main'] = logging_config['loggers'][logger_config_key]
     logging_config['loggers'].pop('app')
     logging_config['loggers'].pop('console')
+
+    for handler_name, handler in logging_config.handlers.items():
+        if 'filename' in handler.keys() and '{dir}' in handler['filename']:
+            logging_config['handlers'][handler_name]['filename'] = handler['filename'].format(dir=config.LOG_FOLDER)
+
     logging.config.dictConfig(logging_config)
 
     logger = logging.getLogger('main')
