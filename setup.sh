@@ -1,29 +1,31 @@
 #!/usr/bin/env bash
 
+dc='docker-compose -f docker-compose.local.yml'
+
 mysql_query () {
   query=$1
   echo $query
 
   if [ -z $2 ]
   then
-    password='111111'
+    password=$MYSQL_ROOT_PASSWORD
   else
     password=$2
   fi
 
   echo $password
 
-  docker exec -it feature-storage-bot_fsb-db_1 mysql -A --password="$password" --connect-expired-password -u root -e "$query"
+  $dc exec fsb-db mysql -A --password="$password" --connect-expired-password -u root -e "$query"
 }
 
-docker-compose build --no-cache
-docker-compose up -d
+$dc build --no-cache
+$dc up -d fsb-db
 
 root_password=''
-new_root_password='111111'
+new_root_password=$MYSQL_ROOT_PASSWORD
 while [ -z $root_password ]
 do
-  root_password=$(docker-compose logs 2>&1 | grep GENERATED | awk '{print $(NF)}')
+  root_password=$($dc logs 2>&1 | grep GENERATED | awk '{print $(NF)}')
   echo -n .
   sleep 1
 done
@@ -38,6 +40,6 @@ mysql_query "GRANT GRANT OPTION ON *.* TO 'root'@'%';"
 mysql_query "CREATE DATABASE feature_storage;"
 mysql_query "DROP USER 'root'@'localhost';"
 
-docker exec -it feature-storage-bot_fsb-app_1 pipenv run migrator migrate -y
+$dc exec fsb-app pipenv run migrator migrate -y
 
-docker-compose down
+$dc down fsb-db
