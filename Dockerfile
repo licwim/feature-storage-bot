@@ -22,5 +22,8 @@ RUN touch /var/log/cron.log \
     && chmod 644 /var/log/cron \
     && chmod 644 /etc/cron.d/cron
 RUN crontab /etc/cron.d/cron
+RUN mkdir /var/log/app \
+    && chmod 644 -R /var/log/app
 
-CMD cron -L /var/log/cron.log && pipenv run python -m fsb
+RUN chmod 777 /var/app/run.sh
+CMD /var/app/run.sh

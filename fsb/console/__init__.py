@@ -7,7 +7,7 @@ import click
 from fsb.config import Config
 from fsb.telegram.client import TelegramApiClient
 
-client = TelegramApiClient(Config.bot_username + '-cli')
+client = TelegramApiClient(Config.bot_username + '-cli', True)
 
 
 @click.group()

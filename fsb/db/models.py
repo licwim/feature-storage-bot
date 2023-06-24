@@ -14,13 +14,17 @@ from peewee import (
     DeferredForeignKey,
     ForeignKeyField,
     IntegerField,
+    BigIntegerField,
     Model,
     TextField,
     BooleanField,
+    ManyToManyField,
+    DeferredThroughModel,
+    DateField,
 )
 
 from fsb.db import base_db
-from fsb.error import InputValueError
+from fsb.errors import InputValueError
 
 
 class BaseModel(Model):
@@ -46,15 +50,28 @@ class User(BaseModel):
     TABLE_NAME = 'users'
 
     id = AutoField()
-    telegram_id = IntegerField(unique=True)
+    telegram_id = BigIntegerField(unique=True)
     name = CharField(null=True)
     nickname = CharField(null=True)
     phone = CharField(null=True)
     input_peer = TextField(null=True)
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.telegram_member = None
+
     @staticmethod
     def get_by_telegram_id(telegram_id: Union[int, str]) -> 'User':
         return User.get(User.telegram_id == telegram_id)
+
+    async def get_telegram_member(self, client):
+        if self.telegram_member is None:
+            self.telegram_member = await client.get_entity(self.telegram_id)
+
+        return self.telegram_member
+
+
+MemberDeferred = DeferredThroughModel()
 
 
 class Chat(BaseModel):
@@ -65,11 +82,12 @@ class Chat(BaseModel):
     USER_TYPE = 3
 
     id = AutoField()
-    telegram_id = IntegerField(unique=True)
+    telegram_id = BigIntegerField(unique=True)
     name = CharField(null=True)
     type = IntegerField()
     input_peer = TextField(null=True)
     dude = BooleanField(default=False)
+    users = ManyToManyField(User, backref='chats', through_model=MemberDeferred)
 
     @staticmethod
     def get_chat_type(chat):
@@ -94,8 +112,8 @@ class Member(BaseModel):
     TABLE_NAME = 'chats_members'
 
     id = AutoField()
-    chat = ForeignKeyField(Chat)
-    user = ForeignKeyField(User)
+    chat = ForeignKeyField(Chat, backref='members')
+    user = ForeignKeyField(User, backref='chats_members')
     rang = CharField(null=True)
 
     def get_telegram_id(self):
@@ -104,6 +122,12 @@ class Member(BaseModel):
             telegram_id = self.user.telegram_id
         return telegram_id
 
+    async def get_telegram_member(self, client):
+        return await self.user.get_telegram_member(client)
+
+
+MemberDeferred.set_model(Member)
+
 
 class Role(BaseModel):
     TABLE_NAME = 'roles'
@@ -111,7 +135,7 @@ class Role(BaseModel):
     id = AutoField()
     name = CharField(null=True)
     nickname = CharField(null=True)
-    chat = ForeignKeyField(Chat)
+    chat = ForeignKeyField(Chat, backref='roles')
 
     @staticmethod
     def parse_from_message(message: str) -> tuple:
@@ -141,8 +165,8 @@ class MemberRole(BaseModel):
     class Meta:
         primary_key = CompositeKey('member', 'role')
 
-    member = ForeignKeyField(Member)
-    role = ForeignKeyField(Role, on_delete='CASCADE')
+    member = ForeignKeyField(Member, backref='roles_members')
+    role = ForeignKeyField(Role, backref='members', on_delete='CASCADE')
 
     def get_telegram_id(self):
         telegram_id = None
@@ -150,14 +174,17 @@ class MemberRole(BaseModel):
             telegram_id = self.member.user.telegram_id
         return telegram_id
 
+    async def get_telegram_member(self, client):
+        return await self.member.user.get_telegram_member(client)
+
 
 class Rating(BaseModel):
     TABLE_NAME = 'ratings'
 
     id = AutoField()
     name = CharField()
-    chat = ForeignKeyField(Chat)
-    command = CharField(null=True)
+    chat = ForeignKeyField(Chat, backref='ratings')
+    command = CharField()
     last_run = DateTimeField(null=True)
     last_month_run = DateTimeField(null=True)
     last_winner = DeferredForeignKey('RatingMember', null=True, on_delete='SET NULL')
@@ -182,14 +209,35 @@ class Rating(BaseModel):
 
         return command, name
 
+    def get_non_winners(self, is_month: bool = False):
+        result = []
+
+        if is_month:
+            rating_winner_attr = Rating.last_month_winner_id
+            date_exp = (Rating.last_month_run >= datetime.today().replace(hour=0, minute=0, second=0, microsecond=0, day=1))
+        else:
+            rating_winner_attr = Rating.last_winner_id
+            date_exp = (Rating.last_run >= datetime.today().replace(hour=0, minute=0, second=0, microsecond=0))
+
+        for rating_member in self.members.order_by(RatingMember.id):
+            if (not rating_member
+                    .member
+                    .ratings_members
+                    .join(Rating, on=(rating_winner_attr == RatingMember.id))
+                    .where(date_exp)
+                    .exists()):
+                result.append(rating_member)
+
+        return result
+
 
 class RatingMember(BaseModel):
     TABLE_NAME = 'ratings_members'
 
     id = AutoField()
-    member = ForeignKeyField(Member, on_delete='CASCADE')
-    rating = ForeignKeyField(Rating, on_delete='CASCADE')
-    count = IntegerField(default=0)
+    member = ForeignKeyField(Member, on_delete='CASCADE', backref='ratings_members')
+    rating = ForeignKeyField(Rating, on_delete='CASCADE', backref='members')
+    total_count = IntegerField(default=0)
     month_count = IntegerField(default=0)
     current_month_count = IntegerField(default=0)
     created_at = DateTimeField(default=datetime.now())
@@ -199,6 +247,9 @@ class RatingMember(BaseModel):
         if self.member:
             telegram_id = self.member.user.telegram_id
         return telegram_id
+
+    async def get_telegram_member(self, client):
+        return await self.member.user.get_telegram_member(client)
 
 
 class QueryEvent(BaseModel):
@@ -267,3 +318,20 @@ class QueryEvent(BaseModel):
             instance = None
 
         return instance
+
+
+class RatingLeader(BaseModel):
+    TABLE_NAME = 'ratings_leaders'
+
+    id = AutoField()
+    rating_member = ForeignKeyField(RatingMember, backref='leaders', on_delete='CASCADE', on_update='CASCADE')
+    date = DateField(null=False)
+    chat = ForeignKeyField(Chat, backref='ratings_leaders', on_update='CASCADE', on_delete='CASCADE')
+
+
+class CacheQuantumRand(BaseModel):
+    TABLE_NAME = 'cache_quantum_rand'
+
+    id = AutoField()
+    value = IntegerField(null=False)
+    type = CharField(null=False, default='uint16')

@@ -1,4 +1,5 @@
 # !/usr/bin/env python
+
 # ================================================= #
 #                                                   #
 #    ───╔═╗──╔══╗╔══╗╔═╗╔═╗╔═╗╔══╗╔═╗─────╔═╗───    #
@@ -12,29 +13,17 @@
 #       By: licwim                                  #
 #                                                   #
 #   Created: 13-06-2021 11:56:01 by licwim          #
-#   Updated: 13-06-2021 11:56:11 by licwim          #
+#                                                   #
 #                                                   #
 # ================================================= #
 
-import logging
 import os
+import sys
 
-from .config import init_config
+from fsb.config import init_config, Config
+from fsb.logger import init_logger
 
-VERSION = os.getenv('RELEASE') if os.getenv('RELEASE') else 'Unknown'
-BUILD = os.getenv('BUILD_VERSION') if os.getenv('BUILD_VERSION') else 'Unknown'
-FSB_DEV_MODE = bool(int(os.getenv('FSB_DEV_MODE'))) if os.getenv('FSB_DEV_MODE') else False
+basename = os.path.basename(sys.argv[0])
 
-logging.basicConfig(
-    format='%(asctime)s::[%(name)s:%(levelname)s] %(message)s',
-    level=logging.WARNING
-)
-
-logger = logging.getLogger(__name__)
-
-if FSB_DEV_MODE:
-    logger.setLevel(logging.DEBUG)
-else:
-    logger.setLevel(logging.INFO)
-
-init_config(logger)
+init_logger(basename == 'console.py', Config)
+init_config()

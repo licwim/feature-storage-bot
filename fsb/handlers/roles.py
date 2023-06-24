@@ -11,8 +11,8 @@ from fsb.db.models import Member
 from fsb.db.models import MemberRole
 from fsb.db.models import Role
 from fsb.db.models import User
-from fsb.error import ConversationTimeoutError
-from fsb.error import InputValueError
+from fsb.errors import ConversationTimeoutError
+from fsb.errors import InputValueError
 from fsb.events.roles import (
     RoleQueryEvent, GeneralMenuRoleEvent, ListRoleEvent, MenuRoleEvent, DeleteRoleEvent,
     ChangeRoleEvent, ListMembersRoleEvent, AddMemberMenuRoleEvent, AddMemberRoleEvent, RemoveMemberMenuRoleEvent,

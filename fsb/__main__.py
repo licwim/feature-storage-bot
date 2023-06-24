@@ -1,6 +1,6 @@
 # !/usr/bin/env python
 
-from .app import FeatureStorageBot
+from fsb.app import FeatureStorageBot
 
 
 def main():

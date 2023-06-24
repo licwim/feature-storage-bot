@@ -1,6 +1,6 @@
 # !/usr/bin/env python
 
-from datetime import datetime
+from asyncio.exceptions import TimeoutError
 
 from inflection import underscore
 from peewee import DoesNotExist
@@ -8,7 +8,7 @@ from telethon import events
 from telethon.tl.custom.button import Button
 
 from fsb.db.models import Chat, Member, Rating, RatingMember, User
-from fsb.error import ExitControllerException, InputValueError
+from fsb.errors import ExitControllerException, InputValueError, ConversationTimeoutError
 from fsb.events.ratings import (
     RatingQueryEvent, GeneralMenuRatingEvent, RegRatingEvent, UnregRatingEvent,
     ChangeRatingEvent, DeleteRatingEvent, ListRatingEvent, MenuRatingEvent,
@@ -74,59 +74,65 @@ class RatingCommandHandler(CommandHandler):
             Rating.chat == Chat.get_by_telegram_id(self.chat.id)
         )
 
-        if is_month \
-                and (not rating.last_month_winner \
-                or not rating.last_month_run \
-                or rating.last_month_run < datetime.today().replace(hour=0, minute=0, second=0, microsecond=0, day=1)):
-            await self.client.send_message(self.chat, f"{rating.name.upper()} этого месяца еще не объявился.")
+        if is_month:
+            if ratings_service.get_month_winner(rating):
+                await ratings_service.send_last_month_winner_message(rating, self.chat)
+            else:
+                await self.client.send_message(self.chat, f"{rating.name.upper()} этого месяца еще не объявился.")
         else:
-            await ratings_service.roll(rating, self.chat, is_month)
+            if ratings_service.get_day_winner(rating):
+                await ratings_service.send_last_day_winner_message(rating, self.chat)
+            else:
+                await self.client.send_message(self.chat, f"Сегодняшний {rating.name.upper()} еще не объявился.")
 
 
 class StatRatingCommandHandler(CommandHandler):
     STAT_POSTFIX = 'stat'
+    STAT_ALL_POSTFIX = 'all'
     PIDOR_STAT_COMMAND = RatingCommandHandler.PIDOR_COMMAND + STAT_POSTFIX
     CHAD_STAT_COMMAND = RatingCommandHandler.CHAD_COMMAND + STAT_POSTFIX
-    PIDOR_MONTH_STAT_COMMAND = PIDOR_STAT_COMMAND + RatingCommandHandler.MONTH_POSTFIX
-    CHAD_MONTH_STAT_COMMAND = CHAD_STAT_COMMAND + RatingCommandHandler.MONTH_POSTFIX
+    PIDOR_STAT_ALL_COMMAND = PIDOR_STAT_COMMAND + STAT_ALL_POSTFIX
+    CHAD_STAT_ALL_COMMAND = CHAD_STAT_COMMAND + STAT_ALL_POSTFIX
     STAT_COMMAND = STAT_POSTFIX
-    STAT_MONTH_COMMAND = STAT_COMMAND + RatingCommandHandler.MONTH_POSTFIX
+    STAT_ALL_COMMAND = STAT_COMMAND + STAT_ALL_POSTFIX
 
     async def run(self):
         await super().run()
         match self.command:
-            case self.PIDOR_STAT_COMMAND | self.PIDOR_MONTH_STAT_COMMAND:
+            case self.PIDOR_STAT_COMMAND | self.PIDOR_STAT_ALL_COMMAND:
                 rating_command = RatingService.PIDOR_KEYWORD
-            case self.CHAD_STAT_COMMAND | self.CHAD_MONTH_STAT_COMMAND:
+            case self.CHAD_STAT_COMMAND | self.CHAD_STAT_ALL_COMMAND:
                 rating_command = RatingService.CHAD_KEYWORD
-            case self.STAT_COMMAND | self.STAT_MONTH_COMMAND:
+            case self.STAT_COMMAND | self.STAT_ALL_COMMAND:
                 if not self.args:
                     raise ExitControllerException
                 rating_command = self.args[0]
             case _:
                 raise RuntimeError
 
-        is_month = self.command in [self.PIDOR_MONTH_STAT_COMMAND, self.CHAD_MONTH_STAT_COMMAND, self.STAT_MONTH_COMMAND]
+        is_all = self.command in [self.PIDOR_STAT_ALL_COMMAND, self.CHAD_STAT_ALL_COMMAND, self.STAT_ALL_COMMAND]
         rating = Rating.get(
             Rating.command == rating_command,
             Rating.chat == Chat.get_by_telegram_id(self.chat.id)
         )
 
-        order = RatingMember.month_count.desc() if is_month else RatingMember.count.desc()
+        order = RatingMember.total_count.desc() if is_all else RatingMember.current_month_count.desc()
         actual_members = await self.client.get_dialog_members(self.chat)
         rating_members = RatingMember.select().where(RatingMember.rating == rating).order_by(order)
         members_collection = Helper.collect_members(actual_members, rating_members)
+
         if not members_collection:
             return
 
-        message = f"**Результаты {rating.name.upper()} следующего месяца:**\n" if is_month \
-            else f"**Результаты {rating.name.upper()} дня (месяца):**\n"
+        rating_name = Helper.inflect_word(rating.name, {'gent', 'plur'})
+        message = f"**Статистика {rating_name.upper()} __(дни / месяцы)__:**\n" if is_all \
+            else f"**Статистика {rating_name.upper()} этого месяца:**\n"
         pos = 1
 
         for member in members_collection:
             tg_member, db_member = member
-            count_msg = f"{Helper.make_count_str(db_member.current_month_count)}\n" if is_month \
-                     else f"{Helper.make_count_str(db_member.count, db_member.month_count)}\n"
+            count_msg = f"{Helper.make_count_str(db_member.total_count, db_member.month_count)}\n" if is_all \
+                     else f"{Helper.make_count_str(db_member.current_month_count)}\n"
             message += f"#**{pos}**   {Helper.make_member_name(tg_member)} - {count_msg}"
             pos += 1
         await self.client.send_message(self.chat, message)

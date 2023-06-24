@@ -1,14 +1,17 @@
 # !/usr/bin/env python
 
 import json
+import logging
+from datetime import datetime
+from threading import Thread
 from typing import Union, Iterable
 
 import yaml
+from pymorphy3 import MorphAnalyzer
 from telethon.tl.custom.button import Button
 from telethon.tl.patched import Message
 
-from fsb import BUILD
-from fsb import VERSION
+from fsb.config import Config
 from fsb.events.common import CallbackQueryEventDTO, EventDTO, MessageEventDTO, ChatActionEventDTO
 
 
@@ -29,6 +32,15 @@ class InfoBuilder:
                 case InfoBuilder.YAML:
                     return yaml.dump(data_info, sort_keys=False, default_flow_style=False, allow_unicode=True)
         return build
+
+    @staticmethod
+    @builder_decorator
+    def build_log(message: str, data):
+        data_info = {
+            'message': message,
+            'data': data,
+        }
+        return data_info
 
     @staticmethod
     @builder_decorator
@@ -164,11 +176,16 @@ class InfoBuilder:
     def build_about_info(bot):
         return f"{bot.user.first_name} Bot (@{bot.user.username})\n" \
                f"{bot.about}\n" \
-               f"Version: {VERSION}\n" \
-               f"Build: {BUILD}"
+               f"Version: {Config.VERSION}\n" \
+               f"Build: {Config.BUILD}"
 
 
 class Helper:
+    MONTHS = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь',
+           'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь']
+    COLLECT_RETURN_ONLY_TG = 1
+    COLLECT_RETURN_ONLY_DB = 2
+
     @staticmethod
     def make_member_name(member, with_username: bool = True, with_mention: bool = False):
         first_name = member.first_name if member.first_name else ''
@@ -182,9 +199,25 @@ class Helper:
             username = ''
         return f"{first_name}{last_name}{username}"
 
+    @staticmethod
+    async def make_members_names_string(client, members: list, with_username: bool = True, with_mention: bool = False):
+        try:
+            members_names = []
+
+            for member in members:
+                members_names.append(Helper.make_member_name(
+                    await member.get_telegram_member(client),
+                    with_username=with_username,
+                    with_mention=with_mention
+                ))
+
+            return ', '.join(members_names)
+        except AttributeError:
+            return ''
+
     # TODO добавить возможность возвращать ассоциативный массив
     @staticmethod
-    def collect_members(tg_members: Iterable, db_members: Iterable) -> Union[list, None]:
+    def collect_members(tg_members: Iterable, db_members: Iterable, flag: int = None) -> Union[list, None]:
         try:
             tmp_tg_members = {}
             for tg_member in tg_members:
@@ -194,7 +227,13 @@ class Helper:
             for db_member in db_members:
                 telegram_id = db_member.get_telegram_id()
                 if telegram_id in tmp_tg_members:
-                    result.append((tmp_tg_members[telegram_id], db_member))
+                    match flag:
+                        case Helper.COLLECT_RETURN_ONLY_TG:
+                            result.append(tmp_tg_members[telegram_id])
+                        case Helper.COLLECT_RETURN_ONLY_DB:
+                            result.append(db_member)
+                        case _:
+                            result.append((tmp_tg_members[telegram_id], db_member))
             return result
         except AttributeError:
             return None
@@ -215,7 +254,7 @@ class Helper:
         if advanced_count is None:
             advanced_count_msg = ''
         else:
-            advanced_count_msg = f' ({advanced_count})'
+            advanced_count_msg = f' / {advanced_count}'
 
         return f'{count}' + advanced_count_msg + f' {count_word}'
 
@@ -233,3 +272,45 @@ class Helper:
         if closing_button and len(closing_button) >= 2:
             buttons.append([Button.inline(closing_button[0], closing_button[1])])
         return buttons
+
+    @staticmethod
+    def inflect_word(word, grammemes):
+        inflected_word = MorphAnalyzer(lang='ru').parse(word)[0].inflect(grammemes)
+
+        if inflected_word:
+            result = inflected_word.word
+        else:
+            result = word
+
+        return result
+
+    @staticmethod
+    def get_month_name(month: int = None, grammemes = None):
+        if not month:
+            month = datetime.now().month
+
+        month_name = Helper.MONTHS[month - 1]
+
+        if grammemes:
+            result = Helper.inflect_word(month_name, grammemes)
+        else:
+            result = month_name
+
+        return result
+
+
+class ReturnedThread(Thread):
+    TIMEOUT = 60
+    result = None
+    logger = logging.getLogger('main')
+
+    def run(self):
+        try:
+            if self._target is not None:
+                self.result = self._target(*self._args, **self._kwargs)
+                self.logger.info(f'Thread result: {self.result}')
+        finally:
+            del self._target, self._args, self._kwargs
+
+    def join(self, timeout=TIMEOUT):
+        super().join(timeout)
