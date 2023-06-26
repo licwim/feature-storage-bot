@@ -21,6 +21,7 @@ from peewee import (
     ManyToManyField,
     DeferredThroughModel,
     DateField,
+    SQL,
 )
 
 from fsb.db import base_db
@@ -86,7 +87,7 @@ class Chat(BaseModel):
     name = CharField(null=True)
     type = IntegerField()
     input_peer = TextField(null=True)
-    dude = BooleanField(default=False)
+    dude = BooleanField(default=False, constraints=[SQL('DEFAULT 0')])
     users = ManyToManyField(User, backref='chats', through_model=MemberDeferred)
 
     @staticmethod
@@ -189,7 +190,7 @@ class Rating(BaseModel):
     last_month_run = DateTimeField(null=True)
     last_winner = DeferredForeignKey('RatingMember', null=True, on_delete='SET NULL')
     last_month_winner = DeferredForeignKey('RatingMember', null=True, on_delete='SET NULL')
-    autorun = BooleanField(default=False)
+    autorun = BooleanField(default=False, constraints=[SQL('DEFAULT 0')])
 
     @staticmethod
     def parse_from_message(message: str) -> tuple:
@@ -240,7 +241,7 @@ class RatingMember(BaseModel):
     total_count = IntegerField(default=0)
     month_count = IntegerField(default=0)
     current_month_count = IntegerField(default=0)
-    created_at = DateTimeField(default=datetime.now())
+    created_at = DateTimeField(default=datetime.now(), constraints=[SQL('DEFAULT CURRENT_TIMESTAMP')])
 
     def get_telegram_id(self):
         telegram_id = None
@@ -259,7 +260,7 @@ class QueryEvent(BaseModel):
     module_name = CharField(null=True, default='module')
     class_name = CharField(null=True, default='class')
     data = TextField(null=True)
-    created_at = DateTimeField(default=datetime.now())
+    created_at = DateTimeField(default=datetime.now(), constraints=[SQL('DEFAULT CURRENT_TIMESTAMP')])
 
     def __init__(self, sender_id: int = None, data_value=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -334,4 +335,4 @@ class CacheQuantumRand(BaseModel):
 
     id = AutoField()
     value = IntegerField(null=False)
-    type = CharField(null=False, default='uint16')
+    type = CharField(null=False, default='uint16', constraints=[SQL('DEFAULT "uint16"')])

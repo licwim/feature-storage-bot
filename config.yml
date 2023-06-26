@@ -46,7 +46,7 @@ dude:
 
 logging:
   version: 1
-  disable_existing_loggers: true
+  disable_existing_loggers: false
 
   formatters:
     with_time:
@@ -93,14 +93,13 @@ logging:
 
   root:
     level: WARNING
-    handlers: [ stdout_app, stderr_app ]
     propagate: yes
 
   loggers:
     app:
       level: NOTSET
-      handlers: [ logstash ]
-      propagate: yes
+      handlers: [ stdout_app, stderr_app, logstash ]
+      propagate: no
     console:
       level: NOTSET
       handlers: [ stdout_console, stderr_console ]

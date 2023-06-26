@@ -11,8 +11,8 @@ services:
 
   fsb-db:
     image: mysql:8.0.32
-#    volumes:
-#      - fsb-db:/var/lib/mysql
+    volumes:
+      - fsb-db:/var/lib/mysql
     ports:
       - "3306:3306"
     env_file:

@@ -1,9 +1,13 @@
 # !/usr/bin/env python
 
-from fsb.config import config
+import os
+
 from peewee_async import PooledMySQLDatabase
+from peewee_moves import DatabaseManager
 from playhouse.migrate import MySQLMigrator
 from playhouse.shortcuts import ReconnectMixin
+
+from fsb.config import config
 
 MAX_DB_CONNECTIONS = 10
 
@@ -23,3 +27,8 @@ base_db = ReconnectedPooledDatabase(
 )
 
 base_migrator = MySQLMigrator(base_db)
+db_manager = DatabaseManager(
+    base_db,
+    directory=os.path.abspath(config.ROOT_FOLDER + '/fsb/db/migrations'),
+    table_name='migrations'
+)

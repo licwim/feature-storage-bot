@@ -15,11 +15,6 @@ def cli():
     client.loop.run_until_complete(client.connect(True))
 
 
-def exit_with_message(message: str = None, code: int = 1):
-    print(message)
-    exit(code)
-
-
 def coro(f):
     def wrapper(*args, **kwargs):
         return client.loop.run_until_complete(f(*args, **kwargs))

@@ -17,7 +17,7 @@ from fsb.db.models import User, Chat
 from fsb.errors import (
     DisconnectFailedError
 )
-from ..helpers import InfoBuilder
+from fsb.helpers import InfoBuilder
 
 
 class TelegramApiClient:
