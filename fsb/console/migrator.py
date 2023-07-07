@@ -11,39 +11,37 @@ def migrator_cli():
 
 
 @click.command('migrate')
-@click.argument('name', type=str, default='')
+@click.argument('count', type=int, default=0)
 @click.option('-d', help='Dry run', is_flag=True, default=False)
 @click.option('-y', help='Force confirm', is_flag=True, default=False)
-def action_migrate(name, d: bool, y: bool):
-    name = db_manager.find_migration(name) if name else None
-
+def action_migrate(count, d: bool, y: bool):
     if not db_manager.diff:
         click.echo('No new migrations')
         return
 
-    click.echo(f"Migrate next migrations:\n" + name if name else "\n".join(db_manager.diff))
+    diff = db_manager.diff if not count else db_manager.diff[:count]
+    click.echo(f"Migrate next migrations:\n" + "\n".join(diff))
 
     if not y:
         click.confirm('Do you want to continue?', abort=True)
-    db_manager.upgrade(name, d)
+    db_manager.upgrade(count, d)
 
 
 @click.command('rollback')
-@click.argument('name', type=str, default='')
+@click.argument('count', type=int, default=1)
 @click.option('-d', help='Dry run', is_flag=True, default=False)
 @click.option('-y', help='Force confirm', is_flag=True, default=False)
-def action_rollback(name, d: bool, y: bool):
-    name = db_manager.find_migration(name) if name else None
-
+def action_rollback(count, d: bool, y: bool):
     if not db_manager.db_migrations:
         click.echo('No applied migrations')
         return
 
-    click.echo(f"Rollback next migrations:\n" + (name if name else db_manager.db_migrations[-1]))
+    diff = db_manager.db_migrations[:-1 * (count + 1):-1]
+    click.echo(f"Rollback next migrations:\n" + "\n".join(diff))
 
     if not y:
         click.confirm('Do you want to continue?', abort=True)
-    db_manager.downgrade(name, d)
+    db_manager.downgrade(count, d)
 
 
 @click.command('status')
@@ -57,7 +55,7 @@ def action_create(name):
     db_manager.revision(name)
 
 
-@click.command('create_model')
+@click.command('create-model')
 @click.argument('model', type=str)
 def action_create_model(model):
     db_manager.create('fsb.db.models.' + model)

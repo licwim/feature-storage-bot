@@ -21,6 +21,7 @@ pymorphy3-dicts-ru = ">=2.4.0,<3.0.0"
 quantumrand = "==2.2.0"
 bestconfig = "==1.3.6"
 peewee-moves = "==2.1.0"
+tzdata = "*"
 
 [requires]
 python_version = "3.10"
