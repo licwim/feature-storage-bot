@@ -1,4 +1,4 @@
-FROM python:3.10.1
+FROM python:3.10.12
 LABEL maintainer="licwimm@gmail.com"
 
 ENV PIPENV_IGNORE_VIRTUALENV=1
@@ -11,6 +11,7 @@ RUN apt update && apt install -y \
     cron
 
 COPY . .
+RUN chmod -R 660 .
 
 RUN pip install pipenv \
     && pipenv install

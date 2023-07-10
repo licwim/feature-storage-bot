@@ -238,9 +238,9 @@ class RatingMember(BaseModel):
     id = AutoField()
     member = ForeignKeyField(Member, on_delete='CASCADE', backref='ratings_members')
     rating = ForeignKeyField(Rating, on_delete='CASCADE', backref='members')
-    total_count = IntegerField(default=0)
-    month_count = IntegerField(default=0)
-    current_month_count = IntegerField(default=0)
+    total_count = IntegerField(default=0, constraints=[SQL('DEFAULT 0')])
+    month_count = IntegerField(default=0, constraints=[SQL('DEFAULT 0')])
+    current_month_count = IntegerField(default=0, constraints=[SQL('DEFAULT 0')])
     created_at = DateTimeField(default=datetime.now(), constraints=[SQL('DEFAULT CURRENT_TIMESTAMP')])
 
     def get_telegram_id(self):
@@ -257,8 +257,8 @@ class QueryEvent(BaseModel):
     TABLE_NAME = 'query_events'
 
     id = AutoField()
-    module_name = CharField(null=True, default='module')
-    class_name = CharField(null=True, default='class')
+    module_name = CharField(null=True, default='module', constraints=[SQL('DEFAULT "module"')])
+    class_name = CharField(null=True, default='class', constraints=[SQL('DEFAULT "class"')])
     data = TextField(null=True)
     created_at = DateTimeField(default=datetime.now(), constraints=[SQL('DEFAULT CURRENT_TIMESTAMP')])
 

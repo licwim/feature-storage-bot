@@ -13,8 +13,6 @@ def upgrade(migrator):
         table.datetime('last_run', null=True)
         table.datetime('last_month_run', null=True)
         table.bool('autorun', constraints=['DEFAULT 0'])
-        table.foreign_key('AUTO', 'last_winner_id', null=True, on_delete='SET NULL', on_update=None, references='ratings_members.id')
-        table.foreign_key('AUTO', 'last_month_winner_id', null=True, on_delete='SET NULL', on_update=None, references='ratings_members.id')
 
 
 def downgrade(migrator):

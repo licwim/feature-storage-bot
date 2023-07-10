@@ -5,7 +5,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from peewee_async import PooledMySQLDatabase
-from peewee_moves import DatabaseManager as BaseDatabaseManager, LOGGER
+from peewee_moves import DatabaseManager as BaseDatabaseManager, Migrator as BaseMigrator, LOGGER
 from playhouse.migrate import MySQLMigrator
 from playhouse.shortcuts import ReconnectMixin
 
@@ -18,7 +18,21 @@ class ReconnectedPooledDatabase(ReconnectMixin, PooledMySQLDatabase):
     pass
 
 
+class Migrator(BaseMigrator):
+    def add_foreign_key_constraint(self, table, column_name, rel, rel_column,
+                                   on_delete=None, on_update=None):
+        self.migrator.add_foreign_key_constraint(table, column_name, rel, rel_column,
+                                                 on_delete=on_delete, on_update=on_update).run()
+
+    def drop_foreign_key_constraint(self, table, column_name):
+        self.migrator.drop_foreign_key_constraint(table, column_name).run()
+
+
 class DatabaseManager(BaseDatabaseManager):
+    def __init__(self, database, table_name=None, directory='migrations'):
+        super().__init__(database=database, table_name=table_name, directory=directory)
+        self.migrator = Migrator(self.database)
+
     def get_ident(self):
         return datetime.now(ZoneInfo(config.TZ)).strftime('%y%m%d_%H%M%S')
 

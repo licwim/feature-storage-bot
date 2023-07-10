@@ -24,6 +24,7 @@ def init_logger(console: bool):
     logging_config['loggers'].pop('app')
     logging_config['loggers'].pop('console')
     _dir = config.get('LOG_FOLDER', default_value=config.ROOT_FOLDER + '/logs')
+    os.makedirs(_dir, exist_ok=True)
 
     for handler_name, handler in logging_config['handlers'].items():
         if 'filename' in handler.keys() and '{dir}' in handler['filename']:

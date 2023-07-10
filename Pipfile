@@ -24,7 +24,7 @@ peewee-moves = "==2.1.0"
 tzdata = "*"
 
 [requires]
-python_version = "3.10"
+python_version = "3.10.12"
 
 [scripts]
 console = "python console.py"
