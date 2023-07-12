@@ -14,13 +14,13 @@ def upgrade(migrator):
         table.int('current_month_count', constraints=['DEFAULT 0'])
         table.datetime('created_at', constraints=['DEFAULT CURRENT_TIMESTAMP'])
 
-    migrator.add_column('ratings', 'last_winner', 'int', null=True)
-    migrator.add_column('ratings', 'last_month_winner', 'int', null=True)
-    migrator.add_foreign_key_constraint('ratings', 'last_winner', 'ratings_members', 'id', on_delete='SET NULL', on_update=None)
-    migrator.add_foreign_key_constraint('ratings', 'last_month_winner', 'ratings_members', 'id', on_delete='SET NULL', on_update=None)
+    migrator.add_column('ratings', 'last_winner_id', 'int', null=True)
+    migrator.add_column('ratings', 'last_month_winner_id', 'int', null=True)
+    migrator.add_foreign_key_constraint('ratings', 'last_winner_id', 'ratings_members', 'id', on_delete='SET NULL', on_update=None)
+    migrator.add_foreign_key_constraint('ratings', 'last_month_winner_id', 'ratings_members', 'id', on_delete='SET NULL', on_update=None)
 
 
 def downgrade(migrator):
-    migrator.drop_column('ratings', 'last_winner')
-    migrator.drop_column('ratings', 'last_month_winner')
+    migrator.drop_column('ratings', 'last_winner_id')
+    migrator.drop_column('ratings', 'last_month_winner_id')
     migrator.drop_table('ratings_members')
