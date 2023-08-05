@@ -4,15 +4,14 @@ services:
     image: licwim/feature-storage-bot:${TAG:-master}
     container_name: fsb-app-prod
     volumes:
-      - /var/apps/feature-storage-bot/admin:/var/app/admin
-      - /var/apps/feature-storage-bot/logs/app:/var/log/app:rw
-      - /var/apps/feature-storage-bot/logs/cron:/var/log/cron:rw
+      - /var/apps/feature-storage-bot/prod/logs/app:/var/log/app:rw
+      - /var/apps/feature-storage-bot/prod/logs/cron:/var/log/cron:rw
     logging:
       driver: "journald"
     labels:
       build: $BUILD_VERSION
     networks:
-      - feature-storage-bot-network
+      - prod
     deploy:
       restart_policy:
         condition: on-failure
@@ -29,17 +28,17 @@ services:
       - BOT_USERNAME=FeatureStorageBot
       - BUILD_VERSION=$BUILD_VERSION
       - RELEASE=$RELEASE
-      - LOG_FOLDER=/var/log/app/
       - FSB_DEV_MODE=False
+      - LOG_FOLDER=/var/log/app/
       - TZ=Europe/Moscow
 
   fsb-db:
     image: mysql:8.0.31
     container_name: fsb-db-prod
     volumes:
-      - feature-storage-bot-db:/var/lib/mysql
+      - db-prod:/var/lib/mysql
     networks:
-      - feature-storage-bot-network
+      - prod
     restart: always
     ports:
       - "3306:3306"
@@ -48,8 +47,8 @@ services:
       - TZ=Europe/Moscow
 
 networks:
-  feature-storage-bot-network:
+  prod:
     driver: bridge
 
 volumes:
-  feature-storage-bot-db: {}
+  db-prod: {}

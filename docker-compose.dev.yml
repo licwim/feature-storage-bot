@@ -11,7 +11,7 @@ services:
     labels:
       build: $BUILD_VERSION
     networks:
-      - feature-storage-bot-network-dev
+      - dev
     deploy:
       restart_policy:
         condition: on-failure
@@ -36,9 +36,9 @@ services:
     image: mysql:8.0.31
     container_name: fsb-db-dev
     volumes:
-      - feature-storage-bot-db-dev:/var/lib/mysql
+      - db-dev:/var/lib/mysql
     networks:
-      - feature-storage-bot-network-dev
+      - dev
     restart: always
     ports:
       - "3307:3306"
@@ -47,8 +47,8 @@ services:
       - TZ=Europe/Moscow
 
 networks:
-  feature-storage-bot-network-dev:
+  dev:
     driver: bridge
 
 volumes:
-  feature-storage-bot-db-dev: {}
+  db-dev: {}
