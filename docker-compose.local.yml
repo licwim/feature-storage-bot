@@ -8,6 +8,9 @@ services:
       - /var/app/.venv/
     env_file:
       - .env
+    environment:
+      - PIPENV_DONT_LOAD_ENV=1
+      - DB_HOST=fsb-db
 
   fsb-db:
     image: mysql:8.0.31

@@ -1,4 +1,4 @@
-FROM python:3.10.12
+FROM python:3.10.11
 LABEL maintainer="licwimm@gmail.com"
 
 ENV PIPENV_IGNORE_VIRTUALENV=1
