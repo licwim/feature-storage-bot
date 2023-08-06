@@ -1,6 +1,6 @@
 version: '3.3'
 services:
-  fsb-app:
+  fsb-app-prod:
     image: licwim/feature-storage-bot:${TAG:-master}
     container_name: fsb-app-prod
     volumes:
@@ -32,7 +32,7 @@ services:
       - LOG_FOLDER=/var/log/app/
       - TZ=Europe/Moscow
 
-  fsb-db:
+  fsb-db-prod:
     image: mysql:8.0.31
     container_name: fsb-db-prod
     volumes:
