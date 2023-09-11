@@ -78,7 +78,10 @@ class RatingCommandHandler(CommandHandler):
             if ratings_service.get_month_winner(rating):
                 await ratings_service.send_last_month_winner_message(rating, self.chat)
             else:
-                await self.client.send_message(self.chat, f"{rating.name.upper()} этого месяца еще не объявился.")
+                await self.client.send_message(self.chat, "{rating_name} {month_name} еще не объявился.".format(
+                    rating_name=rating.name.upper(),
+                    month_name=Helper.get_month_name(datetime.now().month - 1, {'gent'})
+                ))
         else:
             if ratings_service.get_day_winner(rating):
                 await ratings_service.send_last_day_winner_message(rating, self.chat)
