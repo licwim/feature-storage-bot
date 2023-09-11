@@ -86,7 +86,7 @@ logging:
       class: logging.handlers.RotatingFileHandler
       level: NOTSET
       formatter: with_time
-      filename: "{dir}logstash.log"
+      filename: "{log_dir}logstash.log"
       maxBytes: 104857600 # 100MB
       backupCount: 10
       encoding: utf8
@@ -94,13 +94,5 @@ logging:
   root:
     level: WARNING
     propagate: yes
-
-  loggers:
-    app:
-      level: NOTSET
-      handlers: [ stdout_app, stderr_app, logstash ]
-      propagate: no
-    console:
-      level: NOTSET
-      handlers: [ stdout_console, stderr_console ]
-      propagate: no
+    app_handlers: [ stdout_app, stderr_app, logstash ]
+    console_handlers: [ stdout_console, stderr_console ]
