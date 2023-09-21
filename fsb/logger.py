@@ -19,9 +19,12 @@ class LevelFilter(logging.Filter):
 
 def init_logger(console: bool):
     logging_config = config.logging.to_dict()
-    logging_config['root']['handlers'] = logging_config['root']['console_handlers' if console else 'app_handlers']
-    logging_config['root'].pop('app_handlers')
-    logging_config['root'].pop('console_handlers')
+    logger_config_key = 'console' if console else 'app'
+
+    for opt_name, opt_value in logging_config['loggers'][logger_config_key].items():
+        logging_config['root'][opt_name] = opt_value
+
+    logging_config.pop('loggers')
     _dir = config.get('LOG_FOLDER', default_value=config.ROOT_FOLDER + '/logs')
     os.makedirs(_dir, exist_ok=True)
 

@@ -93,6 +93,8 @@ logging:
 
   root:
     level: WARNING
-    propagate: yes
-    app_handlers: [ stdout_app, stderr_app, logstash ]
-    console_handlers: [ stdout_console, stderr_console ]
+  loggers:
+    app:
+      handlers: [ stdout_app, stderr_app, logstash ]
+    console:
+      handlers: [ stdout_console, stderr_console ]
