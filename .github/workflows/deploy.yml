@@ -50,6 +50,7 @@ jobs:
           export RELEASE=${{ steps.release-info.outputs.release }}
           echo "BUILD_VERSION = $BUILD_VERSION"
           echo "RELEASE = $RELEASE"
+          docker compose -f docker-compose.prod.yml down --remove-orphans
           docker compose -f docker-compose.prod.yml up -d
 
   dev-deploy:
