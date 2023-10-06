@@ -1,8 +1,10 @@
-version: '3.3'
+version: '3.9'
+name: 'fsb-dev'
 services:
-  fsb-app-dev:
+  app:
     image: licwim/feature-storage-bot:${TAG:-master}
     container_name: fsb-app-dev
+    hostname: fsb-app-dev
     volumes:
       - /var/apps/feature-storage-bot/dev/logs/app:/var/log/app:rw
       - /var/apps/feature-storage-bot/dev/logs/cron:/var/log/cron:rw
@@ -11,7 +13,7 @@ services:
     labels:
       build: $BUILD_VERSION
     networks:
-      - dev
+      - network
     deploy:
       restart_policy:
         condition: on-failure
@@ -32,13 +34,14 @@ services:
       - LOG_FOLDER=/var/log/app/
       - TZ=Europe/Moscow
 
-  fsb-db-dev:
+  db:
     image: mysql:8.0.31
     container_name: fsb-db-dev
+    hostname: fsb-db-dev
     volumes:
-      - db-dev:/var/lib/mysql
+      - db:/var/lib/mysql
     networks:
-      - dev
+      - network
     restart: always
     ports:
       - "3307:3306"
@@ -47,8 +50,10 @@ services:
       - TZ=Europe/Moscow
 
 networks:
-  dev:
+  network:
     driver: bridge
 
 volumes:
-  db-dev: {}
+  db:
+    name: feature-storage-bot_db-dev
+    external: true
