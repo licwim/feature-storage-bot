@@ -19,7 +19,7 @@ from fsb.events.common import (
 from fsb.events.ratings import RatingQueryEvent
 from fsb.events.roles import RoleQueryEvent
 from fsb.handlers import Handler
-from fsb.handlers.chats import JoinChatHandler
+from fsb.handlers.chats import JoinChatHandler, NewTitleChatHandler
 from fsb.handlers.commands import (
     StartCommandHandler, PingCommandHandler, EntityInfoCommandHandler, AboutInfoCommandHandler, WednesdayCommandHandler
 )
@@ -223,6 +223,15 @@ class ChatActionController(Controller):
     async def _create_ratings_on_join_chat_handle(self, event):
         await self.handle(event)
         await self.run_handler(event, CreateRatingsOnJoinChatHandler)
+
+    @Controller.handle_decorator
+    async def new_title_handle(self, event: ChatActionEventDTO):
+        event.only_self = False
+
+        await self.handle(event)
+
+        if event.new_title:
+            await self.run_handler(event, NewTitleChatHandler)
 
 
 class CommandController(MessageController):
