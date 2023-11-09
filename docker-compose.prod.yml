@@ -1,0 +1,59 @@
+version: '3.9'
+name: 'fsb-prod'
+services:
+  app:
+    image: licwim/feature-storage-bot:${TAG:-master}
+    container_name: fsb-app-prod
+    hostname: fsb-app-prod
+    volumes:
+      - /var/apps/feature-storage-bot/prod/logs/app:/var/log/app:rw
+      - /var/apps/feature-storage-bot/prod/logs/cron:/var/log/cron:rw
+    logging:
+      driver: "journald"
+    labels:
+      build: $BUILD_VERSION
+    networks:
+      - network
+    deploy:
+      restart_policy:
+        condition: on-failure
+        max_attempts: 10
+        window: 10s
+    environment:
+      - DB_HOST=$DB_HOST
+      - DB_NAME=$DB_NAME
+      - DB_USER=$DB_USER
+      - DB_PASSWORD=$DB_PASSWORD
+      - BOT_TOKEN=$BOT_TOKEN
+      - API_ID=$API_ID
+      - API_HASH=$API_HASH
+      - BOT_USERNAME=FeatureStorageBot
+      - BUILD_VERSION=$BUILD_VERSION
+      - RELEASE=$RELEASE
+      - FSB_DEV_MODE=False
+      - LOG_FOLDER=/var/log/app/
+      - TZ=Europe/Moscow
+
+  db:
+    image: mysql:8.0.31
+    container_name: fsb-db-prod
+    hostname: fsb-db-prod
+    volumes:
+      - db:/var/lib/mysql
+    networks:
+      - network
+    restart: always
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_RANDOM_ROOT_PASSWORD=1
+      - TZ=Europe/Moscow
+
+networks:
+  network:
+    driver: bridge
+
+volumes:
+  db:
+    name: feature-storage-bot_db-prod
+    external: true

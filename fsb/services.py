@@ -10,7 +10,7 @@ import quantumrand as qr
 from peewee import fn
 from telethon.tl.types import InputPeerUser, InputPeerChat, InputPeerChannel
 
-from fsb.config import Config
+from fsb.config import config
 from fsb.db.models import Chat, User, Member, Rating, RatingMember, RatingLeader, CacheQuantumRand
 from fsb.errors import BaseFsbException, NoMembersRatingError, NoApproachableMembers
 from fsb.helpers import Helper, ReturnedThread, InfoBuilder
@@ -319,11 +319,11 @@ class RatingService:
     async def _send_rolling_message(self, rating: Rating, chat):
         match rating.command:
             case self.PIDOR_KEYWORD:
-                run_messages_file = Config.pidor_messages_file
+                run_messages_file = config.content.pidor_messages_file
             case self.CHAD_KEYWORD:
-                run_messages_file = Config.chad_messages_file
+                run_messages_file = config.content.chad_messages_file
             case _:
-                run_messages_file = Config.custom_rating_messages_file
+                run_messages_file = config.content.custom_rating_messages_file
 
         try:
             with open(run_messages_file, 'r', encoding='utf-8') as file:

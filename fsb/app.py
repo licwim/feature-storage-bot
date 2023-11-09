@@ -2,8 +2,10 @@
 import logging
 from time import sleep
 
-from fsb.config import Config
+from fsb.config import config
+from fsb.db.models import Chat
 from fsb.loaders import ControllerLoader
+from fsb.services import ChatService
 from fsb.telegram.client import TelegramApiClient
 
 
@@ -12,15 +14,16 @@ class FeatureStorageBot:
     STOP_TIMEOUT = 60
 
     def __init__(self):
-        self.client = TelegramApiClient(Config.bot_username)
+        self.client = TelegramApiClient(config.BOT_USERNAME)
         self.loop = self.client.loop
         self.controller_loader = ControllerLoader(self.client)
         self.logger = logging.getLogger('main')
 
     def run(self):
-        self.logger.info(f"Development mode is {'ON' if Config.FSB_DEV_MODE else 'OFF'}")
+        self.logger.info(f"Development mode is {'ON' if config.FSB_DEV_MODE else 'OFF'}")
         self.controller_loader.run_objects()
         self.loop.run_until_complete(self.client.connect(True))
+        self.loop.run_until_complete(self.before_start())
 
         try:
             self.client.start()
@@ -46,3 +49,10 @@ class FeatureStorageBot:
             self.loop.stop()
         if not self.loop.is_closed():
             self.loop.close()
+
+    async def before_start(self):
+        chat_service = ChatService(self.client)
+
+        for chat in Chat.select():
+            entity = await self.client.get_entity(chat.telegram_id)
+            await chat_service.create_chat(entity=entity, update=True)

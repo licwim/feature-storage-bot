@@ -7,9 +7,10 @@ on:
       stand:
         description: 'Deploy to stand'
         required: true
-        default: 'prod'
+        default: 'dev'
         type: choice
         options:
+          - dev
           - prod
 
 jobs:
@@ -19,57 +20,73 @@ jobs:
     if: github.event.inputs.stand == 'prod'
     environment: production
     env:
-      CONTAINER_NAME: fsb-app
-      NETWORK_NAME: feature-storage-bot-network
       BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       API_ID: ${{ secrets.TELEGRAM_API_ID }}
       API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+      DB_HOST: ${{ vars.DB_HOST }}
+      DB_NAME: ${{ vars.DB_NAME }}
+      DB_USER: ${{ vars.DB_USER }}
       DB_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
       DOCKER_HUB_USERNAME: licwim
       DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
-      ADMIN_LOCAL_LOCATION: /var/apps/feature-storage-bot/admin
-      ADMIN_CONTAINER_LOCATION: /var/app/admin
-      APPLICATION_LOGS_LOCAL_LOCATION: /var/apps/feature-storage-bot/logs/app
-      APPLICATION_LOGS_CONTAINER_LOCATION: /var/log/app
-      CRON_LOGS_LOCAL_LOCATION: /var/apps/feature-storage-bot/logs/cron
-      CRON_LOGS_CONTAINER_LOCATION: /var/log/cron
     steps:
-    - name: Login to DockerHub
-      uses: docker/login-action@v2
-      with:
-        username: ${{ env.DOCKER_HUB_USERNAME }}
-        password: ${{ env.DOCKER_HUB_TOKEN }}
-    - name: Latest release info
-      id: release-info
-      uses: pozetroninc/github-action-get-latest-release@master
-      with:
-        repository: ${{ github.repository }}
-    - name: Start app container
-      run: |
-        TAG=$(echo "${{ github.ref_name }}" | sed 's|/|-|g')
-        IMAGE_NAME="${{ github.repository }}:$TAG"
-        echo "IMAGE_NAME = $IMAGE_NAME"
-        docker pull "$IMAGE_NAME"
-        BUILD_VERSION=$(docker image inspect "$IMAGE_NAME" --format='{{.Config.Labels.build}}')
-        echo "BUILD_VERSION = $BUILD_VERSION"
-        docker stop "$CONTAINER_NAME" || true
-        docker rm "$CONTAINER_NAME" || true
-        docker run \
-          --log-driver=journald \
-          --label branch=${{ github.ref_name }} \
-          -v "$ADMIN_LOCAL_LOCATION":"$ADMIN_CONTAINER_LOCATION" \
-          -v "$APPLICATION_LOGS_LOCAL_LOCATION":"$APPLICATION_LOGS_CONTAINER_LOCATION":rw \
-          -v "$CRON_LOGS_LOCAL_LOCATION":"$CRON_LOGS_CONTAINER_LOCATION":rw \
-          -e BOT_TOKEN="$BOT_TOKEN" \
-          -e API_ID="$API_ID" \
-          -e API_HASH="$API_HASH" \
-          -e DB_PASSWORD="$DB_PASSWORD" \
-          -e BUILD_VERSION="$BUILD_VERSION" \
-          -e RELEASE=${{ steps.release-info.outputs.release }} \
-          -e PIPENV_DOTENV_LOCATION="$ADMIN_CONTAINER_LOCATION/env" \
-          -e TZ="Europe/Moscow" \
-          -d \
-          --restart on-failure:10 \
-          --network "$NETWORK_NAME" \
-          --name "$CONTAINER_NAME" \
-          "$IMAGE_NAME"
+      - name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ env.DOCKER_HUB_USERNAME }}
+          password: ${{ env.DOCKER_HUB_TOKEN }}
+      - name: Latest release info
+        id: release-info
+        uses: pozetroninc/github-action-get-latest-release@master
+        with:
+          repository: ${{ github.repository }}
+      - name: Start app container
+        run: |
+          export TAG=$(echo "${{ github.ref_name }}" | sed 's|/|-|g')
+          export IMAGE_NAME="${{ github.repository }}:$TAG"
+          echo "IMAGE_NAME = $IMAGE_NAME"
+          docker pull "$IMAGE_NAME"
+          export BUILD_VERSION=$(docker image inspect "$IMAGE_NAME" --format='{{.Config.Labels.build}}')
+          export RELEASE=${{ steps.release-info.outputs.release }}
+          echo "BUILD_VERSION = $BUILD_VERSION"
+          echo "RELEASE = $RELEASE"
+          docker compose -f docker-compose.prod.yml down --remove-orphans
+          docker compose -f docker-compose.prod.yml up -d
+
+  dev-deploy:
+    runs-on: self-hosted
+    continue-on-error: true
+    if: github.event.inputs.stand == 'dev'
+    environment: development
+    env:
+      BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      API_ID: ${{ secrets.TELEGRAM_API_ID }}
+      API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+      DB_HOST: ${{ vars.DB_HOST }}
+      DB_NAME: ${{ vars.DB_NAME }}
+      DB_USER: ${{ vars.DB_USER }}
+      DB_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+      DOCKER_HUB_USERNAME: licwim
+      DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
+    steps:
+      - name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ env.DOCKER_HUB_USERNAME }}
+          password: ${{ env.DOCKER_HUB_TOKEN }}
+      - name: Latest release info
+        id: release-info
+        uses: pozetroninc/github-action-get-latest-release@master
+        with:
+          repository: ${{ github.repository }}
+      - name: Start app container
+        run: |
+          export TAG=$(echo "${{ github.ref_name }}" | sed 's|/|-|g')
+          export IMAGE_NAME="${{ github.repository }}:$TAG"
+          echo "IMAGE_NAME = $IMAGE_NAME"
+          docker pull "$IMAGE_NAME"
+          export BUILD_VERSION=$(docker image inspect "$IMAGE_NAME" --format='{{.Config.Labels.build}}')
+          export RELEASE=${{ steps.release-info.outputs.release }}
+          echo "BUILD_VERSION = $BUILD_VERSION"
+          echo "RELEASE = $RELEASE"
+          docker compose -f docker-compose.dev.yml up -d

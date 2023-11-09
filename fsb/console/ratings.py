@@ -23,7 +23,7 @@ async def month_roll():
 
     ratings_service = RatingService(client)
 
-    for rating in Rating.select():
+    for rating in Rating.select().where(Rating.autorun):
         if rating.last_month_winner \
                 and rating.last_month_run \
                 and rating.last_month_run >= datetime.today().replace(hour=0, minute=0, second=0, microsecond=0, day=1):

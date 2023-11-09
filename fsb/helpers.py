@@ -11,7 +11,7 @@ from pymorphy3 import MorphAnalyzer
 from telethon.tl.custom.button import Button
 from telethon.tl.patched import Message
 
-from fsb.config import Config
+from fsb.config import config
 from fsb.events.common import CallbackQueryEventDTO, EventDTO, MessageEventDTO, ChatActionEventDTO
 
 
@@ -176,8 +176,8 @@ class InfoBuilder:
     def build_about_info(bot):
         return f"{bot.user.first_name} Bot (@{bot.user.username})\n" \
                f"{bot.about}\n" \
-               f"Version: {Config.VERSION}\n" \
-               f"Build: {Config.BUILD}"
+               f"Version: {config.VERSION}\n" \
+               f"Build: {config.BUILD}"
 
 
 class Helper:
@@ -188,16 +188,18 @@ class Helper:
 
     @staticmethod
     def make_member_name(member, with_username: bool = True, with_mention: bool = False):
-        first_name = member.first_name if member.first_name else ''
-        last_name = f" {member.last_name}" if member.last_name else ''
-        if with_username and member.username:
-            if with_mention:
-                username = f" (@{member.username})"
+        full_name = f"{member.first_name or ''} {member.last_name or ''}".strip()
+        member_name = full_name
+
+        if with_mention:
+            if with_username and member.username:
+                member_name += f" (@{member.username})"
             else:
-                username = f" (__{member.username}__)"
-        else:
-            username = ''
-        return f"{first_name}{last_name}{username}"
+                member_name = f"[{full_name}](tg://user?id={str(member.id)})"
+        elif not with_mention and with_username and member.username:
+            member_name += f" (__{member.username}__)"
+
+        return member_name
 
     @staticmethod
     async def make_members_names_string(client, members: list, with_username: bool = True, with_mention: bool = False):

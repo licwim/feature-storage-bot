@@ -20,10 +20,7 @@
 import os
 import sys
 
-from fsb.config import init_config, Config
 from fsb.logger import init_logger
 
 basename = os.path.basename(sys.argv[0])
-
-init_logger(basename == 'console.py', Config)
-init_config()
+init_logger(basename == 'console.py')

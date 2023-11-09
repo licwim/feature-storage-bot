@@ -7,7 +7,7 @@ import click
 from telethon.tl.functions.messages import GetStickerSetRequest
 from telethon.tl.types import InputStickerSetShortName
 
-from fsb.config import Config
+from fsb.config import config
 from fsb.console import client, coro
 from fsb.db.models import Chat
 
@@ -31,8 +31,8 @@ async def broadcast_message(text):
 async def dude_broadcast():
     """Sending a dude message to chats"""
 
-    sticker_set_name = Config.dudes_sticker_set_name
-    stickers_ids = Config.dudes_sticker_set_documents_ids
+    sticker_set_name = config.dude.sticker_set_name
+    stickers_ids = config.dude.sticker_set_documents_ids
 
     if sticker_set_name and stickers_ids:
         sticker_set = await client.request(GetStickerSetRequest(InputStickerSetShortName(sticker_set_name)))

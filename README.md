@@ -2,38 +2,11 @@
 
 Bot-Storage of all sorts features, tools and utilities
 
-### Admin files
-##### config.json
-```json
-{
-    "bot_username": "FeatureStorageBot",
-    "bot_token": "*****",
-    "api_id": 123,
-    "api_hash": "*****",
-    "contributors": [
-        "nickname"
-    ],
-    "developer": "nickname",
-    "dev_chats": [
-        123
-    ]
-}
+### Setup
+1. Create .env file using .env.example
+2. Execute commands:
+```bash
+pipenv install
+pipenv run setup
+docker-compose -f docker-compose.local.yml up -d
 ```
-
-##### .env
-```text
-FSB_CONFIG_FILE=path/to/config.json
-FSB_DEV_MODE=1
-
-DB_HOST=fsb-db
-DB_NAME=feature_storage
-DB_USER=root
-DB_PASSWORD=111111
-```
-
-Add a variable to your local environment:
-`PIPENV_DOTENV_LOCATION=path/to/.env`
-
-
-### Local development
-`pipenv run setup`

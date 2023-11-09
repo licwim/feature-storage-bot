@@ -1,5 +1,7 @@
 # !/usr/bin/env python
 
+import click
+
 from fsb.console import cli
 from fsb.console.common import broadcast_message, dude_broadcast
 from fsb.console.migrator import migrator_cli
@@ -11,4 +13,7 @@ cli.add_command(ratings)
 cli.add_command(dude_broadcast)
 
 if __name__ == "__main__":
-    cli()
+    try:
+        cli()
+    except Exception as ex:
+        click.echo(' '.join(ex.args), err=True, color=True)
