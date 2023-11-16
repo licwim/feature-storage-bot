@@ -81,16 +81,29 @@ class ChatService:
         )[0]
 
         if update:
+            chat.real_dirty = True
             chat.name = name
             chat.type = type
             chat.input_peer = input_chat
-            chat.save()
+            if chat.is_dirty():
+                chat.save(only=chat.dirty_fields)
+            chat.real_dirty = False
+
+        await self.create_members(entity=entity, chat=chat, update=update)
+        return chat
+
+    async def create_members(self, event=None, entity=None, chat=None, update: bool = False):
+        if event:
+            entity = event.chat
+        elif not entity:
+            return None
+
+        if not chat:
+            chat = Chat.get_by_telegram_id(entity.id)
 
         for tg_member in await self.client.get_dialog_members(entity):
             user = self.create_user(entity=tg_member, update=update)
             Member.get_or_create(chat=chat, user=user)
-
-        return chat
 
     def create_user(self, event=None, entity=None, update: bool = False):
         if event:
@@ -113,11 +126,14 @@ class ChatService:
             )[0]
 
         if update:
+            user.real_dirty = True
             user.name = name
             user.nickname = entity.username
             user.phone = entity.phone
             user.input_peer = input_chat
-            user.save()
+            if user.is_dirty():
+                user.save(only=user.dirty_fields)
+            user.real_dirty = False
 
         return user
 
@@ -283,7 +299,7 @@ class RatingService:
 
             await self.send_last_day_winner_message(rating, chat, True)
 
-    def create_system_ratings(self, chat: Chat):
+    def create_default_ratings(self, chat: Chat):
         Rating.get_or_create(
             command=self.PIDOR_KEYWORD,
             chat=chat,

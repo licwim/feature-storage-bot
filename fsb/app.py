@@ -9,6 +9,14 @@ from fsb.services import ChatService
 from fsb.telegram.client import TelegramApiClient
 
 
+async def before_start(client):
+    chat_service = ChatService(client)
+
+    for chat in Chat.select():
+        entity = await client.get_entity(chat.telegram_id)
+        await chat_service.create_chat(entity=entity, update=True)
+
+
 class FeatureStorageBot:
 
     STOP_TIMEOUT = 60
@@ -23,7 +31,7 @@ class FeatureStorageBot:
         self.logger.info(f"Development mode is {'ON' if config.FSB_DEV_MODE else 'OFF'}")
         self.controller_loader.run_objects()
         self.loop.run_until_complete(self.client.connect(True))
-        self.loop.run_until_complete(self.before_start())
+        self.loop.run_until_complete(before_start(self.client))
 
         try:
             self.client.start()
@@ -49,10 +57,3 @@ class FeatureStorageBot:
             self.loop.stop()
         if not self.loop.is_closed():
             self.loop.close()
-
-    async def before_start(self):
-        chat_service = ChatService(self.client)
-
-        for chat in Chat.select():
-            entity = await self.client.get_entity(chat.telegram_id)
-            await chat_service.create_chat(entity=entity, update=True)

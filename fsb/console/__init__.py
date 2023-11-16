@@ -4,6 +4,7 @@ from functools import update_wrapper
 
 import click
 
+from fsb.app import before_start
 from fsb.config import config
 from fsb.telegram.client import TelegramApiClient
 
@@ -13,6 +14,7 @@ client = TelegramApiClient(config.BOT_USERNAME + '-cli', True)
 @click.group()
 def cli():
     client.loop.run_until_complete(client.connect(True))
+    client.loop.run_until_complete(before_start(client))
 
 
 def coro(f):

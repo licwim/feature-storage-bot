@@ -64,7 +64,6 @@ class ChatActionEventDTO(EventDTO):
         self.user_ids = event.user_ids
         self.user_joined = event.user_joined
         self.user_added = event.user_added
-        self.only_self = True
         self.new_title = event.new_title
 
 

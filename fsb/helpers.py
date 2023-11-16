@@ -79,6 +79,9 @@ class InfoBuilder:
         data_info = {
             'event': {
                 'user_ids': event.user_ids,
+                'user_added': event.user_added,
+                'user_joined': event.user_joined,
+                'new_title': event.new_title,
             }
         }
 
