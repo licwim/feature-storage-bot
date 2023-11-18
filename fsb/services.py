@@ -137,6 +137,11 @@ class ChatService:
 
         return user
 
+    async def init_chats(self):
+        for chat in Chat.select():
+            entity = await self.client.get_entity(chat.telegram_id)
+            await self.create_chat(entity=entity, update=True)
+
 
 class RatingService:
     PIDOR_KEYWORD = 'pidor'
