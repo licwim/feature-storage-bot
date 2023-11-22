@@ -196,7 +196,9 @@ class ChatActionController(Controller):
     def _listen_handle(self, handle: callable):
         self._client.add_event_handler(handle, ChatAction())
 
+    @Controller.handle_decorator
     async def chat_action_handle(self, event: ChatActionEventDTO):
+        await super().handle(event)
         self.logger.info(
             f"Chat Action event:\n" +
             InfoBuilder.build_message_info_by_chat_action(event)
