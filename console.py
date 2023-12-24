@@ -13,7 +13,4 @@ cli.add_command(ratings)
 cli.add_command(dude_broadcast)
 
 if __name__ == "__main__":
-    try:
-        cli()
-    except Exception as ex:
-        click.echo(' '.join(ex.args), err=True, color=True)
+    cli()

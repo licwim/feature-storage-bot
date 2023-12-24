@@ -241,6 +241,7 @@ class RatingMember(BaseModel):
     total_count = IntegerField(default=0, constraints=[SQL('DEFAULT 0')])
     month_count = IntegerField(default=0, constraints=[SQL('DEFAULT 0')])
     current_month_count = IntegerField(default=0, constraints=[SQL('DEFAULT 0')])
+    current_year_count = IntegerField(default=0)
     created_at = DateTimeField(default=datetime.now(), constraints=[SQL('DEFAULT CURRENT_TIMESTAMP')])
 
     def get_telegram_id(self):

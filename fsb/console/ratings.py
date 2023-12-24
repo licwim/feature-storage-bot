@@ -48,5 +48,19 @@ async def day_roll():
         await ratings_service.roll(rating, rating.chat.telegram_id)
         sleep(1)
 
+
+@click.command('year-roll')
+@coro
+async def year_roll():
+    """Calculation of the ratings winners of the year"""
+    await month_roll()
+
+    ratings_service = RatingService(client)
+
+    for rating in Rating.select().where(Rating.autorun):
+        await ratings_service.roll_year(rating, rating.chat.telegram_id)
+        sleep(1)
+
 ratings.add_command(month_roll)
 ratings.add_command(day_roll)
+ratings.add_command(year_roll)

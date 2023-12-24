@@ -4,6 +4,7 @@ import os
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+from peewee import SQL
 from peewee_async import PooledMySQLDatabase
 from peewee_moves import DatabaseManager as BaseDatabaseManager, Migrator as BaseMigrator, LOGGER
 from playhouse.migrate import MySQLMigrator
@@ -26,6 +27,26 @@ class Migrator(BaseMigrator):
 
     def drop_foreign_key_constraint(self, table, column_name):
         self.migrator.drop_foreign_key_constraint(table, column_name).run()
+
+    def add_column(self, table, name, coltype, null=True, default=None, constraints=None, **kwargs):
+        # peewee-moves некорректно обрабатывает NOT NULL, поэтому этот параметр надо указывать в constraints
+        extended_constraints = []
+
+        if constraints:
+            if isinstance(constraints, list):
+                for constraint in constraints:
+                    extended_constraints.append(SQL(constraint))
+            elif isinstance(constraints, str):
+                extended_constraints.append(SQL(constraints))
+
+        if null == False:
+            extended_constraints.insert(0, SQL('NOT NULL'))
+
+        if default != None:
+            extended_constraints.insert(0, SQL(f'DEFAULT {default}'))
+
+        extended_constraints = extended_constraints if extended_constraints else None
+        super().add_column(table, name, coltype, null=True, default=default, constraints=extended_constraints)
 
 
 class DatabaseManager(BaseDatabaseManager):

@@ -6,6 +6,8 @@ content:
   pidor_messages_file: content/pidor_messages.txt
   chad_messages_file: content/chad_messages.txt
   custom_rating_messages_file: content/custom_rating_messages.txt
+  rating_congratulations_file: content/rating_congratulations.txt
+  year_emojis_file: content/year_emojis.txt
 
 dude:
   sticker_set_name: WednesdayFrog

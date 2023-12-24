@@ -287,6 +287,42 @@ class Helper:
         return result
 
     @staticmethod
+    def get_words_lexeme(**kwargs) -> dict:
+        string_format = {}
+
+        for key, word in kwargs.items():
+            string_format[key] = word
+
+            if word.isupper():
+                word_case = 'upper'
+            elif word.islower():
+                word_case = 'lower'
+            elif word.istitle():
+                word_case = 'capitalize'
+            else:
+                word_case = None
+
+            parsed_word = MorphAnalyzer(lang='ru').parse(word)[0]
+
+            for lexeme_item in parsed_word.lexeme:
+                lexeme_key = f'{key}_{lexeme_item.tag.case}_{lexeme_item.tag.number}'
+                lexeme_key = lexeme_key.rstrip('_')
+
+                match word_case:
+                    case 'upper':
+                        lexeme_word = lexeme_item.word.upper()
+                    case 'lower':
+                        lexeme_word = lexeme_item.word.lower()
+                    case 'capitalize':
+                        lexeme_word = lexeme_item.word.capitalize()
+                    case _:
+                        lexeme_word = lexeme_item.word
+
+                string_format[lexeme_key] = lexeme_word
+
+        return string_format
+
+    @staticmethod
     def get_month_name(month: int = None, grammemes = None):
         if not month:
             month = datetime.now().month

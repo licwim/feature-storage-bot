@@ -1,0 +1,4 @@
+Честь и слава этому {rating_name_datv_sing}!
+Хвалите и возносите этого {rating_name_gent_sing}!
+Почет и уважение сему {rating_name_datv_sing}!
+Овации для {rating_name_gent_sing}!
