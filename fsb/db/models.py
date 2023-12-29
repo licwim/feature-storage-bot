@@ -188,8 +188,10 @@ class Rating(BaseModel):
     command = CharField()
     last_run = DateTimeField(null=True)
     last_month_run = DateTimeField(null=True)
+    last_year_run = DateTimeField(null=True)
     last_winner = DeferredForeignKey('RatingMember', null=True, on_delete='SET NULL')
     last_month_winner = DeferredForeignKey('RatingMember', null=True, on_delete='SET NULL')
+    last_year_winner = DeferredForeignKey('RatingMember', null=True, on_delete='SET NULL')
     autorun = BooleanField(default=False, constraints=[SQL('DEFAULT 0')])
 
     @staticmethod

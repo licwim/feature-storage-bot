@@ -104,14 +104,14 @@ class ChatService:
 
         name = Helper.make_member_name(entity, with_username=False)
         user = User.get_or_create(
-                telegram_id=entity.id,
-                defaults={
-                    'name': name,
-                    'nickname': entity.username,
-                    'phone': entity.phone,
-                    'input_peer': input_chat
-                }
-            )[0]
+            telegram_id=entity.id,
+            defaults={
+                'name': name,
+                'nickname': entity.username,
+                'phone': entity.phone,
+                'input_peer': input_chat
+            }
+        )[0]
 
         if update:
             user.name = name
@@ -144,14 +144,15 @@ class RatingService:
                                 'но придется выбрать одного.'
 
     LEADERSHIP_TIME = 2
-    LEADERSHIP_TIME_OVER_MESSAGE = 'Одно и то же лицо не может занимать должность Лидера Чата более ' \
-                                   'двух сроков подряд.\n\nПоэтому {excluded_members} ' \
-                                   'автоматически {out_word}.'
-    LEADERSHIP_TIME_OVER_OUT_WORD = 'выбывает'
-    LEADER_ALREADY_MESSAGE = '{already_win_members} и так уже в лидерах других рейтингов в этом месяце.'
-    YEAR_WINNER_MESSAGE = "В прошедшем {year} году самым большим {rating_name_ablt_sing} был {member_name}! {congratulation}"
+    OUT_MESSAGE = '{excluded_members} автоматически {out_word} из гонки за звание ' \
+                  '{rating_name_gent_sing} месяца, '
+    OUT_WORD = 'выбывает'
+    LEADERSHIP_TIME_OVER_MESSAGE = OUT_MESSAGE + 'так как одно и то же лицо не может занимать должность Лидера Чата ' \
+                                                 'более двух сроков подряд.\n\n'
+    LEADER_ALREADY_MESSAGE = OUT_MESSAGE + 'поскольку и так уже в лидерах других рейтингов в этом месяце.'
+    YEAR_WINNER_MESSAGE = "В прошедшем {year} году самым большим {rating_name_ablt_sing} был {member_name}!"
     FEW_YEAR_WINNERS_MESSAGE = 'В {year} году оказалось несколько лидирующих {rating_name_gent_plur}, ' \
-                                'но придется выбрать одного.'
+                               'но придется выбрать одного.'
 
     def __init__(self, client: TelegramApiClient):
         self.client = client
@@ -173,8 +174,7 @@ class RatingService:
             members_collection = Helper.collect_members(actual_members, rating_members, Helper.COLLECT_RETURN_ONLY_DB)
 
             if not members_collection:
-                rating_name_gent = Helper.inflect_word(rating.name, {'gent', 'plur'}).upper()
-                raise NoApproachableMembers(rating_name_gent)
+                raise NoApproachableMembers(rating.name)
 
             if is_month:
                 await self._month_roll(members_collection, rating, chat)
@@ -221,11 +221,22 @@ class RatingService:
 
             already_winner_members = list(rating.members.where(RatingMember.id.not_in(members_collection)).execute())
 
+            rating_name_gent_sing = Helper.inflect_word(rating.name, {'gent', 'sing'}).upper()
+            rating_name_gent_plur = Helper.inflect_word(rating.name, {'gent', 'plur'}).upper()
+
             for rating_member in already_winner_members:
                 if win_count is not None and rating_member.current_month_count >= win_count:
-                    already_win_members = await Helper.make_members_names_string(self.client, already_winner_members, with_username=False)
+                    if len(already_winner_members) > 1:
+                        out_word = Helper.inflect_word(self.OUT_WORD, {'plur'})
+                    else:
+                        out_word = self.OUT_WORD
+
+                    already_winner_members_names = await Helper.make_members_names_string(self.client, already_winner_members,
+                                                                                 with_username=False)
                     await self.client.send_message(chat, self.LEADER_ALREADY_MESSAGE.format(
-                        already_win_members=already_win_members
+                        excluded_members=already_winner_members_names,
+                        out_word=out_word,
+                        rating_name_gent_sing=rating_name_gent_sing
                     ))
                     break
 
@@ -234,28 +245,28 @@ class RatingService:
 
                 if win_count is None or rating_member.current_month_count >= win_count:
                     if len(excluded_members) > 1:
-                        out_word = Helper.inflect_word(self.LEADERSHIP_TIME_OVER_OUT_WORD, {'plur'})
+                        out_word = Helper.inflect_word(self.OUT_WORD, {'plur'})
                     else:
-                        out_word = self.LEADERSHIP_TIME_OVER_OUT_WORD
-                    excluded_members_names = await Helper.make_members_names_string(self.client, excluded_members, with_username=False)
+                        out_word = self.OUT_WORD
+                    excluded_members_names = await Helper.make_members_names_string(self.client, excluded_members,
+                                                                                    with_username=False)
                     await self.client.send_message(chat, self.LEADERSHIP_TIME_OVER_MESSAGE.format(
                         excluded_members=excluded_members_names,
-                        out_word=out_word
+                        out_word=out_word,
+                        rating_name_gent_sing=rating_name_gent_sing
                     ))
                     break
 
-            rating_name_gent = Helper.inflect_word(rating.name, {'gent', 'plur'}).upper()
-
             if winners_len > 1:
                 await self.client.send_message(chat, self.FEW_MONTH_WINNERS_MESSAGE.format(
-                        rating_name=rating_name_gent,
+                        rating_name=rating_name_gent_plur,
                         month_name=Helper.get_month_name((datetime.now() - delta(months=1)).month, {'loct'}),
                     ))
                 win_db_member = await self._determine_winner(winners, rating, chat)
             elif winners_len == 1:
                 win_db_member = winners[0]
             else:
-                await self.client.send_message(chat, NoApproachableMembers(rating_name_gent).message)
+                await self.client.send_message(chat, NoApproachableMembers(rating.name).message)
                 return
 
             win_db_member.month_count += 1
@@ -402,6 +413,18 @@ class RatingService:
         return result
 
     @staticmethod
+    def get_year_winner(rating: Rating):
+        winner = None
+
+        if rating.last_year_winner \
+                and rating.last_year_run \
+                and rating.last_year_run >= datetime.today().replace(hour=0, minute=0, second=0, microsecond=0, day=1,
+                                                                     month=1):
+            winner = rating.last_month_winner
+
+        return winner
+
+    @staticmethod
     def get_year_stat(rating: Rating) -> dict:
         result = {}
 
@@ -409,6 +432,31 @@ class RatingService:
             result[rating_member.id] = rating_member.month_count
 
         return result
+
+    async def send_last_year_winner_message(self, rating: Rating, chat, announcing: bool = False):
+        tg_member = await rating.last_year_winner.get_telegram_member(self.client)
+        rating_name_lexeme = Helper.get_words_lexeme(rating_name=rating.name.upper())
+        year = (datetime.now().replace(hour=0, minute=10, second=0, microsecond=0, day=1, month=1)
+                - delta(years=1)).year
+        winner_message = self.YEAR_WINNER_MESSAGE.format(
+            member_name=Helper.make_member_name(tg_member, with_mention=announcing),
+            year=year,
+            **rating_name_lexeme,
+        )
+
+        if announcing:
+            with open(config.content.rating_congratulations_file, 'r', encoding='utf-8') as file:
+                congratulations = file.readlines()
+                congratulation = random.choice(congratulations).strip(' \n')
+                congratulation = congratulation.format(**rating_name_lexeme)
+            with open(config.content.year_emojis_file, 'r', encoding='utf-8') as file:
+                emojis = file.readlines()
+                emoji = random.choice(emojis).strip(' \n')
+
+            await self.client.send_message(chat, winner_message + ' ' + congratulation)
+            await self.client.send_message(chat, emoji)
+        else:
+            await self.client.send_message(chat, winner_message)
 
     async def roll_year(self, rating: Rating, chat):
         self.logger.info(InfoBuilder.build_log(f"Year rolling rating", {
@@ -423,7 +471,8 @@ class RatingService:
             actual_members = await self.client.get_dialog_members(chat)
             rating_members = rating.members
             members_collection = Helper.collect_members(actual_members, rating_members, Helper.COLLECT_RETURN_ONLY_DB)
-            rating_name_lexeme = Helper.get_words_lexeme(rating_name=rating.name.upper())
+            year = (datetime.now().replace(hour=0, minute=10, second=0, microsecond=0, day=1, month=1)
+                    - delta(years=1)).year
 
             if not members_collection:
                 raise NoApproachableMembers(rating.name)
@@ -437,8 +486,8 @@ class RatingService:
 
             if winners_len > 1:
                 await self.client.send_message(chat, self.FEW_YEAR_WINNERS_MESSAGE.format(
-                    year=(datetime.now() - delta(years=1)).year,
-                    **rating_name_lexeme
+                    year=year,
+                    **Helper.get_words_lexeme(rating_name=rating.name.upper())
                 ))
                 win_db_member = await self._determine_winner(winners, rating, chat)
             elif winners_len == 1:
@@ -447,24 +496,11 @@ class RatingService:
                 await self.client.send_message(chat, NoApproachableMembers(rating.name).message)
                 return
 
-            RatingMember.update(current_month_count=0).where(RatingMember.rating == rating).execute()
-            win_tg_member = await win_db_member.get_telegram_member(self.client)
+            rating.last_year_winner = win_db_member
+            rating.last_year_run = datetime.now()
+            rating.save()
+            RatingMember.update(current_year_count=0).where(RatingMember.rating == rating).execute()
 
-            with open(config.content.rating_congratulations_file, 'r', encoding='utf-8') as file:
-                congratulations = file.readlines()
-                congratulation = random.choice(congratulations).strip(' \n')
-                congratulation = congratulation.format(**rating_name_lexeme)
-            with open(config.content.year_emojis_file, 'r', encoding='utf-8') as file:
-                emojis = file.readlines()
-                emoji = random.choice(emojis).strip(' \n')
-
-            winner_message = self.YEAR_WINNER_MESSAGE.format(
-                congratulation=congratulation,
-                member_name=Helper.make_member_name(win_tg_member, with_mention=True),
-                year=(datetime.now() - delta(years=1)).year,
-                **rating_name_lexeme,
-            )
-            await self.client.send_message(chat, winner_message)
-            await self.client.send_message(chat, emoji)
+            await self.send_last_year_winner_message(rating, chat, True)
         except BaseFsbException as ex:
             await self.client.send_message(chat, ex.message)
