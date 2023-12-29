@@ -15,7 +15,7 @@ class StartCommandHandler(CommandHandler):
         chat_service = ChatService(self.client)
         rating_service = RatingService(self.client)
         chat = await chat_service.create_chat(event=self.telegram_event, update=True)
-        rating_service.create_system_ratings(chat)
+        rating_service.create_default_ratings(chat)
         await self.client.send_message(self.chat, 'OK')
 
 

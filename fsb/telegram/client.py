@@ -5,7 +5,8 @@ import logging
 from time import sleep
 from typing import Any, Union
 
-from telethon import TelegramClient, errors, events, functions
+from telethon import TelegramClient, errors, functions
+from telethon.events.common import EventBuilder
 from telethon.tl.types import (
     Message,
     InputPeerUser, InputPeerChat, InputPeerChannel,
@@ -115,14 +116,8 @@ class TelegramApiClient:
                 entity = await self.get_entity(uid, False)
         return entity
 
-    def add_message_handler(self, handler: callable, *args, **kwargs):
-        self._client.add_event_handler(handler, events.NewMessage(forwards=False, *args, **kwargs))
-
-    def add_callback_query_handler(self, handler: callable, *args, **kwargs):
-        self._client.add_event_handler(handler, events.CallbackQuery(*args, **kwargs))
-
-    def add_chat_action_handler(self, handler: callable, *args, **kwargs):
-        self._client.add_event_handler(handler, events.ChatAction(*args, **kwargs))
+    def add_event_handler(self, handler: callable, event: EventBuilder):
+        self._client.add_event_handler(handler, event)
 
     async def request(self, data):
         return await self._client(data)

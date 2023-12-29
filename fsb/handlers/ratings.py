@@ -26,7 +26,7 @@ class CreateRatingsOnJoinChatHandler(ChatActionHandler):
         await super().run()
         chat = Chat.get_by_telegram_id(self.chat.id)
         rating_service = RatingService(self.client)
-        rating_service.create_system_ratings(chat)
+        rating_service.create_default_ratings(chat)
 
 
 class RatingsSettingsCommandHandler(CommandHandler):
