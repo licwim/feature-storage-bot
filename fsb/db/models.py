@@ -30,6 +30,7 @@ from fsb.errors import InputValueError
 
 class BaseModel(Model):
     TABLE_NAME = ''
+    real_dirty = False
 
     class Meta:
         @staticmethod
@@ -41,10 +42,16 @@ class BaseModel(Model):
 
         database = base_db
         table_function = make_table_name
+        # only_save_dirty = True
 
     def save_get_id(self, *args, **kwargs):
         super().save(*args, **kwargs)
         return super().get_id()
+
+    def __setattr__(self, key, value):
+        if self.real_dirty and key in self._meta.fields and getattr(self, key) == value:
+            return
+        super().__setattr__(key, value)
 
 
 class User(BaseModel):
