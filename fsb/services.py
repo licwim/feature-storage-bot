@@ -5,9 +5,9 @@ import logging
 import random
 from asyncio import sleep
 from datetime import datetime
-from dateutil.relativedelta import relativedelta as delta
 
 import quantumrand as qr
+from dateutil.relativedelta import relativedelta as delta
 from peewee import fn
 from telethon.tl.types import InputPeerUser, InputPeerChat, InputPeerChannel
 
@@ -173,7 +173,7 @@ class RatingService:
     LEADER_ALREADY_MESSAGE = OUT_MESSAGE + 'поскольку и так уже в лидерах других рейтингов в этом месяце.'
     YEAR_WINNER_MESSAGE = "В прошедшем {year} году самым большим {rating_name_ablt_sing} был {member_name}!"
     FEW_YEAR_WINNERS_MESSAGE = 'В {year} году оказалось несколько лидирующих {rating_name_gent_plur}, ' \
-                               'но придется выбрать одного.'
+                               'но остаться должен только один.'
 
     def __init__(self, client: TelegramApiClient):
         self.client = client
