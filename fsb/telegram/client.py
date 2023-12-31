@@ -59,7 +59,7 @@ class TelegramApiClient:
             self.logger.info("Connection error")
         self.logger.info("Logout")
 
-    async def send_message(self, entity, message: Any, reply_to: Message = None, buttons=None, is_file: bool = False):
+    async def send_message(self, entity, message: Any, reply_to: Message = None, buttons=None, is_file: bool = False, **kwargs):
         try:
             if isinstance(entity, Union[str, int]):
                 entity = await self.get_entity(entity)
@@ -74,9 +74,9 @@ class TelegramApiClient:
                 message = message.rstrip('\t \n')
             if message:
                 if is_file:
-                    new_message = await self._client.send_file(entity=entity, file=message, reply_to=reply_to, buttons=buttons)
+                    new_message = await self._client.send_file(entity=entity, file=message, reply_to=reply_to, buttons=buttons, **kwargs)
                 else:
-                    new_message = await self._client.send_message(entity=entity, message=message, reply_to=reply_to, buttons=buttons)
+                    new_message = await self._client.send_message(entity=entity, message=message, reply_to=reply_to, buttons=buttons, **kwargs)
             return new_message
         except errors.PeerFloodError as e:
             self.logger.error(f"{entity}: PeerFloodError")

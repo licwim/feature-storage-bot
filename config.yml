@@ -8,6 +8,8 @@ content:
   custom_rating_messages_file: content/custom_rating_messages.txt
   rating_congratulations_file: content/rating_congratulations.txt
   year_emojis_file: content/year_emojis.txt
+  shrek_new_year_gif: content/shrek_new_year.gif
+  shrek_new_year_film: content/shrek_new_year.mp4
 
 dude:
   sticker_set_name: WednesdayFrog

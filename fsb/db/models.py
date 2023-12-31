@@ -96,6 +96,7 @@ class Chat(BaseModel):
     input_peer = TextField(null=True)
     dude = BooleanField(default=False, constraints=[SQL('DEFAULT 0')])
     users = ManyToManyField(User, backref='chats', through_model=MemberDeferred)
+    happy_new_year = BooleanField(default=False, constraints=[SQL('DEFAULT 0')])
 
     @staticmethod
     def get_chat_type(chat):
