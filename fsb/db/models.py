@@ -21,6 +21,7 @@ from peewee import (
     ManyToManyField,
     DeferredThroughModel,
     DateField,
+    SQL,
 )
 
 from fsb.db import base_db
@@ -29,6 +30,7 @@ from fsb.errors import InputValueError
 
 class BaseModel(Model):
     TABLE_NAME = ''
+    real_dirty = False
 
     class Meta:
         @staticmethod
@@ -40,10 +42,16 @@ class BaseModel(Model):
 
         database = base_db
         table_function = make_table_name
+        # only_save_dirty = True
 
     def save_get_id(self, *args, **kwargs):
         super().save(*args, **kwargs)
         return super().get_id()
+
+    def __setattr__(self, key, value):
+        if self.real_dirty and key in self._meta.fields and getattr(self, key) == value:
+            return
+        super().__setattr__(key, value)
 
 
 class User(BaseModel):
@@ -86,8 +94,9 @@ class Chat(BaseModel):
     name = CharField(null=True)
     type = IntegerField()
     input_peer = TextField(null=True)
-    dude = BooleanField(default=False)
+    dude = BooleanField(default=False, constraints=[SQL('DEFAULT 0')])
     users = ManyToManyField(User, backref='chats', through_model=MemberDeferred)
+    happy_new_year = BooleanField(default=False, constraints=[SQL('DEFAULT 0')])
 
     @staticmethod
     def get_chat_type(chat):
@@ -187,9 +196,11 @@ class Rating(BaseModel):
     command = CharField()
     last_run = DateTimeField(null=True)
     last_month_run = DateTimeField(null=True)
+    last_year_run = DateTimeField(null=True)
     last_winner = DeferredForeignKey('RatingMember', null=True, on_delete='SET NULL')
     last_month_winner = DeferredForeignKey('RatingMember', null=True, on_delete='SET NULL')
-    autorun = BooleanField(default=False)
+    last_year_winner = DeferredForeignKey('RatingMember', null=True, on_delete='SET NULL')
+    autorun = BooleanField(default=False, constraints=[SQL('DEFAULT 0')])
 
     @staticmethod
     def parse_from_message(message: str) -> tuple:
@@ -237,10 +248,11 @@ class RatingMember(BaseModel):
     id = AutoField()
     member = ForeignKeyField(Member, on_delete='CASCADE', backref='ratings_members')
     rating = ForeignKeyField(Rating, on_delete='CASCADE', backref='members')
-    total_count = IntegerField(default=0)
-    month_count = IntegerField(default=0)
-    current_month_count = IntegerField(default=0)
-    created_at = DateTimeField(default=datetime.now())
+    total_count = IntegerField(default=0, constraints=[SQL('DEFAULT 0')])
+    month_count = IntegerField(default=0, constraints=[SQL('DEFAULT 0')])
+    current_month_count = IntegerField(default=0, constraints=[SQL('DEFAULT 0')])
+    current_year_count = IntegerField(default=0)
+    created_at = DateTimeField(default=datetime.now(), constraints=[SQL('DEFAULT CURRENT_TIMESTAMP')])
 
     def get_telegram_id(self):
         telegram_id = None
@@ -256,10 +268,10 @@ class QueryEvent(BaseModel):
     TABLE_NAME = 'query_events'
 
     id = AutoField()
-    module_name = CharField(null=True, default='module')
-    class_name = CharField(null=True, default='class')
+    module_name = CharField(null=True, default='module', constraints=[SQL('DEFAULT "module"')])
+    class_name = CharField(null=True, default='class', constraints=[SQL('DEFAULT "class"')])
     data = TextField(null=True)
-    created_at = DateTimeField(default=datetime.now())
+    created_at = DateTimeField(default=datetime.now(), constraints=[SQL('DEFAULT CURRENT_TIMESTAMP')])
 
     def __init__(self, sender_id: int = None, data_value=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -334,4 +346,4 @@ class CacheQuantumRand(BaseModel):
 
     id = AutoField()
     value = IntegerField(null=False)
-    type = CharField(null=False, default='uint16')
+    type = CharField(null=False, default='uint16', constraints=[SQL('DEFAULT "uint16"')])

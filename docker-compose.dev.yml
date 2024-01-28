@@ -1,0 +1,60 @@
+version: '3.9'
+name: 'fsb-dev'
+services:
+  app:
+    image: licwim/feature-storage-bot:${TAG:-master}
+    container_name: fsb-app-dev
+    hostname: fsb-app-dev
+    volumes:
+      - /var/apps/feature-storage-bot/dev/logs/app:/var/log/app:rw
+      - /var/apps/feature-storage-bot/dev/logs/cron:/var/log/cron:rw
+      - /var/apps/feature-storage-bot/dev/content:/var/app/content
+    logging:
+      driver: "journald"
+    labels:
+      build: $BUILD_VERSION
+    networks:
+      - network
+    deploy:
+      restart_policy:
+        condition: on-failure
+        max_attempts: 10
+        window: 10s
+    environment:
+      - DB_HOST=$DB_HOST
+      - DB_NAME=$DB_NAME
+      - DB_USER=$DB_USER
+      - DB_PASSWORD=$DB_PASSWORD
+      - BOT_TOKEN=$BOT_TOKEN
+      - API_ID=$API_ID
+      - API_HASH=$API_HASH
+      - BOT_USERNAME=FeatureStorageTestBot
+      - BUILD_VERSION=$BUILD_VERSION
+      - RELEASE=$RELEASE
+      - FSB_DEV_MODE=True
+      - LOG_FOLDER=/var/log/app/
+      - TZ=Europe/Moscow
+
+  db:
+    image: mysql:8.0.31
+    container_name: fsb-db-dev
+    hostname: fsb-db-dev
+    volumes:
+      - db:/var/lib/mysql
+    networks:
+      - network
+    restart: always
+    ports:
+      - "3307:3306"
+    environment:
+      - MYSQL_RANDOM_ROOT_PASSWORD=1
+      - TZ=Europe/Moscow
+
+networks:
+  network:
+    driver: bridge
+
+volumes:
+  db:
+    name: feature-storage-bot_db-dev
+    external: true

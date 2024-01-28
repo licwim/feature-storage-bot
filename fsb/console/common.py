@@ -5,9 +5,9 @@ from time import sleep
 
 import click
 from telethon.tl.functions.messages import GetStickerSetRequest
-from telethon.tl.types import InputStickerSetShortName
+from telethon.tl.types import InputStickerSetShortName, DocumentAttributeVideo
 
-from fsb.config import Config
+from fsb.config import config
 from fsb.console import client, coro
 from fsb.db.models import Chat
 
@@ -31,8 +31,8 @@ async def broadcast_message(text):
 async def dude_broadcast():
     """Sending a dude message to chats"""
 
-    sticker_set_name = Config.dudes_sticker_set_name
-    stickers_ids = Config.dudes_sticker_set_documents_ids
+    sticker_set_name = config.dude.sticker_set_name
+    stickers_ids = config.dude.sticker_set_documents_ids
 
     if sticker_set_name and stickers_ids:
         sticker_set = await client.request(GetStickerSetRequest(InputStickerSetShortName(sticker_set_name)))
@@ -46,3 +46,23 @@ async def dude_broadcast():
     for chat in Chat.select().where(Chat.dude):
         await client.send_message(chat.telegram_id, message, is_file=is_file)
         sleep(1)
+
+
+@click.command('new-year-broadcast')
+@coro
+async def new_year_broadcast():
+    """Sending New year message to chats"""
+    film = None
+
+    if config.content.shrek_new_year_film:
+        film = await client._client.upload_file(config.content.shrek_new_year_film, file_name='Happy New Year.mp4')
+
+    for chat in Chat.select().where(Chat.happy_new_year):
+        if config.content.shrek_new_year_gif:
+            await client.send_message(chat.telegram_id, config.content.shrek_new_year_gif, is_file=True)
+        else:
+            await client.send_message(chat.telegram_id, 'Happy New Year!', is_file=False)
+        sleep(1)
+
+        if film:
+            await client._client.send_file(chat.telegram_id, film, attributes=(DocumentAttributeVideo(0, 426, 240),))

@@ -1,0 +1,104 @@
+contributors:
+  - licwim
+  - EgoringKosmos
+
+content:
+  pidor_messages_file: content/pidor_messages.txt
+  chad_messages_file: content/chad_messages.txt
+  custom_rating_messages_file: content/custom_rating_messages.txt
+  rating_congratulations_file: content/rating_congratulations.txt
+  year_emojis_file: content/year_emojis.txt
+  shrek_new_year_gif: content/shrek_new_year.gif
+  shrek_new_year_film: content/shrek_new_year.mp4
+
+dude:
+  sticker_set_name: WednesdayFrog
+  sticker_set_documents_ids:
+    - 1680355986910478345
+    - 1680355986910478346
+    - 1680355986910478347
+    - 1680355986910478348
+    - 1680355986910478349
+    - 1680355986910478350
+    - 1680355986910478351
+    - 1680355986910478352
+    - 1680355986910478353
+    - 1680355986910478354
+    - 1680355986910478355
+    - 1680355986910478356
+    - 1680355986910478357
+    - 1680355986910478358
+    - 1680355986910478359
+    - 1680355986910478360
+    - 1680355986910478361
+    - 1680355986910478363
+    - 1680355986910478366
+    - 1680355986910478367
+    - 1680355986910478368
+    - 1680355986910478370
+    - 1680355986910478376
+    - 1680355986910478379
+    - 1680355986910478403
+    - 1680355986910478408
+    - 1680355986910478409
+    - 1680355986910478425
+    - 1680355986910478426
+    - 1680355986910478433
+    - 1680355986910478434
+    - 1680355986910478436
+    - 1680355986910478451
+
+logging:
+  version: 1
+  disable_existing_loggers: false
+
+  formatters:
+    with_time:
+      format: "[%(asctime)s][%(name)s:%(levelname)s] %(message)s"
+    without_time:
+      format: "[%(name)s:%(levelname)s] %(message)s"
+
+  filters:
+    level:
+      (): fsb.logger.LevelFilter
+      level: WARNING
+
+  handlers:
+    stdout_app:
+      class: logging.StreamHandler
+      level: NOTSET
+      formatter: without_time
+      filters: [ level ]
+      stream: ext://sys.stdout
+    stderr_app:
+      class: logging.StreamHandler
+      level: WARNING
+      formatter: without_time
+      stream: ext://sys.stderr
+    stdout_console:
+      class: logging.StreamHandler
+      level: NOTSET
+      formatter: with_time
+      filters: [ level ]
+      stream: ext://sys.stdout
+    stderr_console:
+      class: logging.StreamHandler
+      level: WARNING
+      formatter: with_time
+      stream: ext://sys.stderr
+    logstash:
+      class: logging.handlers.RotatingFileHandler
+      level: NOTSET
+      formatter: with_time
+      filename: "{log_dir}logstash.log"
+      maxBytes: 104857600 # 100MB
+      backupCount: 10
+      encoding: utf8
+
+  root:
+    level: WARNING
+  loggers:
+    app:
+      handlers: [ stdout_app, stderr_app, logstash ]
+    console:
+      handlers: [ stdout_console, stderr_console ]

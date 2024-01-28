@@ -11,7 +11,7 @@ from pymorphy3 import MorphAnalyzer
 from telethon.tl.custom.button import Button
 from telethon.tl.patched import Message
 
-from fsb.config import Config
+from fsb.config import config
 from fsb.events.common import CallbackQueryEventDTO, EventDTO, MessageEventDTO, ChatActionEventDTO
 
 
@@ -79,6 +79,9 @@ class InfoBuilder:
         data_info = {
             'event': {
                 'user_ids': event.user_ids,
+                'user_added': event.user_added,
+                'user_joined': event.user_joined,
+                'new_title': event.new_title,
             }
         }
 
@@ -176,8 +179,8 @@ class InfoBuilder:
     def build_about_info(bot):
         return f"{bot.user.first_name} Bot (@{bot.user.username})\n" \
                f"{bot.about}\n" \
-               f"Version: {Config.VERSION}\n" \
-               f"Build: {Config.BUILD}"
+               f"Version: {config.VERSION}\n" \
+               f"Build: {config.BUILD}"
 
 
 class Helper:
@@ -188,16 +191,18 @@ class Helper:
 
     @staticmethod
     def make_member_name(member, with_username: bool = True, with_mention: bool = False):
-        first_name = member.first_name if member.first_name else ''
-        last_name = f" {member.last_name}" if member.last_name else ''
-        if with_username and member.username:
-            if with_mention:
-                username = f" (@{member.username})"
+        full_name = f"{member.first_name or ''} {member.last_name or ''}".strip()
+        member_name = full_name
+
+        if with_mention:
+            if with_username and member.username:
+                member_name += f" (@{member.username})"
             else:
-                username = f" (__{member.username}__)"
-        else:
-            username = ''
-        return f"{first_name}{last_name}{username}"
+                member_name = f"[{full_name}](tg://user?id={str(member.id)})"
+        elif not with_mention and with_username and member.username:
+            member_name += f" (__{member.username}__)"
+
+        return member_name
 
     @staticmethod
     async def make_members_names_string(client, members: list, with_username: bool = True, with_mention: bool = False):
@@ -283,6 +288,42 @@ class Helper:
             result = word
 
         return result
+
+    @staticmethod
+    def get_words_lexeme(**kwargs) -> dict:
+        string_format = {}
+
+        for key, word in kwargs.items():
+            string_format[key] = word
+
+            if word.isupper():
+                word_case = 'upper'
+            elif word.islower():
+                word_case = 'lower'
+            elif word.istitle():
+                word_case = 'capitalize'
+            else:
+                word_case = None
+
+            parsed_word = MorphAnalyzer(lang='ru').parse(word)[0]
+
+            for lexeme_item in parsed_word.lexeme:
+                lexeme_key = f'{key}_{lexeme_item.tag.case}_{lexeme_item.tag.number}'
+                lexeme_key = lexeme_key.rstrip('_')
+
+                match word_case:
+                    case 'upper':
+                        lexeme_word = lexeme_item.word.upper()
+                    case 'lower':
+                        lexeme_word = lexeme_item.word.lower()
+                    case 'capitalize':
+                        lexeme_word = lexeme_item.word.capitalize()
+                    case _:
+                        lexeme_word = lexeme_item.word
+
+                string_format[lexeme_key] = lexeme_word
+
+        return string_format
 
     @staticmethod
     def get_month_name(month: int = None, grammemes = None):

@@ -7,7 +7,10 @@ from asyncio import sleep
 from collections import OrderedDict
 from typing import Type
 
-from fsb.config import Config
+from peewee import DoesNotExist
+from telethon.events import NewMessage, CallbackQuery, ChatAction
+
+from fsb.config import config
 from fsb.db.models import QueryEvent, Role, Chat
 from fsb.errors import ExitControllerException
 from fsb.events.common import (
@@ -17,19 +20,18 @@ from fsb.events.common import (
 from fsb.events.ratings import RatingQueryEvent
 from fsb.events.roles import RoleQueryEvent
 from fsb.handlers import Handler
-from fsb.handlers.chats import JoinChatHandler
 from fsb.handlers.commands import (
     StartCommandHandler, PingCommandHandler, EntityInfoCommandHandler, AboutInfoCommandHandler, WednesdayCommandHandler
 )
 from fsb.handlers.mentions import AllMentionHandler, CustomMentionHandler
 from fsb.handlers.ratings import (
-    CreateRatingsOnJoinChatHandler, RatingsSettingsCommandHandler, RatingCommandHandler, StatRatingCommandHandler,
+    RatingsSettingsCommandHandler, RatingCommandHandler, StatRatingCommandHandler,
     RatingsSettingsQueryHandler
 )
 from fsb.handlers.roles import RolesSettingsCommandHandler, RolesSettingsQueryHandler
 from fsb.helpers import InfoBuilder
+from fsb.services import ChatService
 from fsb.telegram.client import TelegramApiClient
-from peewee import DoesNotExist
 
 
 class Controller:
@@ -73,6 +75,7 @@ class Controller:
                 if time >= self.MAX_WAITING:
                     raise TimeoutError
         await self._init_filter(event)
+        await ChatService(self._client).create_chat(event=event.telegram_event, update=True)
         self.logger.info(f"Start controller {self._controller_name}")
 
     @staticmethod
@@ -125,11 +128,11 @@ class MessageController(Controller):
     _event_class = MessageEventDTO
 
     def _listen_handle(self, handle: callable):
-        self._client.add_message_handler(handle)
+        self._client.add_event_handler(handle, NewMessage(forwards=False))
 
     async def _init_filter(self, event: MessageEventDTO):
         await super()._init_filter(event)
-        if (event.debug and event.sender.username not in Config.contributors) \
+        if (event.debug and event.sender.username not in config.contributors) \
                 or (event.message.out and not self._from_bot) or (not event.message.out and not self._from_user):
             raise ExitControllerException
 
@@ -145,7 +148,7 @@ class CallbackQueryController(Controller):
     _event_class = CallbackQueryEventDTO
 
     def _listen_handle(self, handle: callable):
-        self._client.add_callback_query_handler(handle)
+        self._client.add_event_handler(handle, CallbackQuery())
 
     async def _init_filter(self, event: CallbackQueryEventDTO):
         await super()._init_filter(event)
@@ -191,37 +194,15 @@ class ChatActionController(Controller):
     _event_class = ChatActionEventDTO
 
     def _listen_handle(self, handle: callable):
-        self._client.add_chat_action_handler(handle)
+        self._client.add_event_handler(handle, ChatAction())
 
-    async def _init_filter(self, event: ChatActionEventDTO):
-        await super()._init_filter(event)
-        if event.only_self and self._client._current_user.id not in event.user_ids:
-            raise ExitControllerException
-
-    async def handle(self, event: ChatActionEventDTO):
+    @Controller.handle_decorator
+    async def chat_action_handle(self, event: ChatActionEventDTO):
         await super().handle(event)
         self.logger.info(
             f"Chat Action event:\n" +
             InfoBuilder.build_message_info_by_chat_action(event)
         )
-
-    @Controller.handle_decorator
-    async def join_chat_pipeline_handle(self, event: ChatActionEventDTO):
-        await self.handle(event)
-        if not event.user_joined and not event.user_added:
-            return
-        await self._join_chat_handle(event.telegram_event)
-        await self._create_ratings_on_join_chat_handle(event.telegram_event)
-
-    @Controller.handle_decorator
-    async def _join_chat_handle(self, event):
-        await self.handle(event)
-        await self.run_handler(event, JoinChatHandler)
-
-    @Controller.handle_decorator
-    async def _create_ratings_on_join_chat_handle(self, event):
-        await self.handle(event)
-        await self.run_handler(event, CreateRatingsOnJoinChatHandler)
 
 
 class CommandController(MessageController):
@@ -287,6 +268,8 @@ class CommandController(MessageController):
             RatingCommandHandler.PIDOR_COMMAND, RatingCommandHandler.CHAD_COMMAND,
             RatingCommandHandler.PIDOR_MONTH_COMMAND, RatingCommandHandler.CHAD_MONTH_COMMAND,
             RatingCommandHandler.ROLL_COMMAND, RatingCommandHandler.ROLL_MONTH_COMMAND,
+            RatingCommandHandler.PIDOR_YEAR_COMMAND, RatingCommandHandler.CHAD_YEAR_COMMAND,
+            RatingCommandHandler.CHAD_YEAR_COMMAND,
         ]
         event.area = event.ONLY_CHAT
         await super().handle(event)

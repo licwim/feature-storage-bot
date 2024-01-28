@@ -4,20 +4,19 @@ from functools import update_wrapper
 
 import click
 
-from fsb.config import Config
+from fsb.config import config
+from fsb.services import ChatService
 from fsb.telegram.client import TelegramApiClient
 
-client = TelegramApiClient(Config.bot_username + '-cli', True)
+client = TelegramApiClient(config.BOT_USERNAME + '-cli', True)
 
 
 @click.group()
 def cli():
-    client.loop.run_until_complete(client.connect(True))
+    async def before(client):
+        await client.connect(True)
 
-
-def exit_with_message(message: str = None, code: int = 1):
-    print(message)
-    exit(code)
+    client.loop.run_until_complete(before(client))
 
 
 def coro(f):

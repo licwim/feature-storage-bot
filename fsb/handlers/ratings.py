@@ -1,6 +1,8 @@
 # !/usr/bin/env python
 
 from asyncio.exceptions import TimeoutError
+from datetime import datetime
+from dateutil.relativedelta import relativedelta as delta
 
 from inflection import underscore
 from peewee import DoesNotExist
@@ -24,7 +26,7 @@ class CreateRatingsOnJoinChatHandler(ChatActionHandler):
         await super().run()
         chat = Chat.get_by_telegram_id(self.chat.id)
         rating_service = RatingService(self.client)
-        rating_service.create_system_ratings(chat)
+        rating_service.create_default_ratings(chat)
 
 
 class RatingsSettingsCommandHandler(CommandHandler):
@@ -49,18 +51,22 @@ class RatingCommandHandler(CommandHandler):
     CHAD_COMMAND = RatingService.CHAD_KEYWORD
     ROLL_COMMAND = 'roll'
     MONTH_POSTFIX = 'month'
+    YEAR_POSTFIX = 'year'
     ROLL_MONTH_COMMAND = ROLL_COMMAND + MONTH_POSTFIX
     PIDOR_MONTH_COMMAND = PIDOR_COMMAND + MONTH_POSTFIX
     CHAD_MONTH_COMMAND = CHAD_COMMAND + MONTH_POSTFIX
+    ROLL_YEAR_COMMAND = ROLL_COMMAND + YEAR_POSTFIX
+    PIDOR_YEAR_COMMAND = PIDOR_COMMAND + YEAR_POSTFIX
+    CHAD_YEAR_COMMAND = CHAD_COMMAND + YEAR_POSTFIX
 
     async def run(self):
         await super().run()
         match self.command:
-            case self.PIDOR_COMMAND | self.PIDOR_MONTH_COMMAND:
+            case self.PIDOR_COMMAND | self.PIDOR_MONTH_COMMAND | self.PIDOR_YEAR_COMMAND:
                 rating_command = self.PIDOR_COMMAND
-            case self.CHAD_COMMAND | self.CHAD_MONTH_COMMAND:
+            case self.CHAD_COMMAND | self.CHAD_MONTH_COMMAND | self.CHAD_YEAR_COMMAND:
                 rating_command = self.CHAD_COMMAND
-            case self.ROLL_COMMAND | self.ROLL_MONTH_COMMAND:
+            case self.ROLL_COMMAND | self.ROLL_MONTH_COMMAND | self.ROLL_YEAR_COMMAND:
                 if not self.args:
                     raise ExitControllerException
                 rating_command = self.args[0]
@@ -69,6 +75,7 @@ class RatingCommandHandler(CommandHandler):
 
         ratings_service = RatingService(self.client)
         is_month = self.command in [self.PIDOR_MONTH_COMMAND, self.CHAD_MONTH_COMMAND, self.ROLL_MONTH_COMMAND]
+        is_year = self.command in [self.PIDOR_YEAR_COMMAND, self.CHAD_YEAR_COMMAND, self.ROLL_YEAR_COMMAND]
         rating = Rating.get(
             Rating.command == rating_command,
             Rating.chat == Chat.get_by_telegram_id(self.chat.id)
@@ -78,7 +85,18 @@ class RatingCommandHandler(CommandHandler):
             if ratings_service.get_month_winner(rating):
                 await ratings_service.send_last_month_winner_message(rating, self.chat)
             else:
-                await self.client.send_message(self.chat, f"{rating.name.upper()} этого месяца еще не объявился.")
+                await self.client.send_message(self.chat, "{rating_name} {month_name} еще не объявился.".format(
+                    rating_name=rating.name.upper(),
+                    month_name=Helper.get_month_name((datetime.now() - delta(months=1)).month, {'gent'})
+                ))
+        elif is_year:
+            if ratings_service.get_year_winner(rating):
+                await ratings_service.send_last_year_winner_message(rating, self.chat)
+            else:
+                await self.client.send_message(self.chat, "{rating_name} {year} года еще не объявился.".format(
+                    rating_name=rating.name.upper(),
+                    year=datetime.now().year
+                ))
         else:
             if ratings_service.get_day_winner(rating):
                 await ratings_service.send_last_day_winner_message(rating, self.chat)

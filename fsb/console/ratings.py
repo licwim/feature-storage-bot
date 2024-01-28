@@ -23,7 +23,7 @@ async def month_roll():
 
     ratings_service = RatingService(client)
 
-    for rating in Rating.select():
+    for rating in Rating.select().where(Rating.autorun):
         if rating.last_month_winner \
                 and rating.last_month_run \
                 and rating.last_month_run >= datetime.today().replace(hour=0, minute=0, second=0, microsecond=0, day=1):
@@ -48,5 +48,26 @@ async def day_roll():
         await ratings_service.roll(rating, rating.chat.telegram_id)
         sleep(1)
 
+
+@click.command('year-roll')
+@coro
+async def year_roll():
+    """Calculation of the ratings winners of the year"""
+    ratings_service = RatingService(client)
+
+    for rating in Rating.select().where(Rating.autorun):
+        if not (rating.last_month_winner
+                and rating.last_month_run
+                and rating.last_month_run >= datetime.today().replace(hour=0, minute=0, second=0, microsecond=0, day=1)):
+            await ratings_service.roll(rating, rating.chat.telegram_id, True)
+
+        if not (rating.last_year_winner
+                and rating.last_year_run
+                and rating.last_year_run >= datetime.today().replace(hour=0, minute=0, second=0, microsecond=0, day=1, month=1)):
+            await ratings_service.roll_year(rating, rating.chat.telegram_id)
+
+        sleep(1)
+
 ratings.add_command(month_roll)
 ratings.add_command(day_roll)
+ratings.add_command(year_roll)

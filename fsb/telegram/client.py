@@ -5,18 +5,20 @@ import logging
 from time import sleep
 from typing import Any, Union
 
-from fsb.config import Config
-from fsb.db.models import User, Chat
-from fsb.errors import (
-    DisconnectFailedError
-)
-from telethon import TelegramClient, errors, events, functions
+from telethon import TelegramClient, errors, functions
+from telethon.events.common import EventBuilder
 from telethon.tl.types import (
     Message,
     InputPeerUser, InputPeerChat, InputPeerChannel,
     InputChannel, InputUser
 )
-from ..helpers import InfoBuilder
+
+from fsb.config import config
+from fsb.db.models import User, Chat
+from fsb.errors import (
+    DisconnectFailedError
+)
+from fsb.helpers import InfoBuilder
 
 
 class TelegramApiClient:
@@ -25,7 +27,7 @@ class TelegramApiClient:
 
     def __init__(self, name: str = None, cli: bool = False):
         self.name = name
-        self._client = TelegramClient(name, Config.api_id, Config.api_hash)
+        self._client = TelegramClient(name, config.API_ID, config.API_HASH)
         self.loop = self._client.loop
         self._relogin_count = 0
         self._current_user = None
@@ -37,7 +39,7 @@ class TelegramApiClient:
 
     async def connect(self, is_bot: bool = False):
         await self._client.connect()
-        bot_token = None if await self._client.is_user_authorized() or not is_bot else Config.bot_token
+        bot_token = None if await self._client.is_user_authorized() or not is_bot else config.BOT_TOKEN
         await self._client.start(bot_token=bot_token)
         self._current_user = await self._client.get_me()
         self.logger.info(f"Welcome, {self.name}! Telegram Client is connected")
@@ -57,16 +59,13 @@ class TelegramApiClient:
             self.logger.info("Connection error")
         self.logger.info("Logout")
 
-    async def send_message(self, entity, message: Any, reply_to: Message = None, force: bool = False, buttons=None, is_file: bool = False):
+    async def send_message(self, entity, message: Any, reply_to: Message = None, buttons=None, is_file: bool = False, **kwargs):
         try:
             if isinstance(entity, Union[str, int]):
                 entity = await self.get_entity(entity)
 
-            if Config.FSB_DEV_MODE:
+            if config.FSB_DEV_MODE:
                 self.logger.debug(InfoBuilder.build_debug_message_info(entity, message, reply_to))
-
-                if not force and entity.id not in Config.dev_chats:
-                    return None
             elif self.cli:
                 self.logger.info(InfoBuilder.build_debug_message_info(entity, message, reply_to))
 
@@ -75,9 +74,9 @@ class TelegramApiClient:
                 message = message.rstrip('\t \n')
             if message:
                 if is_file:
-                    new_message = await self._client.send_file(entity=entity, file=message, reply_to=reply_to, buttons=buttons)
+                    new_message = await self._client.send_file(entity=entity, file=message, reply_to=reply_to, buttons=buttons, **kwargs)
                 else:
-                    new_message = await self._client.send_message(entity=entity, message=message, reply_to=reply_to, buttons=buttons)
+                    new_message = await self._client.send_message(entity=entity, message=message, reply_to=reply_to, buttons=buttons, **kwargs)
             return new_message
         except errors.PeerFloodError as e:
             self.logger.error(f"{entity}: PeerFloodError")
@@ -117,35 +116,8 @@ class TelegramApiClient:
                 entity = await self.get_entity(uid, False)
         return entity
 
-    def add_message_handler(self, handler: callable, *args, **kwargs):
-        if Config.FSB_DEV_MODE:
-            blacklist_chats = False
-        else:
-            blacklist_chats = True
-        self._client.add_event_handler(
-            handler,
-            events.NewMessage(forwards=False, chats=Config.dev_chats, blacklist_chats=blacklist_chats, *args, **kwargs)
-        )
-
-    def add_callback_query_handler(self, handler: callable, *args, **kwargs):
-        if Config.FSB_DEV_MODE:
-            blacklist_chats = False
-        else:
-            blacklist_chats = True
-        self._client.add_event_handler(
-            handler,
-            events.CallbackQuery(chats=Config.dev_chats, blacklist_chats=blacklist_chats, *args, **kwargs)
-        )
-
-    def add_chat_action_handler(self, handler: callable, *args, **kwargs):
-        if Config.FSB_DEV_MODE:
-            blacklist_chats = False
-        else:
-            blacklist_chats = True
-        self._client.add_event_handler(
-            handler,
-            events.ChatAction(chats=Config.dev_chats, blacklist_chats=blacklist_chats, *args, **kwargs)
-        )
+    def add_event_handler(self, handler: callable, event: EventBuilder):
+        self._client.add_event_handler(handler, event)
 
     async def request(self, data):
         return await self._client(data)

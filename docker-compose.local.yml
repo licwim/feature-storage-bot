@@ -6,19 +6,20 @@ services:
     volumes:
       - ./:/var/app
       - /var/app/.venv/
+    env_file:
+      - .env
     environment:
+      - PIPENV_DONT_LOAD_ENV=1
       - DB_HOST=fsb-db
-      - DB_NAME=feature_storage
-      - DB_USER=root
-      - DB_PASSWORD=111111
-      - FSB_CONFIG_FILE=/var/app/config.json
 
   fsb-db:
-    image: mysql/mysql-server:latest
+    image: mysql:8.0.31
     volumes:
       - fsb-db:/var/lib/mysql
     ports:
-      - 3306:3306
+      - "3306:3306"
+    env_file:
+      - .env
 
 volumes:
-  fsb-db:
+  fsb-db: {}
