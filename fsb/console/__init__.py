@@ -15,7 +15,6 @@ client = TelegramApiClient(config.BOT_USERNAME + '-cli', True)
 def cli():
     async def before(client):
         await client.connect(True)
-        await ChatService(client).init_chats()
 
     client.loop.run_until_complete(before(client))
 

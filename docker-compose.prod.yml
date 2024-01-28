@@ -8,6 +8,7 @@ services:
     volumes:
       - /var/apps/feature-storage-bot/prod/logs/app:/var/log/app:rw
       - /var/apps/feature-storage-bot/prod/logs/cron:/var/log/cron:rw
+      - /var/apps/feature-storage-bot/prod/content:/var/app/content
     logging:
       driver: "journald"
     labels:

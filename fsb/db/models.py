@@ -96,6 +96,7 @@ class Chat(BaseModel):
     input_peer = TextField(null=True)
     dude = BooleanField(default=False, constraints=[SQL('DEFAULT 0')])
     users = ManyToManyField(User, backref='chats', through_model=MemberDeferred)
+    happy_new_year = BooleanField(default=False, constraints=[SQL('DEFAULT 0')])
 
     @staticmethod
     def get_chat_type(chat):
@@ -195,8 +196,10 @@ class Rating(BaseModel):
     command = CharField()
     last_run = DateTimeField(null=True)
     last_month_run = DateTimeField(null=True)
+    last_year_run = DateTimeField(null=True)
     last_winner = DeferredForeignKey('RatingMember', null=True, on_delete='SET NULL')
     last_month_winner = DeferredForeignKey('RatingMember', null=True, on_delete='SET NULL')
+    last_year_winner = DeferredForeignKey('RatingMember', null=True, on_delete='SET NULL')
     autorun = BooleanField(default=False, constraints=[SQL('DEFAULT 0')])
 
     @staticmethod
@@ -248,6 +251,7 @@ class RatingMember(BaseModel):
     total_count = IntegerField(default=0, constraints=[SQL('DEFAULT 0')])
     month_count = IntegerField(default=0, constraints=[SQL('DEFAULT 0')])
     current_month_count = IntegerField(default=0, constraints=[SQL('DEFAULT 0')])
+    current_year_count = IntegerField(default=0)
     created_at = DateTimeField(default=datetime.now(), constraints=[SQL('DEFAULT CURRENT_TIMESTAMP')])
 
     def get_telegram_id(self):

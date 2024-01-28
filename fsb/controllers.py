@@ -268,6 +268,8 @@ class CommandController(MessageController):
             RatingCommandHandler.PIDOR_COMMAND, RatingCommandHandler.CHAD_COMMAND,
             RatingCommandHandler.PIDOR_MONTH_COMMAND, RatingCommandHandler.CHAD_MONTH_COMMAND,
             RatingCommandHandler.ROLL_COMMAND, RatingCommandHandler.ROLL_MONTH_COMMAND,
+            RatingCommandHandler.PIDOR_YEAR_COMMAND, RatingCommandHandler.CHAD_YEAR_COMMAND,
+            RatingCommandHandler.CHAD_YEAR_COMMAND,
         ]
         event.area = event.ONLY_CHAT
         await super().handle(event)
