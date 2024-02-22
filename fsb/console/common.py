@@ -12,16 +12,41 @@ from fsb.console import client, coro
 from fsb.db.models import Chat
 
 
-@click.command('broadcast-message')
+@click.command('send-message')
 @click.argument('text', type=str, default='')
+@click.argument('chats_ids', type=str, default='')
 @coro
-async def broadcast_message(text):
-    """Sending a message to all chats"""
+async def send_message(text, chats):
+    """Sending a message to chats"""
 
     if not text:
         return
 
-    for chat in Chat.select():
+    if chats:
+        chats = [chat_id.strip() for chat_id in chats.split(',')]
+        query = Chat.select()
+
+        if 'all' not in chats:
+            chats_ids = []
+
+            for chat in chats:
+                match chat:
+                    case 'user':
+                        query.orwhere(Chat.type == Chat.USER_TYPE)
+                    case 'channel':
+                        query.orwhere(Chat.type.in_([Chat.CHAT_TYPE, Chat.CHANNEL_TYPE]))
+                    case _:
+                        if chat.isnumeric():
+                            chats_ids.append(int(chat))
+                        else:
+                            raise ValueError(f'Invalid chat argument: "{chat}"')
+
+            if chats_ids:
+                query.orwhere(Chat.id.in_(chats_ids))
+    else:
+        return
+
+    for chat in query:
         await client.send_message(chat.telegram_id, text)
         sleep(1)
 
