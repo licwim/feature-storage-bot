@@ -5,7 +5,6 @@ from random import randint
 from time import sleep
 
 import click
-from dateutil.relativedelta import relativedelta as delta
 from pymorphy3 import MorphAnalyzer
 from telethon.tl.functions.messages import GetStickerSetRequest
 from telethon.tl.types import InputStickerSetShortName, DocumentAttributeVideo
@@ -108,7 +107,9 @@ async def new_year_broadcast():
 async def countdown(text, date, chats):
     """Sending a message with countdown to chats"""
     if date:
-        left_days = delta(datetime.fromisoformat(date).replace(hour=23, minute=59, second=59), datetime.now()).days
+        now = datetime.now().timestamp()
+        date = datetime.fromisoformat(date).replace(hour=23, minute=59, second=59).timestamp()
+        left_days = round((date - now) / (60 * 60 * 24))
         day_word_lexeme = MorphAnalyzer(lang='ru').parse('день')[0]
         day_word = day_word_lexeme.make_agree_with_number(2).word
         text = text.format(day_word=day_word, left_days=left_days)
