@@ -1,5 +1,5 @@
 name: Deploy
-run-name: Deploy ${{ github.ref_name }} to ${{ inputs.stand }}
+run-name: Deploy ${{ github.ref_name }} (${{ github.event.workflow_run.head_commit.message }}) to ${{ inputs.stand }}
 
 on:
   workflow_dispatch:
