@@ -111,7 +111,7 @@ async def countdown(text, date, chats):
         date = datetime.fromisoformat(date).replace(hour=23, minute=59, second=59).timestamp()
         left_days = round((date - now) / (60 * 60 * 24))
         day_word_lexeme = MorphAnalyzer(lang='ru').parse('день')[0]
-        day_word = day_word_lexeme.make_agree_with_number(2).word
+        day_word = day_word_lexeme.make_agree_with_number(left_days).word
         text = text.format(day_word=day_word, left_days=left_days)
 
     await send_message(text, chats)
