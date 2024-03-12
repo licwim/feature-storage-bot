@@ -53,10 +53,8 @@ logging:
   disable_existing_loggers: false
 
   formatters:
-    with_time:
-      format: "[%(asctime)s][%(name)s:%(levelname)s] %(message)s"
-    without_time:
-      format: "[%(name)s:%(levelname)s] %(message)s"
+    default:
+      format: '[%(asctime)s][%(name)s:%(levelname)s] %(message)s'
 
   filters:
     level:
@@ -64,32 +62,21 @@ logging:
       level: WARNING
 
   handlers:
-    stdout_app:
+    stdout:
       class: logging.StreamHandler
       level: NOTSET
-      formatter: without_time
+      formatter: default
       filters: [ level ]
       stream: ext://sys.stdout
-    stderr_app:
+    stderr:
       class: logging.StreamHandler
       level: WARNING
-      formatter: without_time
-      stream: ext://sys.stderr
-    stdout_console:
-      class: logging.StreamHandler
-      level: NOTSET
-      formatter: with_time
-      filters: [ level ]
-      stream: ext://sys.stdout
-    stderr_console:
-      class: logging.StreamHandler
-      level: WARNING
-      formatter: with_time
+      formatter: default
       stream: ext://sys.stderr
     logstash:
       class: logging.handlers.RotatingFileHandler
       level: NOTSET
-      formatter: with_time
+      formatter: default
       filename: "{log_dir}logstash.log"
       maxBytes: 104857600 # 100MB
       backupCount: 10
@@ -99,6 +86,6 @@ logging:
     level: WARNING
   loggers:
     app:
-      handlers: [ stdout_app, stderr_app, logstash ]
+      handlers: [ stdout, stderr, logstash ]
     console:
-      handlers: [ stdout_console, stderr_console ]
+      handlers: [ stdout, stderr ]
