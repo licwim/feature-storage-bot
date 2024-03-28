@@ -25,6 +25,7 @@ class FeatureStorageBot:
 
         self.loop.run_until_complete(before(self.client))
         self.logger.info(f"Development mode is {'ON' if config.FSB_DEV_MODE else 'OFF'}")
+        self.logger.info(f"Fool day mode is {'ON' if config.FOOL_DAY else 'OFF'}")
         self.controller_loader.run_objects()
 
         try:

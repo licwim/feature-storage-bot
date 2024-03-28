@@ -34,6 +34,7 @@ services:
       - FSB_DEV_MODE=False
       - LOG_FOLDER=/var/log/app/
       - TZ=Europe/Moscow
+      - FOOL_DAY=$FOOL_DAY
 
   db:
     image: mysql:8.0.31
