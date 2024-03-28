@@ -9,7 +9,9 @@ from datetime import datetime
 import quantumrand as qr
 from dateutil.relativedelta import relativedelta as delta
 from peewee import fn
+from telethon.tl.functions.messages import GetStickerSetRequest
 from telethon.tl.types import InputPeerUser, InputPeerChat, InputPeerChannel
+from telethon.tl.types import InputStickerSetShortName
 
 from fsb.config import config
 from fsb.db.models import Chat, User, Member, Rating, RatingMember, RatingLeader, CacheQuantumRand
@@ -525,3 +527,44 @@ class RatingService:
             await self.send_last_year_winner_message(rating, chat, True)
         except BaseFsbException as ex:
             await self.client.send_message(chat, ex.message)
+
+    async def fool_roll(self, rating: Rating, chat, is_month: bool = False):
+        if is_month:
+            actual_members = await self.client.get_dialog_members(chat)
+            member_for_fullname = random.choice(actual_members)
+            actual_members_with_username = [
+                member for member in actual_members if member.username and member != member_for_fullname
+            ]
+            member_for_username = random.choice(actual_members_with_username)
+            member_name = (Helper.make_member_name(member_for_fullname, with_username=False, with_mention=False)
+                           + f' ([@{member_for_username.username}](https://rb.gy/qljtn1))')
+            await self.client.send_message(chat, self.MONTH_WINNER_MESSAGE.format(
+                rating_name=rating.name.upper(),
+                member_name=member_name,
+                month_name=Helper.get_month_name((datetime.now() - delta(months=1)).month, {'gent'}),
+            ) + " 🎉", link_preview=False)
+        else:
+            await self._send_rolling_message(rating, chat)
+            await FoolService(self.client).send_message(chat)
+
+
+class FoolService:
+    def __init__(self, client: TelegramApiClient):
+        self.client = client
+        self.logger = logging.getLogger('main')
+
+    async def send_message(self, chat):
+        message = 'Nope'
+        is_file = False
+        sticker_set_name = config.fool.sticker_set_name
+        sticker_id = config.fool.sticker_set_documents_id
+
+        if sticker_set_name and sticker_id:
+            sticker_set = await self.client.request(GetStickerSetRequest(InputStickerSetShortName(sticker_set_name)))
+            stickers = [sticker for sticker in sticker_set.documents if sticker.id == sticker_id]
+
+            if stickers:
+                message = stickers[0]
+                is_file = True
+
+        await self.client.send_message(chat, message, is_file=is_file)
