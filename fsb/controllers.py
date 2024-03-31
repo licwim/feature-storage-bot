@@ -19,7 +19,7 @@ from fsb.events.common import (
 )
 from fsb.events.ratings import RatingQueryEvent
 from fsb.events.roles import RoleQueryEvent
-from fsb.handlers import Handler
+from fsb.handlers import Handler, FoolHandler
 from fsb.handlers.commands import (
     StartCommandHandler, PingCommandHandler, EntityInfoCommandHandler, AboutInfoCommandHandler, WednesdayCommandHandler
 )
@@ -341,3 +341,19 @@ class MentionController(MessageController):
             members_mentions = await self.run_handler(event, CustomMentionHandler)
 
         return members_mentions
+
+
+class FoolCommandController(CommandController):
+    async def run_handler(self, event: EventDTO, handler_class: Type[Handler]):
+        return await FoolHandler(event, self._client).run()
+
+
+class FoolMentionController(MentionController):
+    @Controller.handle_decorator
+    async def mention_handle(self, event: MentionEventDTO):
+        await super().handle(event)
+        mention_list = ([role.nickname for role in Role.find_by_chat(Chat.get_by_telegram_id(event.chat.id))]
+                        + ['all', 'allrank'])
+
+        if self._mention_filter(mention_list, event):
+            return await FoolHandler(event, self._client).run()

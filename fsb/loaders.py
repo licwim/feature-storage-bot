@@ -1,6 +1,10 @@
 # !/usr/bin/env python
 
-from fsb.controllers import Controller, CommandController, MentionController, MenuController, ChatActionController
+from fsb.config import config
+from fsb.controllers import (
+    Controller, CommandController, MentionController, MenuController, ChatActionController, FoolCommandController,
+    FoolMentionController
+)
 from fsb.factories import ControllerFactory
 from fsb.telegram.client import TelegramApiClient
 
@@ -33,9 +37,20 @@ class ControllerLoader(Loader):
         ChatActionController
     ]
 
+    _fool_loaded_classes = [
+        ChatActionController,
+        FoolCommandController,
+        FoolMentionController
+    ]
+
     def __init__(self, client: TelegramApiClient):
         self._client = client
+        self._init_fool()
         self.create_objects()
+
+    def _init_fool(self):
+        if config.FOOL_DAY:
+            self._loaded_classes = self._fool_loaded_classes
 
     def _create_object(self, cls) -> Controller:
         return ControllerFactory(cls, self._client).create_object()

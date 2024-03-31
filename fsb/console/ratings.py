@@ -5,6 +5,7 @@ from time import sleep
 
 import click
 
+from fsb.config import config
 from fsb.console import client, coro
 from fsb.db.models import Rating
 from fsb.services import RatingService
@@ -29,7 +30,11 @@ async def month_roll():
                 and rating.last_month_run >= datetime.today().replace(hour=0, minute=0, second=0, microsecond=0, day=1):
             continue
 
-        await ratings_service.roll(rating, rating.chat.telegram_id, True)
+        if config.FOOL_DAY:
+            await ratings_service.fool_roll(rating, rating.chat.telegram_id, True)
+        else:
+            await ratings_service.roll(rating, rating.chat.telegram_id, True)
+
         sleep(1)
 
 
@@ -45,7 +50,11 @@ async def day_roll():
                 and rating.last_run >= datetime.today().replace(hour=0, minute=0, second=0, microsecond=0):
             continue
 
-        await ratings_service.roll(rating, rating.chat.telegram_id)
+        if config.FOOL_DAY:
+            await ratings_service.fool_roll(rating, rating.chat.telegram_id)
+        else:
+            await ratings_service.roll(rating, rating.chat.telegram_id)
+
         sleep(1)
 
 

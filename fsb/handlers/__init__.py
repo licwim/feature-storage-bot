@@ -2,7 +2,10 @@
 
 import logging
 
-from fsb.events.common import EventDTO, CommandEventDTO, MentionEventDTO, MenuEventDTO, ChatActionEventDTO
+from fsb.events.common import (
+    EventDTO, CommandEventDTO, MentionEventDTO, MenuEventDTO, ChatActionEventDTO, MessageEventDTO
+)
+from fsb.services import FoolService
 from fsb.telegram.client import TelegramApiClient
 
 
@@ -61,3 +64,9 @@ class MenuHandler(Handler, MenuEventDTO):
 
 class ChatActionHandler(Handler, ChatActionEventDTO):
     event_class = ChatActionEventDTO
+
+
+class FoolHandler(Handler, MessageEventDTO):
+    async def run(self):
+        await super().run()
+        await FoolService(self.client).send_message(self.chat)

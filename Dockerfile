@@ -18,11 +18,11 @@ RUN pip install pipenv \
 
 # Setting up cron
 ADD cron /etc/cron.d/cron
+ADD fool.cron /etc/cron.d/fool.cron
 RUN touch /var/log/cron.log \
     && mkdir /var/log/cron \
     && chmod 644 /var/log/cron \
     && chmod 644 /etc/cron.d/cron
-RUN crontab /etc/cron.d/cron
 RUN mkdir /var/log/app \
     && chmod 644 -R /var/log/app
 

@@ -89,3 +89,7 @@ logging:
       handlers: [ stdout, stderr, logstash ]
     console:
       handlers: [ stdout, stderr ]
+
+fool:
+  sticker_set_name: runastate
+  sticker_set_documents_id: 3159207355426537520

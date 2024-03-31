@@ -12,6 +12,7 @@ from telethon.tl.types import InputStickerSetShortName, DocumentAttributeVideo
 from fsb.config import config
 from fsb.console import client, coro
 from fsb.db.models import Chat
+from fsb.services import FoolService
 
 
 async def send_message(text, chats):
@@ -74,8 +75,14 @@ async def dude_broadcast():
         message = 'It is Wednesday, my dudes!'
         is_file = False
 
+    fool_service = FoolService(client)
+
     for chat in Chat.select().where(Chat.dude):
-        await client.send_message(chat.telegram_id, message, is_file=is_file)
+        if config.FOOL_DAY:
+            await fool_service.send_message(chat.telegram_id)
+        else:
+            await client.send_message(chat.telegram_id, message, is_file=is_file)
+
         sleep(1)
 
 
