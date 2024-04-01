@@ -166,12 +166,9 @@ class RatingService:
     FEW_MONTH_WINNERS_MESSAGE = 'В {month_name} оказалось несколько лидирующих {rating_name}, ' \
                                 'но придется выбрать одного.'
 
-    LEADERSHIP_TIME = 2
     OUT_MESSAGE = '{excluded_members} автоматически {out_word} из гонки за звание ' \
                   '{rating_name_gent_sing} месяца, '
     OUT_WORD = 'выбывает'
-    LEADERSHIP_TIME_OVER_MESSAGE = OUT_MESSAGE + 'так как одно и то же лицо не может занимать должность Лидера Чата ' \
-                                                 'более двух сроков подряд.\n\n'
     LEADER_ALREADY_MESSAGE = OUT_MESSAGE + 'поскольку и так уже в лидерах других рейтингов в этом месяце.'
     YEAR_WINNER_MESSAGE = "В прошедшем {year} году самым большим {rating_name_ablt_sing} был {member_name}!"
     FEW_YEAR_WINNERS_MESSAGE = 'В {year} году оказалось несколько лидирующих {rating_name_gent_plur}, ' \
@@ -218,26 +215,12 @@ class RatingService:
         if self.get_month_winner(rating):
             await self.send_last_month_winner_message(rating, chat)
         else:
-            chat_members_collection = [rating_member.member for rating_member in members_collection]
             current_month = datetime.today().replace(hour=0, minute=0, second=0, microsecond=0, day=1) - delta(months=1)
-
-            # Участники чата, которые были лидерами в чате от 2 раз подряд и больше
-            excluded_members_query = (RatingLeader
-                                      .select()
-                                      .join(RatingMember)
-                                      .join(Member)
-                                      .where(RatingLeader.chat == rating.chat,
-                                             Member.id.in_(chat_members_collection),
-                                             RatingLeader.date >= (current_month - delta(months=self.LEADERSHIP_TIME)))
-                                      .group_by(Member)
-                                      .having(fn.COUNT(RatingLeader.id) >= self.LEADERSHIP_TIME))
-            excluded_members = [leader.rating_member.member for leader in excluded_members_query]
 
             # Участники, которые претендуют стать лидерами
             winners_query = (RatingMember
                              .select()
-                             .where(RatingMember.id.in_(members_collection),
-                                    RatingMember.member.not_in(excluded_members)))
+                             .where(RatingMember.id.in_(members_collection)))
             win_count = winners_query.select(fn.MAX(RatingMember.current_month_count)).scalar()
             winners = list(winners_query.where(RatingMember.current_month_count == win_count).execute())
             winners_len = len(winners)
@@ -258,23 +241,6 @@ class RatingService:
                                                                                  with_username=False)
                     await self.client.send_message(chat, self.LEADER_ALREADY_MESSAGE.format(
                         excluded_members=already_winner_members_names,
-                        out_word=out_word,
-                        rating_name_gent_sing=rating_name_gent_sing
-                    ))
-                    break
-
-            for member in excluded_members:
-                rating_member = member.ratings_members.where(RatingMember.rating == rating).get()
-
-                if win_count is None or rating_member.current_month_count >= win_count:
-                    if len(excluded_members) > 1:
-                        out_word = Helper.inflect_word(self.OUT_WORD, {'plur'})
-                    else:
-                        out_word = self.OUT_WORD
-                    excluded_members_names = await Helper.make_members_names_string(self.client, excluded_members,
-                                                                                    with_username=False)
-                    await self.client.send_message(chat, self.LEADERSHIP_TIME_OVER_MESSAGE.format(
-                        excluded_members=excluded_members_names,
                         out_word=out_word,
                         rating_name_gent_sing=rating_name_gent_sing
                     ))
