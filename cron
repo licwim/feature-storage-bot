@@ -13,4 +13,4 @@
 */30 * * * * root cd /var/app && /usr/local/bin/python -m pipenv run console send-message 'Выпрямись!' 41 >> /var/log/cron/send-message.log 2>&1
 
 # Maxim's countdown
-0 13 * * * root cd /var/app && /usr/local/bin/python -m pipenv run console countdown '@Jeff_Richards0n Ты еще жив, у тебя осталось {left_days} {day_word}' 2024-12-12 2 >> /var/log/cron/countdown.log 2>&1
+0 13 * * * root cd /var/app && /usr/local/bin/python -m pipenv run console countdown '@Jeff_Richards0n Ты еще жив, у тебя осталось {left_days} {day_word}' 2025-02-12 2 >> /var/log/cron/countdown.log 2>&1
