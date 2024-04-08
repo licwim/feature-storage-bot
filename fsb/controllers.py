@@ -231,7 +231,7 @@ class CommandController(MessageController):
     @Controller.handle_decorator
     async def ping_handle(self, event: CommandEventDTO):
         event.command_names = ['ping']
-        event.debug = True
+        event.debug = False
         await super().handle(event)
         await self.run_handler(event, PingCommandHandler)
 
