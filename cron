@@ -14,3 +14,6 @@
 
 # Maxim's countdown
 0 13 * * * root cd /var/app && /usr/local/bin/python -m pipenv run console countdown '@Jeff_Richards0n Ты еще жив, у тебя осталось {left_days} {day_word}' 2025-02-12 2 >> /var/log/cron/countdown.log 2>&1
+
+# Birthdays
+30 11 * * * root cd /var/app && /usr/local/bin/python -m pipenv run console birthday congratulation >> /var/log/cron/birthday-congratulation.log 2>&1
