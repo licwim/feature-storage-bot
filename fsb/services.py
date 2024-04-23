@@ -534,3 +534,17 @@ class FoolService:
                 is_file = True
 
         await self.client.send_message(chat, message, is_file=is_file)
+
+
+class BirthdayService:
+    BIRTHDAY_MESSAGE = 'С Днём Рождения, {name}! 🎈'
+
+    def __init__(self, client: TelegramApiClient):
+        self.client = client
+        self.logger = logging.getLogger('main')
+
+    async def send_message(self, chat: Chat):
+        for user in chat.users.where(fn.DATE_FORMAT(User.birthday, '%m-%d') == datetime.today().strftime('%m-%d')):
+            await self.client.send_message(chat.telegram_id, self.BIRTHDAY_MESSAGE.format(
+                name=Helper.make_member_name(await user.get_telegram_member(self.client), with_mention=True)
+            ))

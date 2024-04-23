@@ -63,6 +63,7 @@ class User(BaseModel):
     nickname = CharField(null=True)
     phone = CharField(null=True)
     input_peer = TextField(null=True)
+    birthday = DateField(null=True)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -97,6 +98,7 @@ class Chat(BaseModel):
     dude = BooleanField(default=False, constraints=[SQL('DEFAULT 0')])
     users = ManyToManyField(User, backref='chats', through_model=MemberDeferred)
     happy_new_year = BooleanField(default=False, constraints=[SQL('DEFAULT 0')])
+    birthday = BooleanField(default=False, constraints=[SQL('DEFAULT 0')])
 
     @staticmethod
     def get_chat_type(chat):
