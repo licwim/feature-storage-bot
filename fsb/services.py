@@ -317,8 +317,8 @@ class RatingService:
             qr_thread.start()
             await self._send_rolling_message(rating, chat)
             qr_thread.join()
-            pos = qr_thread.result if qr_thread.result is not None else random.randint(0, participants_len - 1)
-            return participants[pos]
+            assert qr_thread.result is not None
+            return participants[qr_thread.result]
 
     async def _send_rolling_message(self, rating: Rating, chat):
         match rating.command:
@@ -345,12 +345,11 @@ class RatingService:
             self.logger.exception(ex)
             run_messages = [self.RUN_MESSAGE]
 
-        run_msg_pos = random.randint(0, len(run_messages) - 1)
         message = await self.client.send_message(entity=chat, message='Итаааааак...')
         await sleep(self.MESSAGE_WAIT)
         text = ''
 
-        for line in run_messages[run_msg_pos]:
+        for line in random.choice(run_messages):
             text += line + '\n'
             await message.edit(text)
             await sleep(self.MESSAGE_WAIT)
