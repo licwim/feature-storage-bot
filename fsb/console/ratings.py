@@ -85,7 +85,7 @@ async def natural_not_found():
     rating_service = RatingService(client)
 
     for rating in Rating.select().where(Rating.command == 'natural'):
-        stat_message = await rating_service.get_stat_message(rating, False)
+        stat_message = await rating_service.get_stat_message(rating, True)
         main_message = 'В этом чате натуралы все еще не обнаружены'
 
         await client.send_message(rating.chat.telegram_id, stat_message)
