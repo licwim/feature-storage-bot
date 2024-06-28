@@ -2,8 +2,8 @@
 
 from asyncio.exceptions import TimeoutError
 from datetime import datetime
-from dateutil.relativedelta import relativedelta as delta
 
+from dateutil.relativedelta import relativedelta as delta
 from inflection import underscore
 from peewee import DoesNotExist
 from telethon import events
@@ -133,7 +133,7 @@ class StatRatingCommandHandler(CommandHandler):
             Rating.command == rating_command,
             Rating.chat == Chat.get_by_telegram_id(self.chat.id)
         )
-        message = RatingService(self.client).get_stat_message(rating, is_all)
+        message = await RatingService(self.client).get_stat_message(rating, is_all)
 
         await self.client.send_message(self.chat, message)
 
