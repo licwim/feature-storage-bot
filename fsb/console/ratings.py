@@ -77,6 +77,21 @@ async def year_roll():
 
         sleep(1)
 
+
+@click.command('natural-not-found')
+@coro
+async def natural_not_found():
+    """Sending not found message for all chats with natural ratings"""
+    rating_service = RatingService(client)
+
+    for rating in Rating.select().where(Rating.command == 'natural'):
+        stat_message = await rating_service.get_stat_message(rating, True)
+        main_message = 'В этом чате натуралы все еще не обнаружены'
+
+        await client.send_message(rating.chat.telegram_id, stat_message)
+        await client.send_message(rating.chat.telegram_id, main_message)
+
 ratings.add_command(month_roll)
 ratings.add_command(day_roll)
 ratings.add_command(year_roll)
+ratings.add_command(natural_not_found)
