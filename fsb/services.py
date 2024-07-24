@@ -237,8 +237,9 @@ class RatingService:
                     else:
                         out_word = self.OUT_WORD
 
-                    already_winner_members_names = await Helper.make_members_names_string(self.client, already_winner_members,
-                                                                                 with_username=False)
+                    already_winner_members_names = await Helper.make_members_names_string(self.client,
+                                                                                          already_winner_members,
+                                                                                          with_username=False)
                     await self.client.send_message(chat, self.LEADER_ALREADY_MESSAGE.format(
                         excluded_members=already_winner_members_names,
                         out_word=out_word,
@@ -248,9 +249,9 @@ class RatingService:
 
             if winners_len > 1:
                 await self.client.send_message(chat, self.FEW_MONTH_WINNERS_MESSAGE.format(
-                        rating_name=rating_name_gent_plur,
-                        month_name=Helper.get_month_name((datetime.now() - delta(months=1)).month, {'loct'}),
-                    ))
+                    rating_name=rating_name_gent_plur,
+                    month_name=Helper.get_month_name((datetime.now() - delta(months=1)).month, {'loct'}),
+                ))
                 win_db_member = await self._determine_winner(winners, rating, chat)
             elif winners_len == 1:
                 win_db_member = winners[0]
@@ -511,6 +512,29 @@ class RatingService:
         else:
             await self._send_rolling_message(rating, chat)
             await FoolService(self.client).send_message(chat)
+
+    async def get_stat_message(self, rating: Rating, is_all: bool):
+        order = RatingMember.total_count.desc() if is_all else RatingMember.current_month_count.desc()
+        actual_members = await self.client.get_dialog_members(rating.chat.telegram_id)
+        rating_members = RatingMember.select().where(RatingMember.rating == rating).order_by(order)
+        members_collection = Helper.collect_members(actual_members, rating_members)
+
+        if not members_collection:
+            return None
+
+        rating_name = Helper.inflect_word(rating.name, {'gent', 'plur'})
+        message = f"**Статистика {rating_name.upper()} __(дни / месяцы)__:**\n" if is_all \
+            else f"**Статистика {rating_name.upper()} этого месяца:**\n"
+        pos = 1
+
+        for member in members_collection:
+            tg_member, db_member = member
+            count_msg = f"{Helper.make_count_str(db_member.total_count, db_member.month_count)}\n" if is_all \
+                else f"{Helper.make_count_str(db_member.current_month_count)}\n"
+            message += f"#**{pos}**   {Helper.make_member_name(tg_member)} - {count_msg}"
+            pos += 1
+
+        return message
 
 
 class FoolService:

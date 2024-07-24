@@ -2,8 +2,8 @@
 
 from asyncio.exceptions import TimeoutError
 from datetime import datetime
-from dateutil.relativedelta import relativedelta as delta
 
+from dateutil.relativedelta import relativedelta as delta
 from inflection import underscore
 from peewee import DoesNotExist
 from telethon import events
@@ -133,26 +133,8 @@ class StatRatingCommandHandler(CommandHandler):
             Rating.command == rating_command,
             Rating.chat == Chat.get_by_telegram_id(self.chat.id)
         )
+        message = await RatingService(self.client).get_stat_message(rating, is_all)
 
-        order = RatingMember.total_count.desc() if is_all else RatingMember.current_month_count.desc()
-        actual_members = await self.client.get_dialog_members(self.chat)
-        rating_members = RatingMember.select().where(RatingMember.rating == rating).order_by(order)
-        members_collection = Helper.collect_members(actual_members, rating_members)
-
-        if not members_collection:
-            return
-
-        rating_name = Helper.inflect_word(rating.name, {'gent', 'plur'})
-        message = f"**Статистика {rating_name.upper()} __(дни / месяцы)__:**\n" if is_all \
-            else f"**Статистика {rating_name.upper()} этого месяца:**\n"
-        pos = 1
-
-        for member in members_collection:
-            tg_member, db_member = member
-            count_msg = f"{Helper.make_count_str(db_member.total_count, db_member.month_count)}\n" if is_all \
-                     else f"{Helper.make_count_str(db_member.current_month_count)}\n"
-            message += f"#**{pos}**   {Helper.make_member_name(tg_member)} - {count_msg}"
-            pos += 1
         await self.client.send_message(self.chat, message)
 
 
