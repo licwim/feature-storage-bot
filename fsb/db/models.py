@@ -95,10 +95,7 @@ class Chat(BaseModel):
     name = CharField(null=True)
     type = IntegerField()
     input_peer = TextField(null=True)
-    dude = BooleanField(default=False, constraints=[SQL('DEFAULT 0')])
     users = ManyToManyField(User, backref='chats', through_model=MemberDeferred)
-    happy_new_year = BooleanField(default=False, constraints=[SQL('DEFAULT 0')])
-    birthday = BooleanField(default=False, constraints=[SQL('DEFAULT 0')])
 
     @staticmethod
     def get_chat_type(chat):
@@ -117,6 +114,12 @@ class Chat(BaseModel):
     @staticmethod
     def get_by_telegram_id(telegram_id: Union[int, str]) -> 'Chat':
         return Chat.get(Chat.telegram_id == telegram_id)
+
+    def is_enable_module(self, module: str) -> bool:
+        if module not in Modules.MODULES_NAMES.keys():
+            return False
+
+        return getattr(self.modules, module)
 
 
 class Member(BaseModel):
@@ -349,3 +352,30 @@ class CacheQuantumRand(BaseModel):
     id = AutoField()
     value = IntegerField(null=False)
     type = CharField(null=False, default='uint16', constraints=[SQL('DEFAULT "uint16"')])
+
+
+class Modules(BaseModel):
+    TABLE_NAME = 'modules'
+
+    MODULE_DEFAULT = 'default'
+    MODULE_ROLES = 'roles'
+    MODULE_RATINGS = 'ratings'
+    MODULE_DUDE = 'dude'
+    MODULE_HAPPY_NEW_YEAR = 'happy_new_year'
+    MODULE_BIRTHDAY = 'birthday'
+
+    MODULES_NAMES = {
+        MODULE_DEFAULT: 'Стандартный',
+        MODULE_ROLES: 'Роли',
+        MODULE_RATINGS: 'Рейтинги',
+        MODULE_DUDE: 'Дюдсовая среда',
+        MODULE_HAPPY_NEW_YEAR: 'Новый Год',
+        MODULE_BIRTHDAY: 'Дни рождения',
+    }
+
+    chat = ForeignKeyField(Chat, backref='modules', on_delete='CASCADE', on_update='CASCADE', primary_key=True)
+    roles = BooleanField(default=False, constraints=[SQL('DEFAULT 0')])
+    ratings = BooleanField(default=False, constraints=[SQL('DEFAULT 0')])
+    dude = BooleanField(default=False, constraints=[SQL('DEFAULT 0')])
+    happy_new_year = BooleanField(default=False, constraints=[SQL('DEFAULT 0')])
+    birthday = BooleanField(default=False, constraints=[SQL('DEFAULT 0')])
