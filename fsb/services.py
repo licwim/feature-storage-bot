@@ -350,6 +350,9 @@ class RatingService:
                             run_message = []
                     else:
                         run_message.append(line.strip('\n '))
+
+                if run_message:
+                    run_messages.append(run_message)
         except Exception as ex:
             self.logger.exception(ex)
             run_messages = [self.RUN_MESSAGE]

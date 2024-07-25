@@ -77,6 +77,11 @@ class Controller:
                 if time >= self.MAX_WAITING:
                     raise TimeoutError
         await self._init_filter(event)
+
+        if not Chat.get_by_telegram_id(event.telegram_event.chat.id).is_enable_module(event.module):
+            raise ExitControllerException(sending_message='В чате не включен модуль "{module_name}"'
+                                          .format(module_name=Modules.MODULES_NAMES.get(event.module)))
+
         self.logger.info(f"Start controller {self._controller_name}")
 
     @staticmethod
@@ -113,10 +118,6 @@ class Controller:
                     area_check = False
         if not area_check:
             raise ExitControllerException
-
-        if not Chat.get_by_telegram_id(event.telegram_event.chat.id).is_enable_module(event.module):
-            raise ExitControllerException(sending_message='В чате не включен модуль "{module_name}"'
-                                          .format(module_name=Modules.MODULES_NAMES.get(event.module)))
 
     def _set_wait(self, chat_id: int, value: bool):
         self._waiting_list[chat_id] = value

@@ -53,6 +53,18 @@ class BaseModel(Model):
             return
         super().__setattr__(key, value)
 
+    @classmethod
+    def with_enabled_module(cls, module: str = None):
+        if not module:
+            module = Modules.get_modules_by_tables(cls.TABLE_NAME)
+
+        query = cls.select()
+
+        if module:
+            query = query.join(Modules, on=(Modules.chat_id == cls.chat_id)).where(getattr(Modules, module))
+
+        return query
+
 
 class User(BaseModel):
     TABLE_NAME = 'users'
@@ -118,8 +130,10 @@ class Chat(BaseModel):
     def is_enable_module(self, module: str) -> bool:
         if module not in Modules.MODULES_NAMES.keys():
             return False
+        elif module == Modules.MODULE_DEFAULT:
+            return True
 
-        return getattr(self.modules, module)
+        return self.modules.where(getattr(Modules, module)).exists()
 
 
 class Member(BaseModel):
@@ -357,6 +371,9 @@ class CacheQuantumRand(BaseModel):
 class Modules(BaseModel):
     TABLE_NAME = 'modules'
 
+    class Meta:
+        primary_key = CompositeKey('chat')
+
     MODULE_DEFAULT = 'default'
     MODULE_ROLES = 'roles'
     MODULE_RATINGS = 'ratings'
@@ -373,9 +390,18 @@ class Modules(BaseModel):
         MODULE_BIRTHDAY: 'Дни рождения',
     }
 
-    chat = ForeignKeyField(Chat, backref='modules', on_delete='CASCADE', on_update='CASCADE', primary_key=True)
+    chat = ForeignKeyField(Chat, backref='modules', on_delete='CASCADE', on_update='CASCADE')
     roles = BooleanField(default=False, constraints=[SQL('DEFAULT 0')])
     ratings = BooleanField(default=False, constraints=[SQL('DEFAULT 0')])
     dude = BooleanField(default=False, constraints=[SQL('DEFAULT 0')])
     happy_new_year = BooleanField(default=False, constraints=[SQL('DEFAULT 0')])
     birthday = BooleanField(default=False, constraints=[SQL('DEFAULT 0')])
+
+    @staticmethod
+    def get_modules_by_tables(table):
+        modules_by_tables = {
+            Role.TABLE_NAME: Modules.MODULE_ROLES,
+            Rating.TABLE_NAME: Modules.MODULE_RATINGS,
+        }
+
+        return modules_by_tables.get(table)

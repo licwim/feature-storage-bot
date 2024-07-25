@@ -24,6 +24,7 @@ from fsb.helpers import InfoBuilder
 class TelegramApiClient:
     MAX_RELOGIN_COUNT = 3
     DISCONNECT_TIMEOUT = 15
+    PARTICIPANTS_LIMIT = 200
 
     def __init__(self, name: str = None, cli: bool = False):
         self.name = name
@@ -128,7 +129,7 @@ class TelegramApiClient:
 
         members = []
 
-        for member in await self._client.get_participants(entity):
+        for member in await self._client.get_participants(entity, aggressive=False, limit=self.PARTICIPANTS_LIMIT):
             if member.username == self._current_user.username or (not with_bot and member.bot):
                 continue
             members.append(member)

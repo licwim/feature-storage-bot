@@ -7,6 +7,7 @@ date created: 2024-07-24 21:58:30.566136
 def upgrade(migrator):
     with migrator.create_table('modules') as table:
         table.foreign_key('AUTO', 'chat_id', on_delete='CASCADE', on_update='CASCADE', references='chats.id')
+        table.add_constraint('PRIMARY KEY (chat_id)')
         table.bool('roles', constraints=['DEFAULT 0'])
         table.bool('ratings', constraints=['DEFAULT 0'])
         table.bool('dude', constraints=['DEFAULT 0'])

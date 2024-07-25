@@ -5,7 +5,7 @@ from time import sleep
 import click
 
 from fsb.console import client, coro
-from fsb.db.models import Chat
+from fsb.db.models import Chat, Modules
 from fsb.services import BirthdayService
 
 
@@ -22,7 +22,7 @@ async def congratulation():
 
     birthday_service = BirthdayService(client)
 
-    for chat in Chat.select().where(Chat.birthday):
+    for chat in Chat.with_enabled_module(Modules.MODULE_BIRTHDAY).where(Chat.modules.birthday):
         await birthday_service.send_message(chat)
         sleep(1)
 
