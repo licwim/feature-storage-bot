@@ -23,8 +23,8 @@ class EventDTO:
         self.debug = False
         self.area = self.ALL
 
-        from fsb.db.models import Modules
-        self.module = Modules.MODULE_DEFAULT
+        from fsb.db.models import Module
+        self.module_name = Module.MODULE_DEFAULT
 
     def get_attributes(self):
         attributes = {}

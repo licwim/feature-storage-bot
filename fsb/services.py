@@ -14,7 +14,7 @@ from telethon.tl.types import InputPeerUser, InputPeerChat, InputPeerChannel
 from telethon.tl.types import InputStickerSetShortName
 
 from fsb.config import config
-from fsb.db.models import Chat, User, Member, Rating, RatingMember, RatingLeader, CacheQuantumRand, Modules
+from fsb.db.models import Chat, User, Member, Rating, RatingMember, RatingLeader, CacheQuantumRand, Module
 from fsb.errors import BaseFsbException, NoMembersRatingError, NoApproachableMembers
 from fsb.helpers import Helper, ReturnedThread, InfoBuilder
 from fsb.telegram.client import TelegramApiClient
@@ -94,7 +94,7 @@ class ChatService:
 
         await self.create_members(entity=entity, chat=chat, update=update)
 
-        self.create_modules(chat)
+        self.enable_default_module(chat)
 
         return chat
 
@@ -143,10 +143,8 @@ class ChatService:
 
         return user
 
-    def create_modules(self, chat: Chat):
-        modules = Modules.get_or_create(chat=chat)[0]
-
-        return modules
+    def enable_default_module(self, chat: Chat):
+        return chat.enable_module(Module.MODULE_DEFAULT)
 
     async def init_chats(self):
         for chat in Chat.select():

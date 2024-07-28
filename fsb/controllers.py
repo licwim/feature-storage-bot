@@ -11,7 +11,7 @@ from peewee import DoesNotExist
 from telethon.events import NewMessage, CallbackQuery, ChatAction
 
 from fsb.config import config
-from fsb.db.models import QueryEvent, Role, Chat, Modules
+from fsb.db.models import QueryEvent, Role, Chat, Module
 from fsb.errors import ExitControllerException
 from fsb.events.common import (
     EventDTO, MessageEventDTO, CallbackQueryEventDTO, MenuEventDTO, ChatActionEventDTO, CommandEventDTO,
@@ -78,9 +78,9 @@ class Controller:
                     raise TimeoutError
         await self._init_filter(event)
 
-        if not Chat.get_by_telegram_id(event.telegram_event.chat.id).is_enable_module(event.module):
+        if not Chat.get_by_telegram_id(event.telegram_event.chat.id).is_enabled_module(event.module_name):
             raise ExitControllerException(sending_message='В чате не включен модуль "{module_name}"'
-                                          .format(module_name=Modules.MODULES_NAMES.get(event.module)))
+                                          .format(module_name=Module.get_by_id(event.module_name).get_readable_name()))
 
         self.logger.info(f"Start controller {self._controller_name}")
 
@@ -188,7 +188,7 @@ class MenuController(CallbackQueryController):
     async def role_menu_handle(self, event: MenuEventDTO):
         event.area = event.ONLY_CHAT
         event.query_event_class = RoleQueryEvent
-        event.module = Modules.MODULE_ROLES
+        event.module_name = Module.MODULE_ROLES
         await super().handle(event)
         await self.run_handler(event, RolesSettingsQueryHandler)
 
@@ -196,7 +196,7 @@ class MenuController(CallbackQueryController):
     async def ratings_menu_handle(self, event: MenuEventDTO):
         event.area = event.ONLY_CHAT
         event.query_event_class = RatingQueryEvent
-        event.module = Modules.MODULE_RATINGS
+        event.module_name = Module.MODULE_RATINGS
         await super().handle(event)
         await self.run_handler(event, RatingsSettingsQueryHandler)
 
@@ -267,7 +267,7 @@ class CommandController(MessageController):
     async def role_settings_handle(self, event: CommandEventDTO):
         event.command_names = ['roles']
         event.area = event.ONLY_CHAT
-        event.module = Modules.MODULE_ROLES
+        event.module_name = Module.MODULE_ROLES
 
         await super().handle(event)
         await self.run_handler(event, RolesSettingsCommandHandler)
@@ -276,7 +276,7 @@ class CommandController(MessageController):
     async def ratings_settings_handle(self, event: CommandEventDTO):
         event.command_names = ['ratings']
         event.area = event.ONLY_CHAT
-        event.module = Modules.MODULE_RATINGS
+        event.module_name = Module.MODULE_RATINGS
 
         await super().handle(event)
         await self.run_handler(event, RatingsSettingsCommandHandler)
@@ -291,7 +291,7 @@ class CommandController(MessageController):
             RatingCommandHandler.CHAD_YEAR_COMMAND,
         ]
         event.area = event.ONLY_CHAT
-        event.module = Modules.MODULE_RATINGS
+        event.module_name = Module.MODULE_RATINGS
 
         await super().handle(event)
         self.start_wait(event.chat.id)
@@ -306,7 +306,7 @@ class CommandController(MessageController):
             StatRatingCommandHandler.STAT_COMMAND, StatRatingCommandHandler.STAT_ALL_COMMAND,
         ]
         event.area = event.ONLY_CHAT
-        event.module = Modules.MODULE_RATINGS
+        event.module_name = Module.MODULE_RATINGS
 
         await super().handle(event)
         await self.run_handler(event, StatRatingCommandHandler)
@@ -314,7 +314,7 @@ class CommandController(MessageController):
     @Controller.handle_decorator
     async def wednesday_handle(self, event: CommandEventDTO):
         event.command_names = ['wednesday']
-        event.module = Modules.MODULE_DUDE
+        event.module_name = Module.MODULE_DUDE
 
         await super().handle(event)
         await self.run_handler(event, WednesdayCommandHandler)
@@ -361,7 +361,7 @@ class MentionController(MessageController):
     async def _custom_mention_handle(self, event: MentionEventDTO):
         chat = Chat.get_by_telegram_id(event.chat.id)
 
-        if chat.is_enable_module(Modules.MODULE_ROLES):
+        if chat.is_enabled_module(Module.MODULE_ROLES):
             return []
 
         members_mentions = []

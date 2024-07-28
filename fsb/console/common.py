@@ -9,7 +9,7 @@ from telethon.tl.types import InputStickerSetShortName, DocumentAttributeVideo
 
 from fsb.config import config
 from fsb.console import client, coro
-from fsb.db.models import Chat, Modules
+from fsb.db.models import Chat, Module
 from fsb.services import FoolService
 
 
@@ -32,7 +32,7 @@ async def dude_broadcast():
 
     fool_service = FoolService(client)
 
-    for chat in Chat.with_enabled_module(Modules.MODULE_DUDE):
+    for chat in Chat.with_enabled_module(Module.MODULE_DUDE):
         if config.FOOL_DAY:
             await fool_service.send_message(chat.telegram_id)
         else:
@@ -50,7 +50,7 @@ async def new_year_broadcast():
     if config.content.shrek_new_year_film:
         film = await client._client.upload_file(config.content.shrek_new_year_film, file_name='Happy New Year.mp4')
 
-    for chat in Chat.with_enabled_module(Modules.MODULE_HAPPY_NEW_YEAR).where(Chat.happy_new_year):
+    for chat in Chat.with_enabled_module(Module.MODULE_HAPPY_NEW_YEAR).where(Chat.happy_new_year):
         if config.content.shrek_new_year_gif:
             await client.send_message(chat.telegram_id, config.content.shrek_new_year_gif, is_file=True)
         else:

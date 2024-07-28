@@ -1,18 +1,16 @@
 """
 create table modules
-date created: 2024-07-24 21:58:30.566136
+date created: 2024-07-28 11:19:13.874145
 """
 
 
 def upgrade(migrator):
     with migrator.create_table('modules') as table:
-        table.foreign_key('AUTO', 'chat_id', on_delete='CASCADE', on_update='CASCADE', references='chats.id')
-        table.add_constraint('PRIMARY KEY (chat_id)')
-        table.bool('roles', constraints=['DEFAULT 0'])
-        table.bool('ratings', constraints=['DEFAULT 0'])
-        table.bool('dude', constraints=['DEFAULT 0'])
-        table.bool('happy_new_year', constraints=['DEFAULT 0'])
-        table.bool('birthday', constraints=['DEFAULT 0'])
+        table.char('name', max_length=255, constraints=['PRIMARY KEY'])
+        table.char('readable_name', max_length=255, null=True)
+        table.bool('active', null=False, constraints=['DEFAULT 1'])
+        table.datetime('created_at', constraints=['DEFAULT CURRENT_TIMESTAMP'])
+        table.datetime('updated_at', constraints=['DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'])
 
     migrator.drop_column('chats', 'dude')
     migrator.drop_column('chats', 'happy_new_year')
