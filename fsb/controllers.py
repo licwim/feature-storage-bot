@@ -22,7 +22,7 @@ from fsb.events.ratings import RatingQueryEvent
 from fsb.events.roles import RoleQueryEvent
 from fsb.handlers import Handler, FoolHandler
 from fsb.handlers.commands import (
-    StartCommandHandler, PingCommandHandler, EntityInfoCommandHandler, AboutInfoCommandHandler, WednesdayCommandHandler
+    StartCommandHandler, PingCommandHandler, EntityInfoCommandHandler, AboutInfoCommandHandler
 )
 from fsb.handlers.mentions import AllMentionHandler, CustomMentionHandler
 from fsb.handlers.modules import ModulesSettingsCommandHandler, ModulesSettingsQueryHandler
@@ -328,14 +328,6 @@ class CommandController(MessageController):
 
         await super().handle(event)
         await self.run_handler(event, StatRatingCommandHandler)
-
-    @Controller.handle_decorator
-    async def wednesday_handle(self, event: CommandEventDTO):
-        event.command_names = ['wednesday']
-        event.module_name = Module.MODULE_DUDE
-
-        await super().handle(event)
-        await self.run_handler(event, WednesdayCommandHandler)
 
     @Controller.handle_decorator
     async def modules_settings_handle(self, event: CommandEventDTO):
