@@ -1,7 +1,8 @@
 # !/usr/bin/env python
 
-from peewee import DoesNotExist
 from typing import Union
+
+from peewee import DoesNotExist
 
 from fsb.db.models import QueryEvent, Chat, Module
 from fsb.helpers import Helper
@@ -55,7 +56,11 @@ class GeneralMenuModuleEvent(ModuleQueryEvent):
         buttons = []
 
         try:
-            for module in Module.select().where(Module.active).order_by(Module.created_at.asc()):
+            modules = (Module.select()
+                       .where(Module.active and Module.name != Module.MODULE_DEFAULT)
+                       .order_by(Module.created_at.asc()))
+
+            for module in modules:
                 if module.name in enabled_modules_names:
                     event_class = DisableModuleEvent
                     text = module.get_readable_name() + ': ВКЛ'

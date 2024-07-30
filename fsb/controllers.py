@@ -79,12 +79,21 @@ class Controller:
                 if time >= self.MAX_WAITING:
                     raise TimeoutError
         await self._init_filter(event)
-
-        if not Chat.get_by_telegram_id(event.telegram_event.chat.id).is_enabled_module(event.module_name):
-            raise ExitControllerException(sending_message='В чате не включен модуль "{module_name}"'
-                                          .format(module_name=Module.get_by_id(event.module_name).get_readable_name()))
+        self.check_module(event)
 
         self.logger.info(f"Start controller {self._controller_name}")
+
+    @staticmethod
+    def check_module(event, module_name: str = None):
+        module_name = module_name if module_name else event.module_name
+        module = Module.get_by_id(module_name)
+
+        if not module.active:
+            raise ExitControllerException(sending_message='Модуль "{module_name}" не активен'
+                                          .format(module_name=module.get_readable_name()))
+        elif not Chat.get_by_telegram_id(event.telegram_event.chat.id).is_enabled_module(module_name):
+            raise ExitControllerException(sending_message='В чате не включен модуль "{module_name}"'
+                                          .format(module_name=module.get_readable_name()))
 
     @staticmethod
     def handle_decorator(callback: callable):
@@ -377,8 +386,7 @@ class MentionController(MessageController):
     async def _custom_mention_handle(self, event: MentionEventDTO):
         chat = Chat.get_by_telegram_id(event.chat.id)
 
-        if chat.is_enabled_module(Module.MODULE_ROLES):
-            return []
+        self.check_module(event, Module.MODULE_ROLES)
 
         members_mentions = []
         mention_list = [role.nickname for role in Role.find_by_chat(chat)]

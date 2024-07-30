@@ -91,10 +91,10 @@ class ChatService:
             if chat.is_dirty():
                 chat.save(only=chat.dirty_fields)
             chat.real_dirty = False
+        else:
+            self.enable_default_module(chat)
 
         await self.create_members(entity=entity, chat=chat, update=update)
-
-        self.enable_default_module(chat)
 
         return chat
 
