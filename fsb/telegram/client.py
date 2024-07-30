@@ -2,7 +2,7 @@
 
 import json
 import logging
-from time import sleep
+from time import sleep, time
 from typing import Any, Union
 
 from telethon import TelegramClient, errors, functions
@@ -25,6 +25,7 @@ class TelegramApiClient:
     MAX_RELOGIN_COUNT = 3
     DISCONNECT_TIMEOUT = 15
     PARTICIPANTS_LIMIT = 200
+    PARTICIPANTS_CACHE_TIME = 60
 
     def __init__(self, name: str = None, cli: bool = False):
         self.name = name
@@ -34,6 +35,8 @@ class TelegramApiClient:
         self._current_user = None
         self.cli = cli
         self.logger = logging.getLogger('main')
+
+        self._chat_members_cache = {}
 
     def start(self):
         self._client.run_until_disconnected()
@@ -123,15 +126,23 @@ class TelegramApiClient:
     async def request(self, data):
         return await self._client(data)
 
-    async def get_dialog_members(self, entity, with_bot: bool = False) -> list:
+    async def get_dialog_members(self, entity, with_bot: bool = False, use_cache: bool = True) -> list:
         if isinstance(entity, Union[str, int]):
             entity = await self.get_entity(entity)
 
-        members = []
+        members_cache = self._chat_members_cache.get(entity.id)
+        now = int(time())
 
-        for member in await self._client.get_participants(entity, aggressive=False, limit=self.PARTICIPANTS_LIMIT):
-            if member.username == self._current_user.username or (not with_bot and member.bot):
-                continue
-            members.append(member)
+        if not use_cache or not members_cache or members_cache['time'] + self.PARTICIPANTS_CACHE_TIME < now:
+            members = []
+
+            for member in await self._client.get_participants(entity, aggressive=False, limit=self.PARTICIPANTS_LIMIT):
+                if member.username == self._current_user.username or (not with_bot and member.bot):
+                    continue
+                members.append(member)
+
+            self._chat_members_cache.update({entity.id: {'time': now, 'members': members}})
+        else:
+            members = members_cache['members']
 
         return members
