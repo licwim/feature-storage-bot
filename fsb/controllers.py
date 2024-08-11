@@ -302,11 +302,8 @@ class CommandController(MessageController):
     @Controller.handle_decorator
     async def ratings_handle(self, event: CommandEventDTO):
         event.command_names = [
-            RatingCommandHandler.PIDOR_COMMAND, RatingCommandHandler.CHAD_COMMAND,
-            RatingCommandHandler.PIDOR_MONTH_COMMAND, RatingCommandHandler.CHAD_MONTH_COMMAND,
-            RatingCommandHandler.ROLL_COMMAND, RatingCommandHandler.ROLL_MONTH_COMMAND,
-            RatingCommandHandler.PIDOR_YEAR_COMMAND, RatingCommandHandler.CHAD_YEAR_COMMAND,
-            RatingCommandHandler.CHAD_YEAR_COMMAND,
+            RatingCommandHandler.DAY_COMMAND, RatingCommandHandler.MONTH_COMMAND,
+            RatingCommandHandler.YEAR_COMMAND,
         ]
         event.area = event.ONLY_CHAT
         event.module_name = Module.MODULE_RATINGS
@@ -318,11 +315,7 @@ class CommandController(MessageController):
 
     @Controller.handle_decorator
     async def ratings_stats_handle(self, event: CommandEventDTO):
-        event.command_names = [
-            StatRatingCommandHandler.PIDOR_STAT_COMMAND, StatRatingCommandHandler.CHAD_STAT_COMMAND,
-            StatRatingCommandHandler.PIDOR_STAT_ALL_COMMAND, StatRatingCommandHandler.CHAD_STAT_ALL_COMMAND,
-            StatRatingCommandHandler.STAT_COMMAND, StatRatingCommandHandler.STAT_ALL_COMMAND,
-        ]
+        event.command_names = [StatRatingCommandHandler.STAT_COMMAND, StatRatingCommandHandler.STAT_ALL_COMMAND]
         event.area = event.ONLY_CHAT
         event.module_name = Module.MODULE_RATINGS
 

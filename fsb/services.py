@@ -365,19 +365,32 @@ class RatingService:
             await sleep(self.MESSAGE_WAIT)
 
     async def send_last_day_winner_message(self, rating: Rating, chat, announcing: bool = False):
-        tg_member = await rating.last_winner.get_telegram_member(self.client)
-        await self.client.send_message(chat, self.WINNER_MESSAGE.format(
-            rating_name=rating.name.upper(),
-            member_name=Helper.make_member_name(tg_member, with_mention=announcing)
-        ))
+        winner = self.get_day_winner(rating)
+
+        if winner:
+            tg_member = await winner.get_telegram_member(self.client)
+            await self.client.send_message(chat, self.WINNER_MESSAGE.format(
+                rating_name=rating.name.upper(),
+                member_name=Helper.make_member_name(tg_member, with_mention=announcing)
+            ))
+        else:
+            await self.client.send_message(chat, f"Сегодняшний {rating.name.upper()} еще не объявился.")
 
     async def send_last_month_winner_message(self, rating: Rating, chat, announcing: bool = False):
-        tg_member = await rating.last_month_winner.get_telegram_member(self.client)
-        await self.client.send_message(chat, self.MONTH_WINNER_MESSAGE.format(
-            rating_name=rating.name.upper(),
-            member_name=Helper.make_member_name(tg_member, with_mention=announcing),
-            month_name=Helper.get_month_name((datetime.now() - delta(months=1)).month, {'gent'}),
-        ) + (" 🎉" if announcing else ""))
+        winner = self.get_month_winner(rating)
+
+        if winner:
+            tg_member = await winner.get_telegram_member(self.client)
+            await self.client.send_message(chat, self.MONTH_WINNER_MESSAGE.format(
+                rating_name=rating.name.upper(),
+                member_name=Helper.make_member_name(tg_member, with_mention=announcing),
+                month_name=Helper.get_month_name((datetime.now() - delta(months=1)).month, {'gent'}),
+            ) + (" 🎉" if announcing else ""))
+        else:
+            await self.client.send_message(chat, "{rating_name} {month_name} еще не объявился.".format(
+                rating_name=rating.name.upper(),
+                month_name=Helper.get_month_name((datetime.now() - delta(months=1)).month, {'gent'})
+            ))
 
     @staticmethod
     def get_day_winner(rating: Rating):
@@ -432,29 +445,37 @@ class RatingService:
         return result
 
     async def send_last_year_winner_message(self, rating: Rating, chat, announcing: bool = False):
-        tg_member = await rating.last_year_winner.get_telegram_member(self.client)
-        rating_name_lexeme = Helper.get_words_lexeme(rating_name=rating.name.upper())
-        year = (datetime.now().replace(hour=0, minute=10, second=0, microsecond=0, day=1, month=1)
-                - delta(years=1)).year
-        winner_message = self.YEAR_WINNER_MESSAGE.format(
-            member_name=Helper.make_member_name(tg_member, with_mention=announcing),
-            year=year,
-            **rating_name_lexeme,
-        )
+        winner = self.get_year_winner(rating)
 
-        if announcing:
-            with open(config.content.rating_congratulations_file, 'r', encoding='utf-8') as file:
-                congratulations = file.readlines()
-                congratulation = random.choice(congratulations).strip(' \n')
-                congratulation = congratulation.format(**rating_name_lexeme)
-            with open(config.content.year_emojis_file, 'r', encoding='utf-8') as file:
-                emojis = file.readlines()
-                emoji = random.choice(emojis).strip(' \n')
+        if winner:
+            tg_member = await rating.last_year_winner.get_telegram_member(self.client)
+            rating_name_lexeme = Helper.get_words_lexeme(rating_name=rating.name.upper())
+            year = (datetime.now().replace(hour=0, minute=10, second=0, microsecond=0, day=1, month=1)
+                    - delta(years=1)).year
+            winner_message = self.YEAR_WINNER_MESSAGE.format(
+                member_name=Helper.make_member_name(tg_member, with_mention=announcing),
+                year=year,
+                **rating_name_lexeme,
+            )
 
-            await self.client.send_message(chat, winner_message + ' ' + congratulation)
-            await self.client.send_message(chat, emoji)
+            if announcing:
+                with open(config.content.rating_congratulations_file, 'r', encoding='utf-8') as file:
+                    congratulations = file.readlines()
+                    congratulation = random.choice(congratulations).strip(' \n')
+                    congratulation = congratulation.format(**rating_name_lexeme)
+                with open(config.content.year_emojis_file, 'r', encoding='utf-8') as file:
+                    emojis = file.readlines()
+                    emoji = random.choice(emojis).strip(' \n')
+
+                await self.client.send_message(chat, winner_message + ' ' + congratulation)
+                await self.client.send_message(chat, emoji)
+            else:
+                await self.client.send_message(chat, winner_message)
         else:
-            await self.client.send_message(chat, winner_message)
+            await self.client.send_message(chat, "{rating_name} {year} года еще не объявился.".format(
+                rating_name=rating.name.upper(),
+                year=datetime.now().year
+            ))
 
     async def roll_year(self, rating: Rating, chat):
         self.logger.info(InfoBuilder.build_log(f"Year rolling rating", {
