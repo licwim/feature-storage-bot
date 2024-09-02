@@ -2,20 +2,13 @@
 
 from telethon.tl.functions.users import GetFullUserRequest
 
-from fsb.db.models import Chat
 from fsb.handlers import CommandHandler
 from fsb.helpers import InfoBuilder
-from fsb.services import ChatService, RatingService
 
 
 class StartCommandHandler(CommandHandler):
     async def run(self):
         await super().run()
-
-        chat_service = ChatService(self.client)
-        rating_service = RatingService(self.client)
-        chat = await chat_service.create_chat(event=self.telegram_event, update=True)
-        rating_service.create_default_ratings(chat)
         await self.client.send_message(self.chat, 'OK')
 
 
@@ -46,20 +39,3 @@ class AboutInfoCommandHandler(CommandHandler):
         await super().run()
         bot = await self.client.request(GetFullUserRequest(self.client._current_user))
         await self.client.send_message(self.chat, InfoBuilder.build_about_info(bot))
-
-
-class WednesdayCommandHandler(CommandHandler):
-    MESSAGE_PATTERN = 'Дюдсовая среда теперь {state}!'
-
-    async def run(self):
-        await super().run()
-        chat = Chat.get_by_telegram_id(self.chat.id)
-        chat.dude = not chat.dude
-        chat.save()
-
-        if chat.dude:
-            message = self.MESSAGE_PATTERN.format(state='ВКЛЮЧЕНА')
-        else:
-            message = self.MESSAGE_PATTERN.format(state='ВЫКЛЮЧЕНА')
-
-        await self.client.send_message(self.chat, message)

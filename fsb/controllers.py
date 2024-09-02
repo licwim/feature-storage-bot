@@ -11,19 +11,21 @@ from peewee import DoesNotExist
 from telethon.events import NewMessage, CallbackQuery, ChatAction
 
 from fsb.config import config
-from fsb.db.models import QueryEvent, Role, Chat
+from fsb.db.models import QueryEvent, Role, Chat, Module
 from fsb.errors import ExitControllerException
 from fsb.events.common import (
     EventDTO, MessageEventDTO, CallbackQueryEventDTO, MenuEventDTO, ChatActionEventDTO, CommandEventDTO,
     MentionEventDTO
 )
+from fsb.events.modules import ModuleQueryEvent
 from fsb.events.ratings import RatingQueryEvent
 from fsb.events.roles import RoleQueryEvent
 from fsb.handlers import Handler, FoolHandler
 from fsb.handlers.commands import (
-    StartCommandHandler, PingCommandHandler, EntityInfoCommandHandler, AboutInfoCommandHandler, WednesdayCommandHandler
+    StartCommandHandler, PingCommandHandler, EntityInfoCommandHandler, AboutInfoCommandHandler
 )
 from fsb.handlers.mentions import AllMentionHandler, CustomMentionHandler
+from fsb.handlers.modules import ModulesSettingsCommandHandler, ModulesSettingsQueryHandler
 from fsb.handlers.ratings import (
     RatingsSettingsCommandHandler, RatingCommandHandler, StatRatingCommandHandler,
     RatingsSettingsQueryHandler
@@ -67,6 +69,8 @@ class Controller:
         return handle_list
 
     async def handle(self, event: EventDTO):
+        await ChatService(self._client).create_chat(event=event.telegram_event, update=True)
+
         if event.chat.id in self._waiting_list:
             time = 0
             while self._waiting_list[event.chat.id]:
@@ -75,8 +79,21 @@ class Controller:
                 if time >= self.MAX_WAITING:
                     raise TimeoutError
         await self._init_filter(event)
-        await ChatService(self._client).create_chat(event=event.telegram_event, update=True)
+        self.check_module(event)
+
         self.logger.info(f"Start controller {self._controller_name}")
+
+    @staticmethod
+    def check_module(event, module_name: str = None):
+        module_name = module_name if module_name else event.module_name
+        module = Module.get_by_id(module_name)
+
+        if not module.active:
+            raise ExitControllerException(sending_message='Модуль "{module_name}" не активен'
+                                          .format(module_name=module.get_readable_name()))
+        elif not Chat.get_by_telegram_id(event.telegram_event.chat.id).is_enabled_module(module_name):
+            raise ExitControllerException(sending_message='В чате не включен модуль "{module_name}"'
+                                          .format(module_name=module.get_readable_name()))
 
     @staticmethod
     def handle_decorator(callback: callable):
@@ -87,6 +104,9 @@ class Controller:
             except ExitControllerException as ex:
                 if ex.class_name or ex.reason:
                     self.logger.warning(ex.message)
+
+                if ex.sending_message:
+                    await self._client.send_message(event.telegram_event.chat.id, ex.sending_message)
             except DoesNotExist as ex:
                 self.logger.warning(ex.__class__.__name__.replace(DoesNotExist.__name__, '') + ' does not exist')
             except Exception as ex:
@@ -179,6 +199,7 @@ class MenuController(CallbackQueryController):
     async def role_menu_handle(self, event: MenuEventDTO):
         event.area = event.ONLY_CHAT
         event.query_event_class = RoleQueryEvent
+        event.module_name = Module.MODULE_ROLES
         await super().handle(event)
         await self.run_handler(event, RolesSettingsQueryHandler)
 
@@ -186,8 +207,16 @@ class MenuController(CallbackQueryController):
     async def ratings_menu_handle(self, event: MenuEventDTO):
         event.area = event.ONLY_CHAT
         event.query_event_class = RatingQueryEvent
+        event.module_name = Module.MODULE_RATINGS
         await super().handle(event)
         await self.run_handler(event, RatingsSettingsQueryHandler)
+
+    @Controller.handle_decorator
+    async def modules_menu_handle(self, event: MenuEventDTO):
+        event.query_event_class = ModuleQueryEvent
+
+        await super().handle(event)
+        await self.run_handler(event, ModulesSettingsQueryHandler)
 
 
 class ChatActionController(Controller):
@@ -225,6 +254,7 @@ class CommandController(MessageController):
     @Controller.handle_decorator
     async def start_handle(self, event: CommandEventDTO):
         event.command_names = ['start']
+
         await super().handle(event)
         await self.run_handler(event, StartCommandHandler)
 
@@ -232,6 +262,7 @@ class CommandController(MessageController):
     async def ping_handle(self, event: CommandEventDTO):
         event.command_names = ['ping']
         event.debug = False
+
         await super().handle(event)
         await self.run_handler(event, PingCommandHandler)
 
@@ -239,12 +270,14 @@ class CommandController(MessageController):
     async def entity_info_handle(self, event: CommandEventDTO):
         event.command_names = ['entity']
         event.debug = True
+
         await super().handle(event)
         await self.run_handler(event, EntityInfoCommandHandler)
 
     @Controller.handle_decorator
     async def about_handle(self, event: CommandEventDTO):
         event.command_names = ['about']
+
         await super().handle(event)
         await self.run_handler(event, AboutInfoCommandHandler)
 
@@ -252,6 +285,8 @@ class CommandController(MessageController):
     async def role_settings_handle(self, event: CommandEventDTO):
         event.command_names = ['roles']
         event.area = event.ONLY_CHAT
+        event.module_name = Module.MODULE_ROLES
+
         await super().handle(event)
         await self.run_handler(event, RolesSettingsCommandHandler)
 
@@ -259,19 +294,20 @@ class CommandController(MessageController):
     async def ratings_settings_handle(self, event: CommandEventDTO):
         event.command_names = ['ratings']
         event.area = event.ONLY_CHAT
+        event.module_name = Module.MODULE_RATINGS
+
         await super().handle(event)
         await self.run_handler(event, RatingsSettingsCommandHandler)
 
     @Controller.handle_decorator
     async def ratings_handle(self, event: CommandEventDTO):
         event.command_names = [
-            RatingCommandHandler.PIDOR_COMMAND, RatingCommandHandler.CHAD_COMMAND,
-            RatingCommandHandler.PIDOR_MONTH_COMMAND, RatingCommandHandler.CHAD_MONTH_COMMAND,
-            RatingCommandHandler.ROLL_COMMAND, RatingCommandHandler.ROLL_MONTH_COMMAND,
-            RatingCommandHandler.PIDOR_YEAR_COMMAND, RatingCommandHandler.CHAD_YEAR_COMMAND,
-            RatingCommandHandler.CHAD_YEAR_COMMAND,
+            RatingCommandHandler.DAY_COMMAND, RatingCommandHandler.MONTH_COMMAND,
+            RatingCommandHandler.YEAR_COMMAND,
         ]
         event.area = event.ONLY_CHAT
+        event.module_name = Module.MODULE_RATINGS
+
         await super().handle(event)
         self.start_wait(event.chat.id)
         await self.run_handler(event, RatingCommandHandler)
@@ -279,20 +315,19 @@ class CommandController(MessageController):
 
     @Controller.handle_decorator
     async def ratings_stats_handle(self, event: CommandEventDTO):
-        event.command_names = [
-            StatRatingCommandHandler.PIDOR_STAT_COMMAND, StatRatingCommandHandler.CHAD_STAT_COMMAND,
-            StatRatingCommandHandler.PIDOR_STAT_ALL_COMMAND, StatRatingCommandHandler.CHAD_STAT_ALL_COMMAND,
-            StatRatingCommandHandler.STAT_COMMAND, StatRatingCommandHandler.STAT_ALL_COMMAND,
-        ]
-        await super().handle(event)
+        event.command_names = [StatRatingCommandHandler.STAT_COMMAND, StatRatingCommandHandler.STAT_ALL_COMMAND]
         event.area = event.ONLY_CHAT
+        event.module_name = Module.MODULE_RATINGS
+
+        await super().handle(event)
         await self.run_handler(event, StatRatingCommandHandler)
 
     @Controller.handle_decorator
-    async def wednesday_handle(self, event: CommandEventDTO):
-        event.command_names = ['wednesday']
+    async def modules_settings_handle(self, event: CommandEventDTO):
+        event.command_names = ['modules']
+
         await super().handle(event)
-        await self.run_handler(event, WednesdayCommandHandler)
+        await self.run_handler(event, ModulesSettingsCommandHandler)
 
 
 class MentionController(MessageController):
@@ -334,8 +369,12 @@ class MentionController(MessageController):
         return members_mentions
 
     async def _custom_mention_handle(self, event: MentionEventDTO):
+        chat = Chat.get_by_telegram_id(event.chat.id)
+
+        self.check_module(event, Module.MODULE_ROLES)
+
         members_mentions = []
-        mention_list = [role.nickname for role in Role.find_by_chat(Chat.get_by_telegram_id(event.chat.id))]
+        mention_list = [role.nickname for role in Role.find_by_chat(chat)]
 
         if self._mention_filter(mention_list, event):
             members_mentions = await self.run_handler(event, CustomMentionHandler)

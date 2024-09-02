@@ -1,32 +1,22 @@
 # !/usr/bin/env python
 
 from asyncio.exceptions import TimeoutError
-from datetime import datetime
 
-from dateutil.relativedelta import relativedelta as delta
 from inflection import underscore
 from peewee import DoesNotExist
 from telethon import events
 from telethon.tl.custom.button import Button
 
 from fsb.db.models import Chat, Member, Rating, RatingMember, User
-from fsb.errors import ExitControllerException, InputValueError, ConversationTimeoutError
+from fsb.errors import InputValueError, ConversationTimeoutError
 from fsb.events.ratings import (
     RatingQueryEvent, GeneralMenuRatingEvent, RegRatingEvent, UnregRatingEvent,
     ChangeRatingEvent, DeleteRatingEvent, ListRatingEvent, MenuRatingEvent,
     DailyRollRatingEvent,
 )
-from fsb.handlers import ChatActionHandler, CommandHandler, MenuHandler
+from fsb.handlers import CommandHandler, MenuHandler
 from fsb.helpers import Helper
 from fsb.services import RatingService
-
-
-class CreateRatingsOnJoinChatHandler(ChatActionHandler):
-    async def run(self):
-        await super().run()
-        chat = Chat.get_by_telegram_id(self.chat.id)
-        rating_service = RatingService(self.client)
-        rating_service.create_default_ratings(chat)
 
 
 class RatingsSettingsCommandHandler(CommandHandler):
@@ -47,95 +37,62 @@ class RatingsSettingsCommandHandler(CommandHandler):
 
 
 class RatingCommandHandler(CommandHandler):
-    PIDOR_COMMAND = RatingService.PIDOR_KEYWORD
-    CHAD_COMMAND = RatingService.CHAD_KEYWORD
-    ROLL_COMMAND = 'roll'
-    MONTH_POSTFIX = 'month'
-    YEAR_POSTFIX = 'year'
-    ROLL_MONTH_COMMAND = ROLL_COMMAND + MONTH_POSTFIX
-    PIDOR_MONTH_COMMAND = PIDOR_COMMAND + MONTH_POSTFIX
-    CHAD_MONTH_COMMAND = CHAD_COMMAND + MONTH_POSTFIX
-    ROLL_YEAR_COMMAND = ROLL_COMMAND + YEAR_POSTFIX
-    PIDOR_YEAR_COMMAND = PIDOR_COMMAND + YEAR_POSTFIX
-    CHAD_YEAR_COMMAND = CHAD_COMMAND + YEAR_POSTFIX
+    _POSTFIX = 'win'
+    DAY_COMMAND = 'day' + _POSTFIX
+    MONTH_COMMAND = 'month' + _POSTFIX
+    YEAR_COMMAND = 'year' + _POSTFIX
+
+    _rating_service: RatingService
 
     async def run(self):
         await super().run()
-        match self.command:
-            case self.PIDOR_COMMAND | self.PIDOR_MONTH_COMMAND | self.PIDOR_YEAR_COMMAND:
-                rating_command = self.PIDOR_COMMAND
-            case self.CHAD_COMMAND | self.CHAD_MONTH_COMMAND | self.CHAD_YEAR_COMMAND:
-                rating_command = self.CHAD_COMMAND
-            case self.ROLL_COMMAND | self.ROLL_MONTH_COMMAND | self.ROLL_YEAR_COMMAND:
-                if not self.args:
-                    raise ExitControllerException
-                rating_command = self.args[0]
-            case _:
-                raise RuntimeError
+        self._ratings_service = RatingService(self.client)
+        chat = Chat.get_by_telegram_id(self.chat.id)
 
-        ratings_service = RatingService(self.client)
-        is_month = self.command in [self.PIDOR_MONTH_COMMAND, self.CHAD_MONTH_COMMAND, self.ROLL_MONTH_COMMAND]
-        is_year = self.command in [self.PIDOR_YEAR_COMMAND, self.CHAD_YEAR_COMMAND, self.ROLL_YEAR_COMMAND]
-        rating = Rating.get(
-            Rating.command == rating_command,
-            Rating.chat == Chat.get_by_telegram_id(self.chat.id)
-        )
-
-        if is_month:
-            if ratings_service.get_month_winner(rating):
-                await ratings_service.send_last_month_winner_message(rating, self.chat)
-            else:
-                await self.client.send_message(self.chat, "{rating_name} {month_name} еще не объявился.".format(
-                    rating_name=rating.name.upper(),
-                    month_name=Helper.get_month_name((datetime.now() - delta(months=1)).month, {'gent'})
-                ))
-        elif is_year:
-            if ratings_service.get_year_winner(rating):
-                await ratings_service.send_last_year_winner_message(rating, self.chat)
-            else:
-                await self.client.send_message(self.chat, "{rating_name} {year} года еще не объявился.".format(
-                    rating_name=rating.name.upper(),
-                    year=datetime.now().year
-                ))
+        if self.args:
+            ratings = [Rating.get(
+                Rating.command == self.args[0],
+                Rating.chat == chat
+            )]
         else:
-            if ratings_service.get_day_winner(rating):
-                await ratings_service.send_last_day_winner_message(rating, self.chat)
-            else:
-                await self.client.send_message(self.chat, f"Сегодняшний {rating.name.upper()} еще не объявился.")
+            ratings = Rating.select().where(Rating.chat == chat)
+
+        for rating in ratings:
+            await self._win_send_message(rating)
+
+    async def _win_send_message(self, rating: Rating):
+        match self.command:
+            case self.DAY_COMMAND:
+                await self._ratings_service.send_last_day_winner_message(rating, self.chat)
+            case self.MONTH_COMMAND:
+                await self._ratings_service.send_last_month_winner_message(rating, self.chat)
+            case self.YEAR_COMMAND:
+                await self._ratings_service.send_last_year_winner_message(rating, self.chat)
 
 
 class StatRatingCommandHandler(CommandHandler):
-    STAT_POSTFIX = 'stat'
-    STAT_ALL_POSTFIX = 'all'
-    PIDOR_STAT_COMMAND = RatingCommandHandler.PIDOR_COMMAND + STAT_POSTFIX
-    CHAD_STAT_COMMAND = RatingCommandHandler.CHAD_COMMAND + STAT_POSTFIX
-    PIDOR_STAT_ALL_COMMAND = PIDOR_STAT_COMMAND + STAT_ALL_POSTFIX
-    CHAD_STAT_ALL_COMMAND = CHAD_STAT_COMMAND + STAT_ALL_POSTFIX
-    STAT_COMMAND = STAT_POSTFIX
-    STAT_ALL_COMMAND = STAT_COMMAND + STAT_ALL_POSTFIX
+    STAT_COMMAND = 'stat'
+    STAT_ALL_COMMAND = STAT_COMMAND + 'all'
+
+    _rating_service: RatingService
 
     async def run(self):
         await super().run()
-        match self.command:
-            case self.PIDOR_STAT_COMMAND | self.PIDOR_STAT_ALL_COMMAND:
-                rating_command = RatingService.PIDOR_KEYWORD
-            case self.CHAD_STAT_COMMAND | self.CHAD_STAT_ALL_COMMAND:
-                rating_command = RatingService.CHAD_KEYWORD
-            case self.STAT_COMMAND | self.STAT_ALL_COMMAND:
-                if not self.args:
-                    raise ExitControllerException
-                rating_command = self.args[0]
-            case _:
-                raise RuntimeError
+        self._rating_service = RatingService(self.client)
+        is_all = self.command == self.STAT_ALL_COMMAND
+        chat = Chat.get_by_telegram_id(self.chat.id)
 
-        is_all = self.command in [self.PIDOR_STAT_ALL_COMMAND, self.CHAD_STAT_ALL_COMMAND, self.STAT_ALL_COMMAND]
-        rating = Rating.get(
-            Rating.command == rating_command,
-            Rating.chat == Chat.get_by_telegram_id(self.chat.id)
-        )
-        message = await RatingService(self.client).get_stat_message(rating, is_all)
+        if self.args:
+            ratings = [Rating.get(
+                Rating.command == self.args[0],
+                Rating.chat == chat
+            )]
+        else:
+            ratings = Rating.select().where(Rating.chat == chat)
 
-        await self.client.send_message(self.chat, message)
+        for rating in ratings:
+            message = await self._rating_service.get_stat_message(rating, is_all)
+            await self.client.send_message(self.chat, message)
 
 
 class RatingsSettingsQueryHandler(MenuHandler):

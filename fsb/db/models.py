@@ -53,6 +53,36 @@ class BaseModel(Model):
             return
         super().__setattr__(key, value)
 
+    @classmethod
+    def with_enabled_module(cls, module_name: str = None, query=None):
+        if not query:
+            query = cls.select()
+
+        if not module_name:
+            module_name = Module.get_module_name_by_table(cls.TABLE_NAME)
+
+        if module_name:
+            if cls == Chat:
+                reference_column = cls.id
+            else:
+                reference_column = cls.chat_id
+
+            query = (query.join(ChatModule, on=(ChatModule.chat_id == reference_column))
+                     .join(Module, on=(Module.name == ChatModule.module_id))
+                     .where(Module.active and ChatModule.module_id == module_name))
+
+        return query
+
+    def is_enabled_module(self, module_name: str) -> bool:
+        return self.with_enabled_module(module_name).exists()
+
+    @classmethod
+    def get_by_telegram_id(cls, telegram_id: Union[int, str]):
+        try:
+            return cls.get(cls.telegram_id == telegram_id)
+        except AttributeError:
+            return None
+
 
 class User(BaseModel):
     TABLE_NAME = 'users'
@@ -95,10 +125,7 @@ class Chat(BaseModel):
     name = CharField(null=True)
     type = IntegerField()
     input_peer = TextField(null=True)
-    dude = BooleanField(default=False, constraints=[SQL('DEFAULT 0')])
     users = ManyToManyField(User, backref='chats', through_model=MemberDeferred)
-    happy_new_year = BooleanField(default=False, constraints=[SQL('DEFAULT 0')])
-    birthday = BooleanField(default=False, constraints=[SQL('DEFAULT 0')])
 
     @staticmethod
     def get_chat_type(chat):
@@ -114,9 +141,14 @@ class Chat(BaseModel):
 
         return chat_type
 
-    @staticmethod
-    def get_by_telegram_id(telegram_id: Union[int, str]) -> 'Chat':
-        return Chat.get(Chat.telegram_id == telegram_id)
+    def enable_module(self, module_name):
+        return ChatModule.get_or_create(chat=self, module_id=module_name)
+
+    def disable_module(self, module_name):
+        chat_module = ChatModule.get(ChatModule.chat == self and ChatModule.module_id == module_name)
+
+        if isinstance(chat_module, ChatModule):
+            return chat_module.delete_instance()
 
 
 class Member(BaseModel):
@@ -349,3 +381,52 @@ class CacheQuantumRand(BaseModel):
     id = AutoField()
     value = IntegerField(null=False)
     type = CharField(null=False, default='uint16', constraints=[SQL('DEFAULT "uint16"')])
+
+
+class Module(BaseModel):
+    TABLE_NAME = 'modules'
+
+    MODULE_DEFAULT = 'default'
+    MODULE_ROLES = 'roles'
+    MODULE_RATINGS = 'ratings'
+    MODULE_DUDE = 'dude'
+    MODULE_HAPPY_NEW_YEAR = 'happy_new_year'
+    MODULE_BIRTHDAY = 'birthday'
+
+    MODULES_NAMES = {
+        MODULE_DEFAULT: 'Стандартный',
+        MODULE_ROLES: 'Роли',
+        MODULE_RATINGS: 'Рейтинги',
+        MODULE_DUDE: 'Дюдсовая среда',
+        MODULE_HAPPY_NEW_YEAR: 'Новый Год',
+        MODULE_BIRTHDAY: 'Дни рождения',
+    }
+
+    name = CharField(null=False, primary_key=True)
+    readable_name = CharField(null=True)
+    active = BooleanField(null=False, default=True, constraints=[SQL('DEFAULT 1')])
+    created_at = DateTimeField(default=datetime.now(), constraints=[SQL('DEFAULT CURRENT_TIMESTAMP')])
+    updated_at = DateTimeField(default=datetime.now(),
+                               constraints=[SQL('DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP')])
+
+    @staticmethod
+    def get_module_name_by_table(table):
+        modules_by_tables = {
+            Role.TABLE_NAME: Module.MODULE_ROLES,
+            Rating.TABLE_NAME: Module.MODULE_RATINGS,
+        }
+
+        return modules_by_tables.get(table)
+
+    def get_readable_name(self):
+        return self.readable_name if self.readable_name else self.name
+
+
+class ChatModule(BaseModel):
+    TABLE_NAME = 'chats_modules'
+
+    class Meta:
+        primary_key = CompositeKey('chat', 'module')
+
+    chat = ForeignKeyField(Chat, backref='chat_modules', on_delete='CASCADE', on_update='CASCADE')
+    module = ForeignKeyField(Module, backref='module_chats', on_delete='CASCADE', on_update='CASCADE')

@@ -20,7 +20,7 @@ class DisconnectFailedError(BaseFsbException):
 
 
 class ExitControllerException(BaseFsbException):
-    def __init__(self, object_context: Union[str, object] = None, reason: str = None):
+    def __init__(self, object_context: Union[str, object] = None, reason: str = None, sending_message: str = None):
         if not isinstance(object_context, str) and object_context is not None:
             object_context = object_context.__class__.__name__
 
@@ -30,6 +30,7 @@ class ExitControllerException(BaseFsbException):
         super().__init__(message)
         self.reason = reason
         self.class_name = object_context
+        self.sending_message = sending_message
 
 
 class RequiredAttributeError(BaseFsbException, AttributeError):

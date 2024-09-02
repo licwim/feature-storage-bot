@@ -24,7 +24,7 @@ async def month_roll():
 
     ratings_service = RatingService(client)
 
-    for rating in Rating.select().where(Rating.autorun):
+    for rating in Rating.with_enabled_module().where(Rating.chat.modules.ratings and Rating.autorun):
         if rating.last_month_winner \
                 and rating.last_month_run \
                 and rating.last_month_run >= datetime.today().replace(hour=0, minute=0, second=0, microsecond=0, day=1):
@@ -45,7 +45,7 @@ async def day_roll():
 
     ratings_service = RatingService(client)
 
-    for rating in Rating.select().where(Rating.autorun):
+    for rating in Rating.with_enabled_module().where(Rating.autorun):
         if rating.last_run \
                 and rating.last_run >= datetime.today().replace(hour=0, minute=0, second=0, microsecond=0):
             continue
@@ -64,7 +64,7 @@ async def year_roll():
     """Calculation of the ratings winners of the year"""
     ratings_service = RatingService(client)
 
-    for rating in Rating.select().where(Rating.autorun):
+    for rating in Rating.with_enabled_module().where(Rating.autorun):
         if not (rating.last_month_winner
                 and rating.last_month_run
                 and rating.last_month_run >= datetime.today().replace(hour=0, minute=0, second=0, microsecond=0, day=1)):
@@ -84,7 +84,7 @@ async def natural_not_found():
     """Sending not found message for all chats with natural ratings"""
     rating_service = RatingService(client)
 
-    for rating in Rating.select().where(Rating.command == 'natural'):
+    for rating in Rating.with_enabled_module().where(Rating.command == 'natural'):
         stat_message = await rating_service.get_stat_message(rating, True)
         main_message = 'В этом чате натуралы все еще не обнаружены'
 
