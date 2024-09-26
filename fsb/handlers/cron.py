@@ -188,6 +188,7 @@ class CronSettingsQueryHandler(MenuHandler):
                     cron_job.message = cron_job.message if message == '-' else message
                     cron_job.schedule = cron_job.schedule if schedule == '-' else schedule
                     cron_job.save()
+                    await self.cron_service.update_cron(cron_job=cron_job)
                     await conv.send_message(f"Изменена задача {cron_job.name}")
                 else:
                     await conv.send_message("Такая роль уже существует")

@@ -668,6 +668,19 @@ class CronService:
 
         return cron_job
 
+    async def update_cron(self, cron_job_id: int = None, cron_job: CronJob = None):
+        if cron_job_id:
+            cron_job = CronJob.get_by_id(cron_job_id)
+
+        if not cron_job:
+            return
+
+        if cron_job.id in self.cron_list:
+            self.disable_cron(cron_job=cron_job)
+            await self.enable_cron(cron_job=cron_job)
+
+        return cron_job
+
     async def send_message(self, chat: Chat, message: str):
         if chat.is_enabled_module(Module.MODULE_CRON):
             await self.client.send_message(chat.telegram_id, message)
