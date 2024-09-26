@@ -6,18 +6,18 @@ import random
 from asyncio import sleep
 from datetime import datetime
 
+import aiocron
 import quantumrand as qr
 from dateutil.relativedelta import relativedelta as delta
+from fsb.config import config
+from fsb.db.models import Chat, User, Member, Rating, RatingMember, RatingLeader, CacheQuantumRand, Module, CronJob
+from fsb.errors import BaseFsbException, NoMembersRatingError, NoApproachableMembers
+from fsb.helpers import Helper, ReturnedThread, InfoBuilder
+from fsb.telegram.client import TelegramApiClient
 from peewee import fn
 from telethon.tl.functions.messages import GetStickerSetRequest
 from telethon.tl.types import InputPeerUser, InputPeerChat, InputPeerChannel
 from telethon.tl.types import InputStickerSetShortName
-
-from fsb.config import config
-from fsb.db.models import Chat, User, Member, Rating, RatingMember, RatingLeader, CacheQuantumRand, Module
-from fsb.errors import BaseFsbException, NoMembersRatingError, NoApproachableMembers
-from fsb.helpers import Helper, ReturnedThread, InfoBuilder
-from fsb.telegram.client import TelegramApiClient
 
 
 class QuantumRandService:
@@ -601,3 +601,69 @@ class BirthdayService:
             await self.client.send_message(chat.telegram_id, self.BIRTHDAY_MESSAGE.format(
                 name=Helper.make_member_name(await user.get_telegram_member(self.client), with_mention=True)
             ))
+
+
+class CronService:
+    cron_list = {}
+
+    def __init__(self, client: TelegramApiClient):
+        self.client = client
+        self.logger = logging.getLogger('main')
+
+    async def run(self):
+        for cron_job in CronJob.select().where(CronJob.active):
+            await self.enable_cron(cron_job=cron_job)
+
+    def stop(self):
+        for cron_job in self.cron_list.values():
+            cron_job.stop()
+
+        self.cron_list.clear()
+
+    async def add_cron_job(self, name: str, chat: Chat, message: str, schedule: str):
+        cron_job = CronJob.create(name=name, chat=chat, message=message, schedule=schedule)
+        await self.enable_cron(cron_job=cron_job)
+        return cron_job
+
+    def remove_cron_job(self, cron_job_id: int = None, cron_job: CronJob = None):
+        cron_job = self.disable_cron(cron_job_id=cron_job_id, cron_job=cron_job)
+        cron_job.delete_instance()
+
+    async def enable_cron(self, cron_job_id: int = None, cron_job: CronJob = None):
+        if cron_job_id:
+            cron_job = CronJob.get_by_id(cron_job_id)
+
+        if not cron_job:
+            return
+
+        cron = aiocron.crontab(
+            cron_job.schedule,
+            func=self.send_message,
+            args=(cron_job.chat, cron_job.message),
+            start=True,
+            loop=self.client.loop,
+            tz='Europe/Moscow'
+        )
+        self.cron_list[cron_job.id] = cron
+        cron_job.active = True
+        cron_job.save()
+
+        return cron_job
+
+    def disable_cron(self, cron_job_id: int = None, cron_job: CronJob = None):
+        if cron_job_id:
+            cron_job = CronJob.get_by_id(cron_job_id)
+
+        if not cron_job:
+            return
+
+        cron = self.cron_list.pop(cron_job.id)
+        cron.stop()
+        cron_job.active = False
+        cron_job.save()
+
+        return cron_job
+
+    async def send_message(self, chat: Chat, message: str):
+        if chat.is_enabled_module(Module.MODULE_CRON):
+            await self.client.send_message(chat.telegram_id, message)

@@ -7,9 +7,6 @@ from asyncio import sleep
 from collections import OrderedDict
 from typing import Type
 
-from peewee import DoesNotExist
-from telethon.events import NewMessage, CallbackQuery, ChatAction
-
 from fsb.config import config
 from fsb.db.models import QueryEvent, Role, Chat, Module
 from fsb.errors import ExitControllerException
@@ -24,6 +21,7 @@ from fsb.handlers import Handler, FoolHandler
 from fsb.handlers.commands import (
     StartCommandHandler, PingCommandHandler, EntityInfoCommandHandler, AboutInfoCommandHandler
 )
+from fsb.handlers.cron import CronSettingsCommandHandler
 from fsb.handlers.mentions import AllMentionHandler, CustomMentionHandler
 from fsb.handlers.modules import ModulesSettingsCommandHandler, ModulesSettingsQueryHandler
 from fsb.handlers.ratings import (
@@ -34,6 +32,8 @@ from fsb.handlers.roles import RolesSettingsCommandHandler, RolesSettingsQueryHa
 from fsb.helpers import InfoBuilder
 from fsb.services import ChatService
 from fsb.telegram.client import TelegramApiClient
+from peewee import DoesNotExist
+from telethon.events import NewMessage, CallbackQuery, ChatAction
 
 
 class Controller:
@@ -328,6 +328,14 @@ class CommandController(MessageController):
 
         await super().handle(event)
         await self.run_handler(event, ModulesSettingsCommandHandler)
+
+    @Controller.handle_decorator
+    async def cron_settings_handle(self, event: CommandEventDTO):
+        event.command_names = ['cron']
+        event.module_name = Module.MODULE_CRON
+
+        await super().handle(event)
+        await self.run_handler(event, CronSettingsCommandHandler)
 
 
 class MentionController(MessageController):

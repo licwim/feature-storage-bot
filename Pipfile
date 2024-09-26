@@ -20,6 +20,7 @@ bestconfig = "==1.3.6"
 peewee-moves = "==2.1.0"
 tzdata = "*"
 python-dateutil = "2.8.2"
+aiocron = "1.8"
 
 [requires]
 python_version = "3.10.11"
