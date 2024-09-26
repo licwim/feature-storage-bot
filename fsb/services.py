@@ -9,15 +9,17 @@ from datetime import datetime
 import aiocron
 import quantumrand as qr
 from dateutil.relativedelta import relativedelta as delta
+from peewee import fn
+from pytz import timezone
+from telethon.tl.functions.messages import GetStickerSetRequest
+from telethon.tl.types import InputPeerUser, InputPeerChat, InputPeerChannel
+from telethon.tl.types import InputStickerSetShortName
+
 from fsb.config import config
 from fsb.db.models import Chat, User, Member, Rating, RatingMember, RatingLeader, CacheQuantumRand, Module, CronJob
 from fsb.errors import BaseFsbException, NoMembersRatingError, NoApproachableMembers
 from fsb.helpers import Helper, ReturnedThread, InfoBuilder
 from fsb.telegram.client import TelegramApiClient
-from peewee import fn
-from telethon.tl.functions.messages import GetStickerSetRequest
-from telethon.tl.types import InputPeerUser, InputPeerChat, InputPeerChannel
-from telethon.tl.types import InputStickerSetShortName
 
 
 class QuantumRandService:
@@ -636,17 +638,18 @@ class CronService:
         if not cron_job:
             return
 
-        cron = aiocron.crontab(
-            cron_job.schedule,
-            func=self.send_message,
-            args=(cron_job.chat, cron_job.message),
-            start=True,
-            loop=self.client.loop,
-            tz='Europe/Moscow'
-        )
-        self.cron_list[cron_job.id] = cron
-        cron_job.active = True
-        cron_job.save()
+        if cron_job.id not in self.cron_list:
+            cron = aiocron.crontab(
+                cron_job.schedule,
+                func=self.send_message,
+                args=(cron_job.chat, cron_job.message),
+                start=True,
+                loop=self.client.loop,
+                tz=timezone('Europe/Moscow')
+            )
+            self.cron_list[cron_job.id] = cron
+            cron_job.active = True
+            cron_job.save()
 
         return cron_job
 
@@ -657,10 +660,11 @@ class CronService:
         if not cron_job:
             return
 
-        cron = self.cron_list.pop(cron_job.id)
-        cron.stop()
-        cron_job.active = False
-        cron_job.save()
+        if cron_job.id in self.cron_list:
+            cron = self.cron_list.pop(cron_job.id)
+            cron.stop()
+            cron_job.active = False
+            cron_job.save()
 
         return cron_job
 

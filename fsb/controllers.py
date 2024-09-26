@@ -7,6 +7,9 @@ from asyncio import sleep
 from collections import OrderedDict
 from typing import Type
 
+from peewee import DoesNotExist
+from telethon.events import NewMessage, CallbackQuery, ChatAction
+
 from fsb.config import config
 from fsb.db.models import QueryEvent, Role, Chat, Module
 from fsb.errors import ExitControllerException
@@ -14,6 +17,7 @@ from fsb.events.common import (
     EventDTO, MessageEventDTO, CallbackQueryEventDTO, MenuEventDTO, ChatActionEventDTO, CommandEventDTO,
     MentionEventDTO
 )
+from fsb.events.cron import CronQueryEvent
 from fsb.events.modules import ModuleQueryEvent
 from fsb.events.ratings import RatingQueryEvent
 from fsb.events.roles import RoleQueryEvent
@@ -21,7 +25,7 @@ from fsb.handlers import Handler, FoolHandler
 from fsb.handlers.commands import (
     StartCommandHandler, PingCommandHandler, EntityInfoCommandHandler, AboutInfoCommandHandler
 )
-from fsb.handlers.cron import CronSettingsCommandHandler
+from fsb.handlers.cron import CronSettingsCommandHandler, CronSettingsQueryHandler
 from fsb.handlers.mentions import AllMentionHandler, CustomMentionHandler
 from fsb.handlers.modules import ModulesSettingsCommandHandler, ModulesSettingsQueryHandler
 from fsb.handlers.ratings import (
@@ -32,8 +36,6 @@ from fsb.handlers.roles import RolesSettingsCommandHandler, RolesSettingsQueryHa
 from fsb.helpers import InfoBuilder
 from fsb.services import ChatService
 from fsb.telegram.client import TelegramApiClient
-from peewee import DoesNotExist
-from telethon.events import NewMessage, CallbackQuery, ChatAction
 
 
 class Controller:
@@ -217,6 +219,14 @@ class MenuController(CallbackQueryController):
 
         await super().handle(event)
         await self.run_handler(event, ModulesSettingsQueryHandler)
+
+    @Controller.handle_decorator
+    async def cron_menu_handle(self, event: MenuEventDTO):
+        event.query_event_class = CronQueryEvent
+        event.module_name = Module.MODULE_CRON
+
+        await super().handle(event)
+        await self.run_handler(event, CronSettingsQueryHandler)
 
 
 class ChatActionController(Controller):

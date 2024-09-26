@@ -2,6 +2,10 @@
 
 from asyncio.exceptions import TimeoutError
 
+from inflection import underscore
+from telethon import events
+from telethon.tl.custom.button import Button
+
 from fsb.db.models import Chat
 from fsb.db.models import CronJob
 from fsb.errors import ConversationTimeoutError
@@ -13,9 +17,6 @@ from fsb.events.cron import (
 from fsb.handlers import CommandHandler, MenuHandler
 from fsb.helpers import Helper
 from fsb.services import CronService
-from inflection import underscore
-from telethon import events
-from telethon.tl.custom.button import Button
 
 
 class CronSettingsCommandHandler(CommandHandler):
@@ -71,7 +72,18 @@ class CronSettingsQueryHandler(MenuHandler):
             events.NewMessage(forwards=False, chats=self.chat, from_users=self.sender.id),
             timeout=self.INPUT_TIMEOUT
         )
-        await conv.send_message('Введи расписание (как в crontab)' + hint)
+        await conv.send_message('Введи расписание' + hint +
+                                """
+(как в crontab)
+
+* * * * *
+| | | | |
+| | | | ----- день недели (0—7) (воскресенье = 0 или 7)
+| | | ------- месяц (1—12)
+| | --------- день месяца (1—31)
+| ----------- час (0—23)
+------------- минута (0—59)
+""")
         response_event = await response
         schedule = response_event.message.text
 
@@ -168,15 +180,15 @@ class CronSettingsQueryHandler(MenuHandler):
 
         async with self.client._client.conversation(self.chat) as conv:
             try:
-                params = await self.get_cron_job_params(conv)
+                params = await self.get_cron_job_params(conv, True)
 
                 if params:
                     name, chat, message, schedule = params
-                    cron_job.name = name if '-' else cron_job.name
-                    cron_job.message = message if '-' else cron_job.message
-                    cron_job.schedule = schedule if '-' else cron_job.schedule
+                    cron_job.name = cron_job.name if name == '-' else name
+                    cron_job.message = cron_job.message if message == '-' else message
+                    cron_job.schedule = cron_job.schedule if schedule == '-' else schedule
                     cron_job.save()
-                    await conv.send_message(f"Изменена задача {name}")
+                    await conv.send_message(f"Изменена задача {cron_job.name}")
                 else:
                     await conv.send_message("Такая роль уже существует")
                     return
