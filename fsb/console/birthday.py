@@ -22,7 +22,7 @@ async def congratulation():
 
     birthday_service = BirthdayService(client)
 
-    for chat in Chat.with_enabled_module(Module.MODULE_BIRTHDAY).where(Chat.modules.birthday):
+    for chat in Chat.with_enabled_module(Module.MODULE_BIRTHDAY):
         await birthday_service.send_message(chat)
         sleep(1)
 

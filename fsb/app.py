@@ -4,7 +4,7 @@ from time import sleep
 
 from fsb.config import config
 from fsb.loaders import ControllerLoader
-from fsb.services import ChatService
+from fsb.services import ChatService, CronService
 from fsb.telegram.client import TelegramApiClient
 
 
@@ -22,6 +22,7 @@ class FeatureStorageBot:
         async def before(client):
             await client.connect(True)
             await ChatService(client).init_chats()
+            await CronService(client).run()
 
         self.loop.run_until_complete(before(self.client))
         self.logger.info(f"Development mode is {'ON' if config.FSB_DEV_MODE else 'OFF'}")

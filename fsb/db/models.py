@@ -5,6 +5,8 @@ import sys
 from datetime import datetime
 from typing import Union
 
+from fsb.db import base_db
+from fsb.errors import InputValueError
 from peewee import (
     AutoField,
     DoesNotExist,
@@ -23,9 +25,6 @@ from peewee import (
     DateField,
     SQL,
 )
-
-from fsb.db import base_db
-from fsb.errors import InputValueError
 
 
 class BaseModel(Model):
@@ -80,6 +79,13 @@ class BaseModel(Model):
     def get_by_telegram_id(cls, telegram_id: Union[int, str]):
         try:
             return cls.get(cls.telegram_id == telegram_id)
+        except AttributeError:
+            return None
+
+    @classmethod
+    def find_by_chat(cls, chat: 'Chat'):
+        try:
+            return cls.select().where(cls.chat == chat)
         except AttributeError:
             return None
 
@@ -196,10 +202,6 @@ class Role(BaseModel):
             raise InputValueError
 
         return name, nickname
-
-    @staticmethod
-    def find_by_chat(chat: Chat):
-        return Role.select().where(Role.chat == chat)
 
 
 class MemberRole(BaseModel):
@@ -392,15 +394,7 @@ class Module(BaseModel):
     MODULE_DUDE = 'dude'
     MODULE_HAPPY_NEW_YEAR = 'happy_new_year'
     MODULE_BIRTHDAY = 'birthday'
-
-    MODULES_NAMES = {
-        MODULE_DEFAULT: 'Стандартный',
-        MODULE_ROLES: 'Роли',
-        MODULE_RATINGS: 'Рейтинги',
-        MODULE_DUDE: 'Дюдсовая среда',
-        MODULE_HAPPY_NEW_YEAR: 'Новый Год',
-        MODULE_BIRTHDAY: 'Дни рождения',
-    }
+    MODULE_CRON = 'cron'
 
     name = CharField(null=False, primary_key=True)
     readable_name = CharField(null=True)
@@ -430,3 +424,17 @@ class ChatModule(BaseModel):
 
     chat = ForeignKeyField(Chat, backref='chat_modules', on_delete='CASCADE', on_update='CASCADE')
     module = ForeignKeyField(Module, backref='module_chats', on_delete='CASCADE', on_update='CASCADE')
+
+
+class CronJob(BaseModel):
+    TABLE_NAME = 'cron_jobs'
+
+    id = AutoField()
+    name = CharField(null=False)
+    chat = ForeignKeyField(Chat, backref='cron_jobs', on_delete='CASCADE', on_update='CASCADE')
+    message = CharField(null=False)
+    schedule = CharField(null=False)
+    active = BooleanField(null=False, default=True, constraints=[SQL('DEFAULT 1')])
+    created_at = DateTimeField(default=datetime.now(), constraints=[SQL('DEFAULT CURRENT_TIMESTAMP')])
+    updated_at = DateTimeField(default=datetime.now(),
+                               constraints=[SQL('DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP')])

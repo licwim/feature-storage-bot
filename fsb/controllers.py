@@ -17,6 +17,7 @@ from fsb.events.common import (
     EventDTO, MessageEventDTO, CallbackQueryEventDTO, MenuEventDTO, ChatActionEventDTO, CommandEventDTO,
     MentionEventDTO
 )
+from fsb.events.cron import CronQueryEvent
 from fsb.events.modules import ModuleQueryEvent
 from fsb.events.ratings import RatingQueryEvent
 from fsb.events.roles import RoleQueryEvent
@@ -24,6 +25,7 @@ from fsb.handlers import Handler, FoolHandler
 from fsb.handlers.commands import (
     StartCommandHandler, PingCommandHandler, EntityInfoCommandHandler, AboutInfoCommandHandler
 )
+from fsb.handlers.cron import CronSettingsCommandHandler, CronSettingsQueryHandler
 from fsb.handlers.mentions import AllMentionHandler, CustomMentionHandler
 from fsb.handlers.modules import ModulesSettingsCommandHandler, ModulesSettingsQueryHandler
 from fsb.handlers.ratings import (
@@ -218,6 +220,14 @@ class MenuController(CallbackQueryController):
         await super().handle(event)
         await self.run_handler(event, ModulesSettingsQueryHandler)
 
+    @Controller.handle_decorator
+    async def cron_menu_handle(self, event: MenuEventDTO):
+        event.query_event_class = CronQueryEvent
+        event.module_name = Module.MODULE_CRON
+
+        await super().handle(event)
+        await self.run_handler(event, CronSettingsQueryHandler)
+
 
 class ChatActionController(Controller):
     _event_class = ChatActionEventDTO
@@ -328,6 +338,14 @@ class CommandController(MessageController):
 
         await super().handle(event)
         await self.run_handler(event, ModulesSettingsCommandHandler)
+
+    @Controller.handle_decorator
+    async def cron_settings_handle(self, event: CommandEventDTO):
+        event.command_names = ['cron']
+        event.module_name = Module.MODULE_CRON
+
+        await super().handle(event)
+        await self.run_handler(event, CronSettingsCommandHandler)
 
 
 class MentionController(MessageController):

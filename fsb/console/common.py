@@ -50,7 +50,7 @@ async def new_year_broadcast():
     if config.content.shrek_new_year_film:
         film = await client._client.upload_file(config.content.shrek_new_year_film, file_name='Happy New Year.mp4')
 
-    for chat in Chat.with_enabled_module(Module.MODULE_HAPPY_NEW_YEAR).where(Chat.happy_new_year):
+    for chat in Chat.with_enabled_module(Module.MODULE_HAPPY_NEW_YEAR):
         if config.content.shrek_new_year_gif:
             await client.send_message(chat.telegram_id, config.content.shrek_new_year_gif, is_file=True)
         else:
