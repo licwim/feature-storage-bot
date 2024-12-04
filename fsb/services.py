@@ -51,56 +51,56 @@ class ChatService:
         self.client = client
 
     async def create_chat(self, event=None, entity=None, update: bool = False):
-        if event:
-            entity = event.chat
-            input_chat = event.input_chat.to_json()
-        elif entity:
-            input_chat = None
-        else:
-            return None
+        with Chat.Meta.database.atomic_async():
+            if event:
+                entity = event.chat
+                input_chat = event.input_chat.to_json()
+            elif entity:
+                input_chat = None
+            else:
+                return None
 
-        match Chat.get_chat_type(entity):
-            case Chat.USER_TYPE:
-                name = entity.username
-                if not input_chat:
-                    input_chat = InputPeerUser(entity.id, entity.access_hash).to_json()
-            case Chat.CHAT_TYPE:
-                name = entity.title
-                if not input_chat:
-                    input_chat = InputPeerChat(entity.id).to_json()
-            case Chat.CHANNEL_TYPE:
-                name = entity.title
-                if not input_chat:
-                    input_chat = InputPeerChannel(entity.id, entity.access_hash).to_json()
-            case _:
-                name = None
+            match Chat.get_chat_type(entity):
+                case Chat.USER_TYPE:
+                    name = entity.username
+                    if not input_chat:
+                        input_chat = InputPeerUser(entity.id, entity.access_hash).to_json()
+                case Chat.CHAT_TYPE:
+                    name = entity.title
+                    if not input_chat:
+                        input_chat = InputPeerChat(entity.id).to_json()
+                case Chat.CHANNEL_TYPE:
+                    name = entity.title
+                    if not input_chat:
+                        input_chat = InputPeerChannel(entity.id, entity.access_hash).to_json()
+                case _:
+                    name = None
 
-        type = Chat.get_chat_type(entity)
-        chat = Chat.get_or_create(
-            telegram_id=entity.id,
-            defaults={
-                'name': name,
-                'type': type,
-                'input_peer': input_chat
-            }
-        )[0]
+            type = Chat.get_chat_type(entity)
+            chat = Chat.get_by_telegram_id(entity.id)
+            new_chat = False
 
-        if update:
-            chat.real_dirty = True
-            chat.name = name
-            chat.type = type
-            chat.input_peer = input_chat
-            if chat.is_dirty():
-                chat.save(only=chat.dirty_fields)
-            chat.real_dirty = False
-        else:
-            self.enable_default_module(chat)
+            if not chat:
+                new_chat = True
+                chat = Chat.create(telegram_id=entity.id, name=name, type=type, input_peer=input_chat)
 
-        await self.create_members(entity=entity, chat=chat, update=update)
+            if update:
+                chat.real_dirty = True
+                chat.name = name
+                chat.type = type
+                chat.input_peer = input_chat
+                if chat.is_dirty():
+                    chat.save(only=chat.dirty_fields)
+                chat.real_dirty = False
 
-        return chat
+            if new_chat:
+                self.enable_default_module(chat)
 
-    async def create_members(self, event=None, entity=None, chat=None, update: bool = False):
+            await self.actualize_members(entity=entity, chat=chat, update=update)
+
+            return chat
+
+    async def actualize_members(self, event=None, entity=None, chat=None, update: bool = False):
         if event:
             entity = event.chat
         elif not entity:
@@ -109,9 +109,17 @@ class ChatService:
         if not chat:
             chat = Chat.get_by_telegram_id(entity.id)
 
+        tg_members_ids = []
+
         for tg_member in await self.client.get_dialog_members(entity):
             user = self.create_user(entity=tg_member, update=update)
-            Member.get_or_create(chat=chat, user=user)
+            chat_member = Member.get_or_create(chat=chat, user=user)
+            chat_member.active()
+            tg_members_ids.append(tg_member.id)
+
+        for chat_member in Member.find_by_chat(chat):
+            if chat_member.user.telegram_id not in tg_members_ids:
+                chat_member.deactivate()
 
     def create_user(self, event=None, entity=None, update: bool = False):
         if event:
@@ -599,7 +607,7 @@ class BirthdayService:
         self.logger = logging.getLogger('main')
 
     async def send_message(self, chat: Chat):
-        for user in chat.users.where(fn.DATE_FORMAT(User.birthday, '%m-%d') == datetime.today().strftime('%m-%d')):
+        for user in chat.users.where(Member.active and fn.DATE_FORMAT(User.birthday, '%m-%d') == datetime.today().strftime('%m-%d')):
             await self.client.send_message(chat.telegram_id, self.BIRTHDAY_MESSAGE.format(
                 name=Helper.make_member_name(await user.get_telegram_member(self.client), with_mention=True)
             ))

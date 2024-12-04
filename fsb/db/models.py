@@ -5,8 +5,6 @@ import sys
 from datetime import datetime
 from typing import Union
 
-from fsb.db import base_db
-from fsb.errors import InputValueError
 from peewee import (
     AutoField,
     DoesNotExist,
@@ -25,6 +23,9 @@ from peewee import (
     DateField,
     SQL,
 )
+
+from fsb.db import base_db
+from fsb.errors import InputValueError
 
 
 class BaseModel(Model):
@@ -79,13 +80,34 @@ class BaseModel(Model):
     def get_by_telegram_id(cls, telegram_id: Union[int, str]):
         try:
             return cls.get(cls.telegram_id == telegram_id)
-        except AttributeError:
+        except (AttributeError, DoesNotExist):
             return None
 
     @classmethod
     def find_by_chat(cls, chat: 'Chat'):
         try:
             return cls.select().where(cls.chat == chat)
+        except AttributeError:
+            return None
+
+    @classmethod
+    def only_active(cls):
+        try:
+            return cls.select().where(cls.active)
+        except AttributeError:
+            return None
+
+    def activate(self):
+        try:
+            self.active = True
+            self.save()
+        except AttributeError:
+            return None
+
+    def deactivate(self):
+        try:
+            self.active = False
+            self.save()
         except AttributeError:
             return None
 
@@ -164,6 +186,7 @@ class Member(BaseModel):
     chat = ForeignKeyField(Chat, backref='members')
     user = ForeignKeyField(User, backref='chats_members')
     rang = CharField(null=True)
+    active = BooleanField(null=False, default=True, constraints=[SQL('DEFAULT 1')])
 
     def get_telegram_id(self):
         telegram_id = None
