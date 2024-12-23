@@ -126,9 +126,14 @@ class TelegramApiClient:
     async def request(self, data):
         return await self._client(data)
 
-    async def get_dialog_members(self, entity, with_bot: bool = False, use_cache: bool = True) -> list:
+    async def get_dialog_members(self, entity, with_bot: bool = None, use_cache: bool = True) -> list:
         if isinstance(entity, Union[str, int]):
             entity = await self.get_entity(entity)
+
+        if with_bot is None:
+            with_bot = True if config.FSB_DEV_MODE else False
+        else:
+            with_bot = False
 
         members_cache = self._chat_members_cache.get(entity.id)
         now = int(time())

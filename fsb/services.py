@@ -51,7 +51,7 @@ class ChatService:
         self.client = client
 
     async def create_chat(self, event=None, entity=None, update: bool = False):
-        with Chat.Meta.database.atomic_async():
+        with Chat._meta.database.atomic():
             if event:
                 entity = event.chat
                 input_chat = event.input_chat.to_json()
@@ -113,8 +113,8 @@ class ChatService:
 
         for tg_member in await self.client.get_dialog_members(entity):
             user = self.create_user(entity=tg_member, update=update)
-            chat_member = Member.get_or_create(chat=chat, user=user)
-            chat_member.active()
+            chat_member = Member.get_or_create(chat=chat, user=user)[0]
+            chat_member.activate()
             tg_members_ids.append(tg_member.id)
 
         for chat_member in Member.find_by_chat(chat):
@@ -321,7 +321,7 @@ class RatingService:
             }
         )
 
-    async def _determine_winner(self, participants: list, rating: Rating, chat: Chat):
+    async def _determine_winner(self, participants: list, rating: Rating, chat):
         participants_len = len(participants)
 
         if participants_len == 1:

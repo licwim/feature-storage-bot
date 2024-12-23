@@ -47,15 +47,15 @@ async def new_year_broadcast():
     """Sending New year message to chats"""
     film = None
 
-    if config.content.shrek_new_year_film:
-        film = await client._client.upload_file(config.content.shrek_new_year_film, file_name='Happy New Year.mp4')
+    if config.content.new_year_film:
+        film = await client._client.upload_file(config.content.new_year_film, file_name='Happy New Year.mp4')
 
     for chat in Chat.with_enabled_module(Module.MODULE_HAPPY_NEW_YEAR):
-        if config.content.shrek_new_year_gif:
-            await client.send_message(chat.telegram_id, config.content.shrek_new_year_gif, is_file=True)
+        if config.content.new_year_gif:
+            await client.send_message(chat.telegram_id, config.content.new_year_gif, is_file=True)
         else:
             await client.send_message(chat.telegram_id, 'Happy New Year!', is_file=False)
         sleep(1)
 
         if film:
-            await client._client.send_file(chat.telegram_id, film, attributes=(DocumentAttributeVideo(0, 426, 240),))
+            await client._client.send_file(chat.telegram_id, film, caption='Новогодно-короткометражный подгон', attributes=(DocumentAttributeVideo(0, 426, 240),))
