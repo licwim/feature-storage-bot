@@ -419,9 +419,20 @@ class Module(BaseModel):
     MODULE_BIRTHDAY = 'birthday'
     MODULE_CRON = 'cron'
 
+    MODULES_LIST = [
+        MODULE_DEFAULT,
+        MODULE_ROLES,
+        MODULE_RATINGS,
+        MODULE_DUDE,
+        MODULE_HAPPY_NEW_YEAR,
+        MODULE_BIRTHDAY,
+        MODULE_CRON,
+    ]
+
     name = CharField(null=False, primary_key=True)
     readable_name = CharField(null=True)
     active = BooleanField(null=False, default=True, constraints=[SQL('DEFAULT 1')])
+    sort = IntegerField(null=False)
 
     @staticmethod
     def get_module_name_by_table(table):
