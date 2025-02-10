@@ -5,6 +5,7 @@ import logging
 import re
 from asyncio import sleep
 from collections import OrderedDict
+from datetime import datetime
 from typing import Type
 
 from peewee import DoesNotExist
@@ -174,13 +175,20 @@ class CallbackQueryController(Controller):
 
     async def _init_filter(self, event: CallbackQueryEventDTO):
         await super()._init_filter(event)
+
         query_event = QueryEvent.find_and_create(int(event.data))
+
         if not isinstance(query_event, event.query_event_class):
             raise ExitControllerException
+
         event.query_event = query_event
 
     async def handle(self, event: CallbackQueryEventDTO):
         await super().handle(event)
+
+        event.query_event.last_usage_date = datetime.now()
+        event.query_event.save()
+
         self.logger.info(
             "Callback Query event:\n" +
             InfoBuilder.build_message_info_by_query_event(event)

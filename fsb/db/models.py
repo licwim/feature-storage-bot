@@ -25,6 +25,7 @@ from peewee import (
 )
 
 from fsb.db import base_db
+from fsb.db.traits import CreatedUpdatedAtTrait, CreatedAtTrait
 from fsb.errors import InputValueError
 
 
@@ -112,7 +113,7 @@ class BaseModel(Model):
             return None
 
 
-class User(BaseModel):
+class User(BaseModel, CreatedUpdatedAtTrait):
     TABLE_NAME = 'users'
 
     id = AutoField()
@@ -141,7 +142,7 @@ class User(BaseModel):
 MemberDeferred = DeferredThroughModel()
 
 
-class Chat(BaseModel):
+class Chat(BaseModel, CreatedUpdatedAtTrait):
     TABLE_NAME = 'chats'
 
     CHAT_TYPE = 1
@@ -179,7 +180,7 @@ class Chat(BaseModel):
             return chat_module.delete_instance()
 
 
-class Member(BaseModel):
+class Member(BaseModel, CreatedUpdatedAtTrait):
     TABLE_NAME = 'chats_members'
 
     id = AutoField()
@@ -201,7 +202,7 @@ class Member(BaseModel):
 MemberDeferred.set_model(Member)
 
 
-class Role(BaseModel):
+class Role(BaseModel, CreatedUpdatedAtTrait):
     TABLE_NAME = 'roles'
 
     id = AutoField()
@@ -227,7 +228,7 @@ class Role(BaseModel):
         return name, nickname
 
 
-class MemberRole(BaseModel):
+class MemberRole(BaseModel, CreatedUpdatedAtTrait):
     TABLE_NAME = 'chats_members_roles'
 
     class Meta:
@@ -246,7 +247,7 @@ class MemberRole(BaseModel):
         return await self.member.user.get_telegram_member(client)
 
 
-class Rating(BaseModel):
+class Rating(BaseModel, CreatedUpdatedAtTrait):
     TABLE_NAME = 'ratings'
 
     id = AutoField()
@@ -301,7 +302,7 @@ class Rating(BaseModel):
         return result
 
 
-class RatingMember(BaseModel):
+class RatingMember(BaseModel, CreatedUpdatedAtTrait):
     TABLE_NAME = 'ratings_members'
 
     id = AutoField()
@@ -311,7 +312,6 @@ class RatingMember(BaseModel):
     month_count = IntegerField(default=0, constraints=[SQL('DEFAULT 0')])
     current_month_count = IntegerField(default=0, constraints=[SQL('DEFAULT 0')])
     current_year_count = IntegerField(default=0)
-    created_at = DateTimeField(default=datetime.now(), constraints=[SQL('DEFAULT CURRENT_TIMESTAMP')])
 
     def get_telegram_id(self):
         telegram_id = None
@@ -323,14 +323,14 @@ class RatingMember(BaseModel):
         return await self.member.user.get_telegram_member(client)
 
 
-class QueryEvent(BaseModel):
+class QueryEvent(BaseModel, CreatedAtTrait):
     TABLE_NAME = 'query_events'
 
     id = AutoField()
     module_name = CharField(null=True, default='module', constraints=[SQL('DEFAULT "module"')])
     class_name = CharField(null=True, default='class', constraints=[SQL('DEFAULT "class"')])
     data = TextField(null=True)
-    created_at = DateTimeField(default=datetime.now(), constraints=[SQL('DEFAULT CURRENT_TIMESTAMP')])
+    last_usage_date = DateTimeField(null=True)
 
     def __init__(self, sender_id: int = None, data_value=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -391,7 +391,7 @@ class QueryEvent(BaseModel):
         return instance
 
 
-class RatingLeader(BaseModel):
+class RatingLeader(BaseModel, CreatedAtTrait):
     TABLE_NAME = 'ratings_leaders'
 
     id = AutoField()
@@ -422,9 +422,6 @@ class Module(BaseModel):
     name = CharField(null=False, primary_key=True)
     readable_name = CharField(null=True)
     active = BooleanField(null=False, default=True, constraints=[SQL('DEFAULT 1')])
-    created_at = DateTimeField(default=datetime.now(), constraints=[SQL('DEFAULT CURRENT_TIMESTAMP')])
-    updated_at = DateTimeField(default=datetime.now(),
-                               constraints=[SQL('DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP')])
 
     @staticmethod
     def get_module_name_by_table(table):
@@ -439,7 +436,7 @@ class Module(BaseModel):
         return self.readable_name if self.readable_name else self.name
 
 
-class ChatModule(BaseModel):
+class ChatModule(BaseModel, CreatedUpdatedAtTrait):
     TABLE_NAME = 'chats_modules'
 
     class Meta:
@@ -449,7 +446,7 @@ class ChatModule(BaseModel):
     module = ForeignKeyField(Module, backref='module_chats', on_delete='CASCADE', on_update='CASCADE')
 
 
-class CronJob(BaseModel):
+class CronJob(BaseModel, CreatedUpdatedAtTrait):
     TABLE_NAME = 'cron_jobs'
 
     id = AutoField()
@@ -458,6 +455,3 @@ class CronJob(BaseModel):
     message = CharField(null=False)
     schedule = CharField(null=False)
     active = BooleanField(null=False, default=True, constraints=[SQL('DEFAULT 1')])
-    created_at = DateTimeField(default=datetime.now(), constraints=[SQL('DEFAULT CURRENT_TIMESTAMP')])
-    updated_at = DateTimeField(default=datetime.now(),
-                               constraints=[SQL('DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP')])
