@@ -4,7 +4,7 @@ import os
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from peewee import SQL
+from peewee import SQL, Model
 from peewee_async import PooledMySQLDatabase
 from peewee_moves import DatabaseManager as BaseDatabaseManager, Migrator as BaseMigrator, LOGGER
 from playhouse.migrate import MySQLMigrator
@@ -108,3 +108,7 @@ db_manager = DatabaseManager(
     directory=os.path.abspath(config.ROOT_FOLDER + '/fsb/db/migrations'),
     table_name='migrations'
 )
+
+
+class ModelInterface(Model):
+    pass

@@ -93,8 +93,8 @@ class ChatService:
                     chat.save(only=chat.dirty_fields)
                 chat.real_dirty = False
 
-            if new_chat:
-                self.enable_default_module(chat)
+            if new_chat or chat.is_deleted():
+                self.enable_chat(chat)
 
             await self.actualize_members(entity=entity, chat=chat, update=update)
 
@@ -114,12 +114,12 @@ class ChatService:
         for tg_member in await self.client.get_dialog_members(entity):
             user = self.create_user(entity=tg_member, update=update)
             chat_member = Member.get_or_create(chat=chat, user=user)[0]
-            chat_member.activate()
+            chat_member.mark_as_undeleted()
             tg_members_ids.append(tg_member.id)
 
         for chat_member in Member.find_by_chat(chat):
             if chat_member.user.telegram_id not in tg_members_ids:
-                chat_member.deactivate()
+                chat_member.mark_as_deleted()
 
     def create_user(self, event=None, entity=None, update: bool = False):
         if event:
@@ -153,11 +153,11 @@ class ChatService:
 
         return user
 
-    def enable_default_module(self, chat: Chat):
-        return chat.enable_module(Module.MODULE_DEFAULT)
+    def enable_chat(self, chat: Chat):
+        return chat.mark_as_undeleted()
 
     async def init_chats(self):
-        for chat in Chat.select():
+        for chat in Chat.only_undeleted():
             entity = await self.client.get_entity(chat.telegram_id)
             await self.create_chat(entity=entity, update=True)
 
@@ -607,7 +607,7 @@ class BirthdayService:
         self.logger = logging.getLogger('main')
 
     async def send_message(self, chat: Chat):
-        for user in chat.users.where(Member.active and fn.DATE_FORMAT(User.birthday, '%m-%d') == datetime.today().strftime('%m-%d')):
+        for user in chat.users.where(Member.deleted_at.is_null() and fn.DATE_FORMAT(User.birthday, '%m-%d') == datetime.today().strftime('%m-%d')):
             await self.client.send_message(chat.telegram_id, self.BIRTHDAY_MESSAGE.format(
                 name=Helper.make_member_name(await user.get_telegram_member(self.client), with_mention=True)
             ))
