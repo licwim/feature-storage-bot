@@ -61,11 +61,14 @@ async def send_message_command(text, chats):
 async def countdown(text, date, chats):
     """Sending a message with countdown to chats"""
     if date:
-        now = datetime.now().timestamp()
-        date = datetime.fromisoformat(date).replace(hour=23, minute=59, second=59).timestamp()
-        left_days = round((date - now) / (60 * 60 * 24))
+        now = datetime.now().replace(hour=0, minute=0, second=0)
+        date = datetime.fromisoformat(date).replace(hour=0, minute=0, second=0)
+
+        left_days = abs((date - now).days)
+
         day_word_lexeme = MorphAnalyzer(lang='ru').parse('день')[0]
         day_word = day_word_lexeme.make_agree_with_number(left_days).word
+
         text = text.format(day_word=day_word, left_days=left_days)
 
     await send_message(text, chats)
