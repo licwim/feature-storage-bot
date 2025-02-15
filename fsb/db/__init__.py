@@ -20,6 +20,8 @@ class ReconnectedPooledDatabase(ReconnectMixin, PooledMySQLDatabase):
 
 
 class Migrator(BaseMigrator):
+    _rollback_on_exception = False
+
     def add_foreign_key_constraint(self, table, column_name, rel, rel_column,
                                    on_delete=None, on_update=None):
         self.migrator.add_foreign_key_constraint(table, column_name, rel, rel_column,
@@ -28,7 +30,7 @@ class Migrator(BaseMigrator):
     def drop_foreign_key_constraint(self, table, column_name):
         self.migrator.drop_foreign_key_constraint(table, column_name).run()
 
-    def add_column(self, table, name, coltype, null=True, default=None, constraints=None, **kwargs):
+    def add_column(self, table, name, coltype, null=True, default=None, constraints=None, safe=True, **kwargs):
         # peewee-moves некорректно обрабатывает NOT NULL, поэтому этот параметр надо указывать в constraints
         extended_constraints = []
 
@@ -46,7 +48,17 @@ class Migrator(BaseMigrator):
             extended_constraints.insert(0, SQL(f'DEFAULT {default}'))
 
         extended_constraints = extended_constraints if extended_constraints else None
-        super().add_column(table, name, coltype, null=True, default=default, constraints=extended_constraints)
+
+        columns = [column.name for column in self.database.get_columns(table)]
+
+        if not safe or name not in columns:
+            super().add_column(table, name, coltype, null=True, default=default, constraints=extended_constraints, **kwargs)
+
+    def drop_column(self, table, name, safe=True, **kwargs):
+        columns = [column.name for column in self.database.get_columns(table)]
+
+        if not safe or name in columns:
+            super().drop_column(table, name, **kwargs)
 
 
 class DatabaseManager(BaseDatabaseManager):
