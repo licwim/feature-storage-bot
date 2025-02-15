@@ -58,7 +58,7 @@ class GeneralMenuModuleEvent(ModuleQueryEvent):
         try:
             modules = (Module.select()
                        .where(Module.active and Module.name != Module.MODULE_DEFAULT)
-                       .order_by(Module.created_at.asc()))
+                       .order_by(Module.sort.asc()))
 
             for module in modules:
                 if module.name in enabled_modules_names:

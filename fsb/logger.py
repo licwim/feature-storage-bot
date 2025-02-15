@@ -25,7 +25,7 @@ def init_logger(console: bool):
         logging_config['root'][opt_name] = opt_value
 
     logging_config.pop('loggers')
-    _dir = config.get('LOG_FOLDER', default_value=config.ROOT_FOLDER + '/logs')
+    _dir = os.path.abspath(config.get('LOG_FOLDER', default_value=config.ROOT_FOLDER + '/logs'))
     os.makedirs(_dir, exist_ok=True)
 
     for handler_name, handler in logging_config['handlers'].items():

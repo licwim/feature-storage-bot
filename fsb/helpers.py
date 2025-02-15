@@ -81,6 +81,8 @@ class InfoBuilder:
                 'user_ids': event.user_ids,
                 'user_added': event.user_added,
                 'user_joined': event.user_joined,
+                'user_kicked': event.user_kicked,
+                'user_left': event.user_left,
                 'new_title': event.new_title,
             }
         }
@@ -179,7 +181,6 @@ class InfoBuilder:
     def build_about_info(bot):
         return f"{bot.user.first_name} Bot (@{bot.user.username})\n" \
                f"{bot.about}\n" \
-               f"Version: {config.VERSION}\n" \
                f"Build: {config.BUILD}"
 
 

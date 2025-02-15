@@ -77,7 +77,7 @@ logging:
       class: logging.handlers.RotatingFileHandler
       level: NOTSET
       formatter: default
-      filename: "{log_dir}logstash.log"
+      filename: "{log_dir}/logstash.log"
       maxBytes: 104857600 # 100MB
       backupCount: 10
       encoding: utf8

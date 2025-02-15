@@ -68,6 +68,8 @@ class ChatActionEventDTO(EventDTO):
         self.user_joined = event.user_joined
         self.user_added = event.user_added
         self.new_title = event.new_title
+        self.user_kicked = event.user_kicked
+        self.user_left = event.user_left
 
 
 class CommandEventDTO(MessageEventDTO):
