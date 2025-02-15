@@ -30,7 +30,6 @@ services:
       - API_HASH=$API_HASH
       - BOT_USERNAME=FeatureStorageBot
       - BUILD_VERSION=$BUILD_VERSION
-      - RELEASE=$RELEASE
       - FSB_DEV_MODE=False
       - LOG_FOLDER=/var/log/app/
       - TZ=Europe/Moscow

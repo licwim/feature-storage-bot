@@ -181,7 +181,6 @@ class InfoBuilder:
     def build_about_info(bot):
         return f"{bot.user.first_name} Bot (@{bot.user.username})\n" \
                f"{bot.about}\n" \
-               f"Version: {config.VERSION}\n" \
                f"Build: {config.BUILD}"
 
 

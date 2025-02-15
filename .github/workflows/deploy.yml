@@ -36,11 +36,6 @@ jobs:
         with:
           username: ${{ env.DOCKER_HUB_USERNAME }}
           password: ${{ env.DOCKER_HUB_TOKEN }}
-      - name: Latest release info
-        id: release-info
-        uses: pozetroninc/github-action-get-latest-release@master
-        with:
-          repository: ${{ github.repository }}
       - name: Start app container
         run: |
           export TAG=$(echo "${{ github.ref_name }}" | sed 's|/|-|g')
@@ -48,9 +43,7 @@ jobs:
           echo "IMAGE_NAME = $IMAGE_NAME"
           docker pull "$IMAGE_NAME"
           export BUILD_VERSION=$(docker image inspect "$IMAGE_NAME" --format='{{.Config.Labels.build}}')
-          export RELEASE=${{ steps.release-info.outputs.release }}
           echo "BUILD_VERSION = $BUILD_VERSION"
-          echo "RELEASE = $RELEASE"
           docker compose -f docker-compose.prod.yml down --remove-orphans
           docker compose -f docker-compose.prod.yml up -d
 
@@ -76,11 +69,6 @@ jobs:
         with:
           username: ${{ env.DOCKER_HUB_USERNAME }}
           password: ${{ env.DOCKER_HUB_TOKEN }}
-      - name: Latest release info
-        id: release-info
-        uses: pozetroninc/github-action-get-latest-release@master
-        with:
-          repository: ${{ github.repository }}
       - name: Start app container
         run: |
           export TAG=$(echo "${{ github.ref_name }}" | sed 's|/|-|g')
@@ -88,7 +76,5 @@ jobs:
           echo "IMAGE_NAME = $IMAGE_NAME"
           docker pull "$IMAGE_NAME"
           export BUILD_VERSION=$(docker image inspect "$IMAGE_NAME" --format='{{.Config.Labels.build}}')
-          export RELEASE=${{ steps.release-info.outputs.release }}
           echo "BUILD_VERSION = $BUILD_VERSION"
-          echo "RELEASE = $RELEASE"
           docker compose -f docker-compose.dev.yml up -d
