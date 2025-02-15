@@ -1,5 +1,5 @@
 name: Deploy
-run-name: Deploy ${{ github.ref_name }} (${{ github.sha }}) to ${{ inputs.stand }}
+run-name: Deploy ${{ github.ref_name }} to ${{ inputs.stand }} (${{ github.sha }})
 
 on:
   workflow_dispatch:
