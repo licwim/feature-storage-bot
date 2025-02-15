@@ -23,7 +23,7 @@ from peewee import (
     SQL,
 )
 
-from fsb.db import base_db, ModelInterface
+from fsb.db import database as base_db, ModelInterface
 from fsb.db.traits import CreatedUpdatedAtTrait, CreatedAtTrait, DeletedAtWithReasonTrait
 from fsb.errors import InputValueError
 

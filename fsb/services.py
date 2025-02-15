@@ -16,6 +16,7 @@ from telethon.tl.types import InputPeerUser, InputPeerChat, InputPeerChannel
 from telethon.tl.types import InputStickerSetShortName
 
 from fsb.config import config
+from fsb.db import database
 from fsb.db.models import Chat, User, Member, Rating, RatingMember, RatingLeader, CacheQuantumRand, Module, CronJob
 from fsb.errors import BaseFsbException, NoMembersRatingError, NoApproachableMembers
 from fsb.helpers import Helper, ReturnedThread, InfoBuilder
@@ -51,7 +52,7 @@ class ChatService:
         self.client = client
 
     async def create_chat(self, event=None, entity=None, update: bool = False):
-        with Chat._meta.database.atomic():
+        with database.atomic():
             if event:
                 entity = event.chat
                 input_chat = event.input_chat.to_json()
