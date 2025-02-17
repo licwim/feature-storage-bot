@@ -24,13 +24,14 @@ from peewee import (
 )
 
 from fsb.db import database as base_db, ModelInterface
+from fsb.db.helpers import DirtyModel, DirtyModelState
 from fsb.db.traits import CreatedUpdatedAtTrait, CreatedAtTrait, DeletedAtWithReasonTrait
 from fsb.errors import InputValueError
 
 
 class BaseModel(ModelInterface):
     TABLE_NAME = ''
-    real_dirty = False
+    _real_dirty = DirtyModelState()
 
     class Meta:
         @staticmethod
@@ -42,16 +43,25 @@ class BaseModel(ModelInterface):
 
         database = base_db
         table_function = make_table_name
-        # only_save_dirty = True
+        only_save_dirty = True
 
     def save_get_id(self, *args, **kwargs):
         super().save(*args, **kwargs)
         return super().get_id()
 
     def __setattr__(self, key, value):
-        if self.real_dirty and key in self._meta.fields and getattr(self, key) == value:
+        if self._real_dirty.is_dirty() and key in self._meta.fields and getattr(self, key) == value:
             return
         super().__setattr__(key, value)
+
+    def save(self, *args, **kwargs):
+        if self._real_dirty.is_dirty() and self.is_dirty():
+            super().save(only=self.dirty_fields, *args, **kwargs)
+        elif not self._real_dirty.is_dirty():
+            super().save(*args, **kwargs)
+
+    def dirty(self):
+        return DirtyModel(self._real_dirty)
 
     @classmethod
     def with_enabled_module(cls, module_name: str = None, query=None):
@@ -132,9 +142,9 @@ class Chat(TelegramEntity):
     @staticmethod
     def get_chat_type(chat):
         match chat.__class__.__name__:
-            case 'Chat':
+            case 'Chat'|'ChatForbidden':
                 chat_type = Chat.CHAT_TYPE
-            case 'Channel':
+            case 'Channel'|'ChannelForbidden':
                 chat_type = Chat.CHANNEL_TYPE
             case 'User':
                 chat_type = Chat.USER_TYPE

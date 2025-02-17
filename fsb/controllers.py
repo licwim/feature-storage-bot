@@ -72,8 +72,6 @@ class Controller:
         return handle_list
 
     async def handle(self, event: EventDTO):
-        await ChatService(self._client).create_chat(event=event.telegram_event, update=True)
-
         if event.chat.id in self._waiting_list:
             time = 0
             while self._waiting_list[event.chat.id]:
@@ -81,7 +79,11 @@ class Controller:
                 time += 1
                 if time >= self.MAX_WAITING:
                     raise TimeoutError
+
         await self._init_filter(event)
+
+        await ChatService(self._client).create_chat(event=event, update=True)
+
         self.check_module(event)
 
         self.logger.info(f"Start controller {self._controller_name}")

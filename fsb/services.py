@@ -19,6 +19,7 @@ from fsb.config import config
 from fsb.db import database
 from fsb.db.models import Chat, User, Member, Rating, RatingMember, RatingLeader, CacheQuantumRand, Module, CronJob
 from fsb.errors import BaseFsbException, NoMembersRatingError, NoApproachableMembers
+from fsb.events.common import ChatActionEventDTO, EventDTO
 from fsb.helpers import Helper, ReturnedThread, InfoBuilder
 from fsb.telegram.client import TelegramApiClient
 
@@ -51,11 +52,11 @@ class ChatService:
     def __init__(self, client: TelegramApiClient):
         self.client = client
 
-    async def create_chat(self, event=None, entity=None, update: bool = False):
+    async def create_chat(self, event: EventDTO = None, entity=None, update: bool = False):
         with database.atomic():
             if event:
                 entity = event.chat
-                input_chat = event.input_chat.to_json()
+                input_chat = event.telegram_event.input_chat.to_json()
             elif entity:
                 input_chat = None
             else:
@@ -86,22 +87,25 @@ class ChatService:
                 chat = Chat.create(telegram_id=entity.id, name=name, type=type, input_peer=input_chat)
 
             if update:
-                chat.real_dirty = True
-                chat.name = name
-                chat.type = type
-                chat.input_peer = input_chat
-                if chat.is_dirty():
-                    chat.save(only=chat.dirty_fields)
-                chat.real_dirty = False
+                with chat.dirty():
+                    chat.name = name if name else chat.name
+                    chat.type = type if type else chat.type
+                    chat.input_peer = input_chat if input_chat else chat.input_chat
+                    chat.save()
 
-            if new_chat or chat.is_deleted():
+            left_reason = self._is_left(event, entity, True)
+
+            if left_reason and not chat.is_deleted():
+                self.disable_chat(chat, left_reason)
+            elif new_chat or chat.is_deleted():
                 self.enable_chat(chat)
 
-            await self.actualize_members(entity=entity, chat=chat, update=update)
+            if not chat.is_deleted():
+                await self.actualize_members(entity=entity, chat=chat, update=update)
 
             return chat
 
-    async def actualize_members(self, event=None, entity=None, chat=None, update: bool = False):
+    async def actualize_members(self, event: EventDTO = None, entity=None, chat=None, update: bool = False):
         if event:
             entity = event.chat
         elif not entity:
@@ -122,10 +126,10 @@ class ChatService:
             if chat_member.user.telegram_id not in tg_members_ids:
                 chat_member.mark_as_deleted()
 
-    def create_user(self, event=None, entity=None, update: bool = False):
+    def create_user(self, event: EventDTO = None, entity=None, update: bool = False):
         if event:
             entity = event.chat
-            input_chat = json.dumps(event.input_chat.to_dict())
+            input_chat = json.dumps(event.telegram_event.input_chat.to_dict())
         elif entity:
             input_chat = InputPeerUser(entity.id, entity.access_hash).to_json()
         else:
@@ -157,10 +161,32 @@ class ChatService:
     def enable_chat(self, chat: Chat):
         return chat.mark_as_undeleted()
 
+    def disable_chat(self, chat: Chat, reason = None):
+        return chat.mark_as_deleted(reason)
+
     async def init_chats(self):
-        for chat in Chat.only_undeleted():
+        for chat in Chat.select():
             entity = await self.client.get_entity(chat.telegram_id)
             await self.create_chat(entity=entity, update=True)
+
+    def _is_forbidden(self, entity):
+        return entity.__class__.__name__ in ['ChatForbidden', 'ChannelForbidden']
+
+    def _is_left(self, event: EventDTO, entity, return_reason: bool = False):
+        reason = False
+
+        if isinstance(event, ChatActionEventDTO) and event.is_self:
+            if event.user_kicked:
+                reason = 'Kicked by {user_name} ({user_id})'.format(
+                    user_name=Helper.make_member_name(event.kicked_by, with_fullname=False),
+                    user_id=event.kicked_by.id
+                )
+            elif event.user_left:
+                reason = 'Left'
+        elif self._is_forbidden(entity):
+            reason = 'Forbidden'
+
+        return reason if return_reason else bool(reason)
 
 
 class RatingService:

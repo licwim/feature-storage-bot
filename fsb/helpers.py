@@ -79,9 +79,12 @@ class InfoBuilder:
         data_info = {
             'event': {
                 'user_ids': event.user_ids,
+                'is_self': event.is_self,
                 'user_added': event.user_added,
+                'added_by': event.added_by.id if event.added_by else None,
                 'user_joined': event.user_joined,
                 'user_kicked': event.user_kicked,
+                'kicked_by': event.kicked_by.id if event.kicked_by else None,
                 'user_left': event.user_left,
                 'new_title': event.new_title,
             }
@@ -191,17 +194,52 @@ class Helper:
     COLLECT_RETURN_ONLY_DB = 2
 
     @staticmethod
-    def make_member_name(member, with_username: bool = True, with_mention: bool = False):
-        full_name = f"{member.first_name or ''} {member.last_name or ''}".strip()
-        member_name = full_name
+    def make_member_name(member, with_fullname: bool = True, with_username: bool = True, with_mention: bool = False,
+                         ignore_empty: bool = False):
+        _fullname_kw = 'fullname'
+        _username_kw = 'username'
+        _mention_kw = 'mention'
+        _member_id_kw = 'member_id'
+
+        _templates = {
+            frozenset([_fullname_kw]): f'{{{_fullname_kw}}}',
+            frozenset([_username_kw]): f'{{{_username_kw}}}',
+            frozenset([_fullname_kw, _mention_kw]): f'[{{{_fullname_kw}}}](tg://user?id={{{_member_id_kw}}})',
+            frozenset([_username_kw, _mention_kw]): f'@{{{_username_kw}}}',
+            frozenset([_fullname_kw, _username_kw]): f'{{{_fullname_kw}}} (__{{{_username_kw}}}__)',
+            frozenset([_fullname_kw, _username_kw, _mention_kw]): f'{{{_fullname_kw}}} (@{{{_username_kw}}})',
+        }
+
+        fullname = f"{member.first_name or ''} {member.last_name or ''}".strip()
+        username = member.username
+
+        mapping = {
+            _fullname_kw: fullname,
+            _username_kw: username,
+            _member_id_kw: member.id,
+        }
+
+        kw_set = set()
+
+        if with_fullname:
+            if fullname:
+                kw_set.add(_fullname_kw)
+            elif not ignore_empty:
+                kw_set.add(_username_kw)
+
+        if with_username:
+            if username:
+                kw_set.add(_username_kw)
+            elif not ignore_empty:
+                kw_set.add(_fullname_kw)
 
         if with_mention:
-            if with_username and member.username:
-                member_name += f" (@{member.username})"
-            else:
-                member_name = f"[{full_name}](tg://user?id={str(member.id)})"
-        elif not with_mention and with_username and member.username:
-            member_name += f" (__{member.username}__)"
+            kw_set.add(_mention_kw)
+
+        try:
+            member_name = _templates[frozenset(kw_set)].format_map(mapping)
+        except KeyError:
+            member_name = ''
 
         return member_name
 

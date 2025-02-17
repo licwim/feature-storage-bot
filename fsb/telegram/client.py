@@ -92,6 +92,8 @@ class TelegramApiClient:
         except ValueError as e:
             self.logger.error(f"{entity}: ValueError")
             raise e
+        except BadRequestError as ex:
+            self._bad_request_handle(self._get_db_entity(entity.id), ex)
 
     async def get_entity(self, uid: Union[str, int], with_full: bool = True):
         entity = None
@@ -177,5 +179,6 @@ class TelegramApiClient:
         return db_entity
 
     def _bad_request_handle(self, db_entity, exception):
-        db_entity.mark_as_deleted(repr(exception))
-        db_entity.save()
+        if not db_entity.is_deleted():
+            db_entity.mark_as_deleted(repr(exception))
+            db_entity.save()
