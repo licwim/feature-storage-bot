@@ -82,7 +82,10 @@ class Controller:
 
         await self._init_filter(event)
 
-        await ChatService(self._client).create_chat(event=event, update=True)
+        db_chat = await ChatService(self._client).create_chat(event=event, update=True)
+
+        if not db_chat or db_chat.is_deleted():
+            raise ExitControllerException
 
         self.check_module(event)
 
