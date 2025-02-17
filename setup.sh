@@ -31,6 +31,6 @@ mysql_query "ALTER USER 'root'@'%' IDENTIFIED BY '$root_password';"
 mysql_query "CREATE DATABASE feature_storage;"
 mysql_query "DROP USER 'root'@'localhost';"
 
-pipenv run console migrator migrate -y
+pipenv run cli migrator migrate -y
 
 $dc down

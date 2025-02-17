@@ -70,6 +70,16 @@ class ChatActionEventDTO(EventDTO):
         self.new_title = event.new_title
         self.user_kicked = event.user_kicked
         self.user_left = event.user_left
+        self.is_self = self._is_self()
+        self.kicked_by = event.kicked_by
+        self.added_by = event.added_by
+
+    def _is_self(self) -> bool:
+        for user in self.telegram_event.users:
+            if user.is_self:
+                return True
+
+        return False
 
 
 class CommandEventDTO(MessageEventDTO):

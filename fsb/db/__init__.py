@@ -4,10 +4,9 @@ import os
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from peewee import SQL
+from peewee import SQL, Model
 from peewee_async import PooledMySQLDatabase
 from peewee_moves import DatabaseManager as BaseDatabaseManager, Migrator as BaseMigrator, LOGGER
-from playhouse.migrate import MySQLMigrator
 from playhouse.shortcuts import ReconnectMixin
 
 from fsb.config import config
@@ -20,8 +19,6 @@ class ReconnectedPooledDatabase(ReconnectMixin, PooledMySQLDatabase):
 
 
 class Migrator(BaseMigrator):
-    _rollback_on_exception = False
-
     def add_foreign_key_constraint(self, table, column_name, rel, rel_column,
                                    on_delete=None, on_update=None):
         self.migrator.add_foreign_key_constraint(table, column_name, rel, rel_column,
@@ -104,7 +101,7 @@ class DatabaseManager(BaseDatabaseManager):
         return True
 
 
-base_db = ReconnectedPooledDatabase(
+database = ReconnectedPooledDatabase(
     database=config.DB_NAME,
     user=config.DB_USER,
     password=config.str('DB_PASSWORD'),
@@ -114,9 +111,12 @@ base_db = ReconnectedPooledDatabase(
     charset='utf8mb4'
 )
 
-base_migrator = MySQLMigrator(base_db)
 db_manager = DatabaseManager(
-    base_db,
+    database,
     directory=os.path.abspath(config.ROOT_FOLDER + '/fsb/db/migrations'),
     table_name='migrations'
 )
+
+
+class ModelInterface(Model):
+    pass
