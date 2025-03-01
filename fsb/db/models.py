@@ -25,7 +25,7 @@ from peewee import (
 
 from fsb.db import database as base_db, ModelInterface
 from fsb.db.helpers import DirtyModel, DirtyModelState
-from fsb.db.traits import CreatedUpdatedAtTrait, CreatedAtTrait, DeletedAtWithReasonTrait
+from fsb.db.traits import CreatedUpdatedAtTrait, CreatedAtTrait, DeletedAtWithReasonTrait, DeletedAtTrait
 from fsb.errors import InputValueError
 
 
@@ -87,9 +87,14 @@ class BaseModel(ModelInterface):
         return self.with_enabled_module(module_name).exists()
 
     @classmethod
-    def find_by_chat(cls, chat: 'Chat'):
+    def find_by_chat(cls, chat: 'Chat', only_active: bool = True):
         try:
-            return cls.select().where(cls.chat == chat)
+            query = cls.select().where(cls.chat == chat)
+
+            if only_active and issubclass(cls, DeletedAtTrait):
+                query = query.where(cls.deleted_at.is_null())
+
+            return query
         except AttributeError:
             return None
 

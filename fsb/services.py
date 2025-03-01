@@ -116,15 +116,17 @@ class ChatService:
 
         tg_members_ids = []
 
-        for tg_member in await self.client.get_dialog_members(entity):
+        for tg_member in await self.client.get_dialog_members(entity, use_cache=False):
             user = self.create_user(entity=tg_member, update=update)
             chat_member = Member.get_or_create(chat=chat, user=user)[0]
             chat_member.mark_as_undeleted()
+            chat_member.save()
             tg_members_ids.append(tg_member.id)
 
         for chat_member in Member.find_by_chat(chat):
             if chat_member.user.telegram_id not in tg_members_ids:
-                chat_member.mark_as_deleted()
+                chat_member.mark_as_deleted('Actualize members')
+                chat_member.save()
 
     def create_user(self, event: EventDTO = None, entity=None, update: bool = False):
         if event:
