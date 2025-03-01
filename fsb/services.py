@@ -129,9 +129,9 @@ class ChatService:
     def create_user(self, event: EventDTO = None, entity=None, update: bool = False):
         if event:
             entity = event.chat
-            input_chat = json.dumps(event.telegram_event.input_chat.to_dict())
+            input_peer = json.dumps(event.telegram_event.input_chat.to_dict())
         elif entity:
-            input_chat = InputPeerUser(entity.id, entity.access_hash).to_json()
+            input_peer = InputPeerUser(entity.id, entity.access_hash).to_json()
         else:
             return None
 
@@ -142,19 +142,17 @@ class ChatService:
                 'name': name,
                 'nickname': entity.username,
                 'phone': entity.phone,
-                'input_peer': input_chat
+                'input_peer': input_peer
             }
         )[0]
 
         if update:
-            user.real_dirty = True
-            user.name = name
-            user.nickname = entity.username
-            user.phone = entity.phone
-            user.input_peer = input_chat
-            if user.is_dirty():
-                user.save(only=user.dirty_fields)
-            user.real_dirty = False
+            with user.dirty():
+                user.name = name
+                user.nickname = entity.username if entity.username else user.nickname
+                user.phone = entity.phone if entity.phone else user.phone
+                user.input_peer = input_peer if input_peer else user.input_peer
+                user.save()
 
         return user
 

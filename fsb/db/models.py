@@ -444,7 +444,7 @@ class Module(BaseModel):
         return self.readable_name if self.readable_name else self.name
 
 
-class ChatModule(BaseModel, CreatedUpdatedAtTrait):
+class ChatModule(BaseModel, CreatedAtTrait):
     TABLE_NAME = 'chats_modules'
 
     class Meta:
