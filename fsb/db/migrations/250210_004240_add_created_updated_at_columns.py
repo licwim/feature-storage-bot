@@ -23,7 +23,6 @@ _updated_at_tables = [
     'chats_members_roles',
     'ratings',
     'ratings_members',
-    'chats_modules',
 ]
 
 

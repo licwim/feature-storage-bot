@@ -15,7 +15,6 @@ from peewee import (
     ForeignKeyField,
     IntegerField,
     BigIntegerField,
-    Model,
     TextField,
     BooleanField,
     ManyToManyField,
@@ -24,14 +23,15 @@ from peewee import (
     SQL,
 )
 
-from fsb.db import base_db
-from fsb.db.traits import CreatedUpdatedAtTrait, CreatedAtTrait
+from fsb.db import database as base_db, ModelInterface
+from fsb.db.helpers import DirtyModel, DirtyModelState
+from fsb.db.traits import CreatedUpdatedAtTrait, CreatedAtTrait, DeletedAtWithReasonTrait, DeletedAtTrait
 from fsb.errors import InputValueError
 
 
-class BaseModel(Model):
+class BaseModel(ModelInterface):
     TABLE_NAME = ''
-    real_dirty = False
+    _real_dirty = DirtyModelState()
 
     class Meta:
         @staticmethod
@@ -43,16 +43,25 @@ class BaseModel(Model):
 
         database = base_db
         table_function = make_table_name
-        # only_save_dirty = True
+        only_save_dirty = True
 
     def save_get_id(self, *args, **kwargs):
         super().save(*args, **kwargs)
         return super().get_id()
 
     def __setattr__(self, key, value):
-        if self.real_dirty and key in self._meta.fields and getattr(self, key) == value:
+        if self._real_dirty.is_dirty() and key in self._meta.fields and getattr(self, key) == value:
             return
         super().__setattr__(key, value)
+
+    def save(self, *args, **kwargs):
+        if self._real_dirty.is_dirty() and self.is_dirty():
+            super().save(only=self.dirty_fields, *args, **kwargs)
+        elif not self._real_dirty.is_dirty():
+            super().save(*args, **kwargs)
+
+    def dirty(self):
+        return DirtyModel(self._real_dirty)
 
     @classmethod
     def with_enabled_module(cls, module_name: str = None, query=None):
@@ -78,59 +87,26 @@ class BaseModel(Model):
         return self.with_enabled_module(module_name).exists()
 
     @classmethod
-    def get_by_telegram_id(cls, telegram_id: Union[int, str]):
+    def find_by_chat(cls, chat: 'Chat', only_active: bool = True):
         try:
-            return cls.get(cls.telegram_id == telegram_id)
-        except (AttributeError, DoesNotExist):
-            return None
+            query = cls.select().where(cls.chat == chat)
 
-    @classmethod
-    def find_by_chat(cls, chat: 'Chat'):
-        try:
-            return cls.select().where(cls.chat == chat)
-        except AttributeError:
-            return None
+            if only_active and issubclass(cls, DeletedAtTrait):
+                query = query.where(cls.deleted_at.is_null())
 
-    @classmethod
-    def only_active(cls):
-        try:
-            return cls.select().where(cls.active)
-        except AttributeError:
-            return None
-
-    def activate(self):
-        try:
-            self.active = True
-            self.save()
-        except AttributeError:
-            return None
-
-    def deactivate(self):
-        try:
-            self.active = False
-            self.save()
+            return query
         except AttributeError:
             return None
 
 
-class User(BaseModel, CreatedUpdatedAtTrait):
-    TABLE_NAME = 'users'
+class TelegramEntity(BaseModel, CreatedUpdatedAtTrait, DeletedAtWithReasonTrait):
 
-    id = AutoField()
     telegram_id = BigIntegerField(unique=True)
-    name = CharField(null=True)
-    nickname = CharField(null=True)
-    phone = CharField(null=True)
     input_peer = TextField(null=True)
-    birthday = DateField(null=True)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.telegram_member = None
-
-    @staticmethod
-    def get_by_telegram_id(telegram_id: Union[int, str]) -> 'User':
-        return User.get(User.telegram_id == telegram_id)
 
     async def get_telegram_member(self, client):
         if self.telegram_member is None:
@@ -138,11 +114,25 @@ class User(BaseModel, CreatedUpdatedAtTrait):
 
         return self.telegram_member
 
+    @classmethod
+    def get_by_telegram_id(cls, telegram_id: Union[int, str]):
+        return cls.get_or_none(cls.telegram_id == telegram_id)
+
+
+class User(TelegramEntity):
+    TABLE_NAME = 'users'
+
+    id = AutoField()
+    name = CharField(null=True)
+    nickname = CharField(null=True)
+    phone = CharField(null=True)
+    birthday = DateField(null=True)
+
 
 MemberDeferred = DeferredThroughModel()
 
 
-class Chat(BaseModel, CreatedUpdatedAtTrait):
+class Chat(TelegramEntity):
     TABLE_NAME = 'chats'
 
     CHAT_TYPE = 1
@@ -150,18 +140,16 @@ class Chat(BaseModel, CreatedUpdatedAtTrait):
     USER_TYPE = 3
 
     id = AutoField()
-    telegram_id = BigIntegerField(unique=True)
     name = CharField(null=True)
     type = IntegerField()
-    input_peer = TextField(null=True)
     users = ManyToManyField(User, backref='chats', through_model=MemberDeferred)
 
     @staticmethod
     def get_chat_type(chat):
         match chat.__class__.__name__:
-            case 'Chat':
+            case 'Chat'|'ChatForbidden':
                 chat_type = Chat.CHAT_TYPE
-            case 'Channel':
+            case 'Channel'|'ChannelForbidden':
                 chat_type = Chat.CHANNEL_TYPE
             case 'User':
                 chat_type = Chat.USER_TYPE
@@ -179,15 +167,29 @@ class Chat(BaseModel, CreatedUpdatedAtTrait):
         if isinstance(chat_module, ChatModule):
             return chat_module.delete_instance()
 
+    def mark_as_deleted(self, reason = None):
+        super().mark_as_deleted(reason)
 
-class Member(BaseModel, CreatedUpdatedAtTrait):
+        CronJob.update(active=False).where(CronJob.chat == self).execute()
+        ChatModule.delete().where(ChatModule.chat == self).execute()
+
+        self.save()
+
+    def mark_as_undeleted(self):
+        super().mark_as_undeleted()
+
+        self.enable_module(Module.MODULE_DEFAULT)
+
+        self.save()
+
+
+class Member(BaseModel, CreatedUpdatedAtTrait, DeletedAtWithReasonTrait):
     TABLE_NAME = 'chats_members'
 
     id = AutoField()
     chat = ForeignKeyField(Chat, backref='members')
     user = ForeignKeyField(User, backref='chats_members')
     rang = CharField(null=True)
-    active = BooleanField(null=False, default=True, constraints=[SQL('DEFAULT 1')])
 
     def get_telegram_id(self):
         telegram_id = None
@@ -447,7 +449,7 @@ class Module(BaseModel):
         return self.readable_name if self.readable_name else self.name
 
 
-class ChatModule(BaseModel, CreatedUpdatedAtTrait):
+class ChatModule(BaseModel, CreatedAtTrait):
     TABLE_NAME = 'chats_modules'
 
     class Meta:

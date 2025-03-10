@@ -8,5 +8,5 @@ else
 fi
 
 cron -L /var/log/cron.log
-pipenv run console migrator migrate -y
+pipenv run cli migrator migrate -y
 pipenv run python -m fsb

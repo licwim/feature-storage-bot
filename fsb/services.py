@@ -16,8 +16,10 @@ from telethon.tl.types import InputPeerUser, InputPeerChat, InputPeerChannel
 from telethon.tl.types import InputStickerSetShortName
 
 from fsb.config import config
+from fsb.db import database
 from fsb.db.models import Chat, User, Member, Rating, RatingMember, RatingLeader, CacheQuantumRand, Module, CronJob
 from fsb.errors import BaseFsbException, NoMembersRatingError, NoApproachableMembers
+from fsb.events.common import ChatActionEventDTO, EventDTO
 from fsb.helpers import Helper, ReturnedThread, InfoBuilder
 from fsb.telegram.client import TelegramApiClient
 
@@ -50,11 +52,11 @@ class ChatService:
     def __init__(self, client: TelegramApiClient):
         self.client = client
 
-    async def create_chat(self, event=None, entity=None, update: bool = False):
-        with Chat._meta.database.atomic():
+    async def create_chat(self, event: EventDTO = None, entity=None, update: bool = False):
+        with database.atomic():
             if event:
                 entity = event.chat
-                input_chat = event.input_chat.to_json()
+                input_chat = event.telegram_event.input_chat.to_json()
             elif entity:
                 input_chat = None
             else:
@@ -85,22 +87,25 @@ class ChatService:
                 chat = Chat.create(telegram_id=entity.id, name=name, type=type, input_peer=input_chat)
 
             if update:
-                chat.real_dirty = True
-                chat.name = name
-                chat.type = type
-                chat.input_peer = input_chat
-                if chat.is_dirty():
-                    chat.save(only=chat.dirty_fields)
-                chat.real_dirty = False
+                with chat.dirty():
+                    chat.name = name if name else chat.name
+                    chat.type = type if type else chat.type
+                    chat.input_peer = input_chat if input_chat else chat.input_chat
+                    chat.save()
 
-            if new_chat:
-                self.enable_default_module(chat)
+            left_reason = self._is_left(event, entity, True)
 
-            await self.actualize_members(entity=entity, chat=chat, update=update)
+            if left_reason and not chat.is_deleted():
+                self.disable_chat(chat, left_reason)
+            elif new_chat or chat.is_deleted():
+                self.enable_chat(chat)
+
+            if not chat.is_deleted():
+                await self.actualize_members(entity=entity, chat=chat, update=update)
 
             return chat
 
-    async def actualize_members(self, event=None, entity=None, chat=None, update: bool = False):
+    async def actualize_members(self, event: EventDTO = None, entity=None, chat=None, update: bool = False):
         if event:
             entity = event.chat
         elif not entity:
@@ -111,22 +116,24 @@ class ChatService:
 
         tg_members_ids = []
 
-        for tg_member in await self.client.get_dialog_members(entity):
+        for tg_member in await self.client.get_dialog_members(entity, use_cache=False):
             user = self.create_user(entity=tg_member, update=update)
             chat_member = Member.get_or_create(chat=chat, user=user)[0]
-            chat_member.activate()
+            chat_member.mark_as_undeleted()
+            chat_member.save()
             tg_members_ids.append(tg_member.id)
 
         for chat_member in Member.find_by_chat(chat):
             if chat_member.user.telegram_id not in tg_members_ids:
-                chat_member.deactivate()
+                chat_member.mark_as_deleted('Actualize members')
+                chat_member.save()
 
-    def create_user(self, event=None, entity=None, update: bool = False):
+    def create_user(self, event: EventDTO = None, entity=None, update: bool = False):
         if event:
             entity = event.chat
-            input_chat = json.dumps(event.input_chat.to_dict())
+            input_peer = json.dumps(event.telegram_event.input_chat.to_dict())
         elif entity:
-            input_chat = InputPeerUser(entity.id, entity.access_hash).to_json()
+            input_peer = InputPeerUser(entity.id, entity.access_hash).to_json()
         else:
             return None
 
@@ -137,29 +144,49 @@ class ChatService:
                 'name': name,
                 'nickname': entity.username,
                 'phone': entity.phone,
-                'input_peer': input_chat
+                'input_peer': input_peer
             }
         )[0]
 
         if update:
-            user.real_dirty = True
-            user.name = name
-            user.nickname = entity.username
-            user.phone = entity.phone
-            user.input_peer = input_chat
-            if user.is_dirty():
-                user.save(only=user.dirty_fields)
-            user.real_dirty = False
+            with user.dirty():
+                user.name = name
+                user.nickname = entity.username if entity.username else user.nickname
+                user.phone = entity.phone if entity.phone else user.phone
+                user.input_peer = input_peer if input_peer else user.input_peer
+                user.save()
 
         return user
 
-    def enable_default_module(self, chat: Chat):
-        return chat.enable_module(Module.MODULE_DEFAULT)
+    def enable_chat(self, chat: Chat):
+        return chat.mark_as_undeleted()
+
+    def disable_chat(self, chat: Chat, reason = None):
+        return chat.mark_as_deleted(reason)
 
     async def init_chats(self):
         for chat in Chat.select():
             entity = await self.client.get_entity(chat.telegram_id)
             await self.create_chat(entity=entity, update=True)
+
+    def _is_forbidden(self, entity):
+        return entity.__class__.__name__ in ['ChatForbidden', 'ChannelForbidden']
+
+    def _is_left(self, event: EventDTO, entity, return_reason: bool = False):
+        reason = False
+
+        if isinstance(event, ChatActionEventDTO) and event.is_self:
+            if event.user_kicked:
+                reason = 'Kicked by {user_name} ({user_id})'.format(
+                    user_name=Helper.make_member_name(event.kicked_by, with_fullname=False),
+                    user_id=event.kicked_by.id
+                )
+            elif event.user_left:
+                reason = 'Left'
+        elif self._is_forbidden(entity):
+            reason = 'Forbidden'
+
+        return reason if return_reason else bool(reason)
 
 
 class RatingService:
@@ -607,7 +634,7 @@ class BirthdayService:
         self.logger = logging.getLogger('main')
 
     async def send_message(self, chat: Chat):
-        for user in chat.users.where(Member.active and fn.DATE_FORMAT(User.birthday, '%m-%d') == datetime.today().strftime('%m-%d')):
+        for user in chat.users.where(Member.deleted_at.is_null() and fn.DATE_FORMAT(User.birthday, '%m-%d') == datetime.today().strftime('%m-%d')):
             await self.client.send_message(chat.telegram_id, self.BIRTHDAY_MESSAGE.format(
                 name=Helper.make_member_name(await user.get_telegram_member(self.client), with_mention=True)
             ))

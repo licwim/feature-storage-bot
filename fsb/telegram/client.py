@@ -6,6 +6,7 @@ from time import sleep, time
 from typing import Any, Union
 
 from telethon import TelegramClient, errors, functions
+from telethon.errors import BadRequestError
 from telethon.events.common import EventBuilder
 from telethon.tl.types import (
     Message,
@@ -14,7 +15,7 @@ from telethon.tl.types import (
 )
 
 from fsb.config import config
-from fsb.db.models import User, Chat
+from fsb.db.models import User, Chat, TelegramEntity
 from fsb.errors import (
     DisconnectFailedError
 )
@@ -91,34 +92,43 @@ class TelegramApiClient:
         except ValueError as e:
             self.logger.error(f"{entity}: ValueError")
             raise e
+        except BadRequestError as ex:
+            self._bad_request_handle(self._get_db_entity(entity.id), ex)
 
     async def get_entity(self, uid: Union[str, int], with_full: bool = True):
         entity = None
+        db_entity = None
+
         try:
-            if uid:
-                entity = await self._client.get_entity(uid)
-        except ValueError:
-            if with_full:
-                db_entity = Chat.get_or_none(Chat.telegram_id == uid)
-                if not db_entity:
-                    db_entity = User.select().where(
-                        (User.nickname == uid) | (User.telegram_id == uid)
-                    ).get_or_none()
+            try:
+                if uid:
+                    entity = await self._client.get_entity(uid)
+            except ValueError:
+                if with_full:
+                    db_entity = self._get_db_entity(uid)
 
-                if db_entity and db_entity.input_peer:
-                    metadata = json.loads(db_entity.input_peer)
-                    match metadata['_']:
-                        case InputPeerUser.__name__:
-                            input_peer = InputUser(metadata['user_id'], metadata['access_hash'])
-                            await self.request(functions.users.GetFullUserRequest(input_peer))
-                        case InputPeerChat.__name__:
-                            await self.request(functions.messages.GetFullChatRequest(metadata['chat_id']))
-                        case InputPeerChannel.__name__:
-                            input_peer = InputChannel(metadata['channel_id'], metadata['access_hash'])
-                            await self.request(functions.channels.GetFullChannelRequest(input_peer))
+                    if db_entity and db_entity.input_peer:
+                        metadata = json.loads(db_entity.input_peer)
 
-                entity = await self.get_entity(uid, False)
-        return entity
+                        match metadata['_']:
+                            case InputPeerUser.__name__:
+                                input_peer = InputUser(metadata['user_id'], metadata['access_hash'])
+                                await self.request(functions.users.GetFullUserRequest(input_peer))
+                            case InputPeerChat.__name__:
+                                await self.request(functions.messages.GetFullChatRequest(metadata['chat_id']))
+                            case InputPeerChannel.__name__:
+                                input_peer = InputChannel(metadata['channel_id'], metadata['access_hash'])
+                                await self.request(functions.channels.GetFullChannelRequest(input_peer))
+
+                    entity = await self.get_entity(uid, False)
+        except BadRequestError as ex:
+            if not db_entity:
+                db_entity = self._get_db_entity(uid)
+
+            if db_entity:
+                self._bad_request_handle(db_entity, ex)
+        finally:
+            return entity
 
     def add_event_handler(self, handler: callable, event: EventBuilder):
         self._client.add_event_handler(handler, event)
@@ -141,13 +151,34 @@ class TelegramApiClient:
         if not use_cache or not members_cache or members_cache['time'] + self.PARTICIPANTS_CACHE_TIME < now:
             members = []
 
-            for member in await self._client.get_participants(entity, aggressive=False, limit=self.PARTICIPANTS_LIMIT):
-                if member.username == self._current_user.username or (not with_bot and member.bot):
-                    continue
-                members.append(member)
+            try:
+                for member in await self._client.get_participants(entity, aggressive=False, limit=self.PARTICIPANTS_LIMIT):
+                    if member.username == self._current_user.username or (not with_bot and member.bot):
+                        continue
+                    members.append(member)
+            except BadRequestError as ex:
+                db_entity = self._get_db_entity(entity.id)
+
+                if db_entity:
+                    self._bad_request_handle(db_entity, ex)
+                else:
+                    raise ex
 
             self._chat_members_cache.update({entity.id: {'time': now, 'members': members}})
         else:
             members = members_cache['members']
 
         return members
+
+    def _get_db_entity(self, telegram_id: Union[str, int]) -> Union[TelegramEntity]:
+        db_entity = Chat.get_by_telegram_id(telegram_id)
+
+        if not db_entity:
+            db_entity = User.get_by_telegram_id(telegram_id)
+
+        return db_entity
+
+    def _bad_request_handle(self, db_entity, exception):
+        if not db_entity.is_deleted():
+            db_entity.mark_as_deleted(repr(exception))
+            db_entity.save()
