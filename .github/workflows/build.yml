@@ -15,7 +15,7 @@ on:
 
 jobs:
   create-tag:
-    runs-on: self-hosted
+    runs-on: ubuntu-22.04
     permissions:
       contents: write
     steps:
@@ -27,6 +27,14 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           custom_release_rules: hotfix:patch,feature:minor
           release_branches: test-ci
+
+  tagged-release:
+    runs-on: ubuntu-22.04
+    if: github.ref_type == 'tag'
+    steps:
+      - uses: marvinpinto/action-automatic-releases@v1.2.1
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
 
   build:
     runs-on: self-hosted
