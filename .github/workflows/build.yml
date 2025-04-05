@@ -31,6 +31,7 @@ jobs:
           PRERELEASE: true
           MINOR_STRING_TOKEN: feature/
           PATCH_STRING_TOKEN: hotfix/
+          RELEASE_BRANCHES: test-ci
 
   build:
     runs-on: self-hosted
