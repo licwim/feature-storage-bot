@@ -20,18 +20,13 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: '0'
       - name: Bump version and push tag
-        uses: anothrNick/github-tag-action@v1 # Don't use @master or @v1 unless you're happy to test the latest version
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # if you don't want to set write permissions use a PAT token
-          DEFAULT_BUMP: none
-          WITH_V: true
-          PRERELEASE: true
-          MINOR_STRING_TOKEN: feature/
-          PATCH_STRING_TOKEN: hotfix/
-          RELEASE_BRANCHES: test-ci
+        id: tag-action
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          custom_release_rules: hotfix:patch,feature:minor
+          release_branches: test-ci
 
   build:
     runs-on: self-hosted
