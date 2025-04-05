@@ -3,8 +3,6 @@ run-name: Build ${{ github.event.pull_request.title || github.ref_name }} (${{ g
 
 on:
   create:
-    tags:
-      - 'v*.*.*'
   push:
     branches:
       - master
