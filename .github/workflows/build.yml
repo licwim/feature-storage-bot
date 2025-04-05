@@ -33,7 +33,7 @@ jobs:
         with:
           tag: ${{ steps.tag-version.outputs.new_tag }}
           name: ${{ steps.tag-version.outputs.new_tag }}
-          body: ${{ steps.tag-version.outputs.changelog }}
+          generateReleaseNotes: true
 
   build:
     runs-on: self-hosted
