@@ -2,15 +2,19 @@ name: Build
 run-name: Build ${{ github.event.pull_request.title || github.ref_name }} (${{ github.sha }})
 
 on:
+  create:
+    tags:
+      - 'v*.*.*'
   push:
-#    branches:
-#      - master
-#    tags:
-#      - 'v*.*.*'
+    branches:
+      - master
+      - test-ci
+    tags:
+      - 'v*.*.*'
   pull_request:
-#    branches:
-#      - master
-#      - 'release/**'
+    branches:
+      - master
+      - 'release/**'
   workflow_dispatch:
 
 jobs:
