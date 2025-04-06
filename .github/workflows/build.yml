@@ -2,7 +2,6 @@ name: Build
 run-name: Build ${{ github.event.pull_request.title || github.ref_name }} (${{ github.sha }})
 
 on:
-  create:
   push:
     branches:
       - master
@@ -23,11 +22,13 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Bump version and push tag
         id: tag-version
         uses: mathieudutour/github-tag-action@v6.2
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ secrets.PAT }}
           custom_release_rules: hotfix:patch,feature:minor
           release_branches: test-ci
       - name: Create Release
@@ -36,6 +37,7 @@ jobs:
           tag: ${{ steps.tag-version.outputs.new_tag }}
           name: ${{ steps.tag-version.outputs.new_tag }}
           generateReleaseNotes: true
+          draft: true
 
   build:
     runs-on: self-hosted
