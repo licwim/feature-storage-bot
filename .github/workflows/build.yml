@@ -15,6 +15,31 @@ on:
   workflow_dispatch:
 
 jobs:
+  create-release:
+    runs-on: ubuntu-22.04
+    if: github.event_name == 'push' && github.ref_name == 'master'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Bump version and push tag
+        id: tag-version
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          github_token: ${{ secrets.PAT }}
+          custom_release_rules: hotfix:patch,feature:minor
+          default_bump: false
+          release_branches: master
+      - name: Create Release
+        if: steps.tag-version.outputs.new_tag
+        uses: ncipollo/release-action@v1.16.0
+        with:
+          tag: ${{ steps.tag-version.outputs.new_tag }}
+          generateReleaseNotes: true
+          draft: true
+
   build:
     runs-on: self-hosted
     env:
