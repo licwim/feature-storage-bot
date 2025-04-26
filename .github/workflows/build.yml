@@ -29,7 +29,6 @@ jobs:
         uses: mathieudutour/github-tag-action@v6.2
         with:
           github_token: ${{ secrets.PAT }}
-          custom_release_rules: hotfix:patch,feature:minor
           default_bump: false
           release_branches: master
       - name: Create Release
