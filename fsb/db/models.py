@@ -162,7 +162,7 @@ class Chat(TelegramEntity):
         return ChatModule.get_or_create(chat=self, module_id=module_name)
 
     def disable_module(self, module_name):
-        chat_module = ChatModule.get(ChatModule.chat == self and ChatModule.module_id == module_name)
+        chat_module = ChatModule.get(ChatModule.chat == self, ChatModule.module_id == module_name)
 
         if isinstance(chat_module, ChatModule):
             return chat_module.delete_instance()

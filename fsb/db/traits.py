@@ -12,11 +12,11 @@ class ModelTraitInterface(ModelInterface):
 
 
 class CreatedAtTrait(ModelTraitInterface):
-    created_at = DateTimeField(default=datetime.now(), constraints=[SQL('DEFAULT CURRENT_TIMESTAMP')])
+    created_at = DateTimeField(default=datetime.now, constraints=[SQL('DEFAULT CURRENT_TIMESTAMP')])
 
 
 class UpdatedAtTrait(ModelTraitInterface):
-    updated_at = DateTimeField(default=datetime.now(),
+    updated_at = DateTimeField(default=datetime.now,
                                constraints=[SQL('DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP')])
 
 
