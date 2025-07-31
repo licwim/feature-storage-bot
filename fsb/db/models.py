@@ -64,7 +64,7 @@ class BaseModel(ModelInterface):
         return DirtyModel(self._real_dirty)
 
     @classmethod
-    def with_enabled_module(cls, module_name: str = None, query=None):
+    def with_enabled_module(cls, module_name: str = None, chat_id: int = None, query=None):
         if not query:
             query = cls.select()
 
@@ -74,17 +74,30 @@ class BaseModel(ModelInterface):
         if module_name:
             if cls == Chat:
                 reference_column = cls.id
-            else:
+            elif hasattr(cls, 'chat_id') or hasattr(cls, 'chat'):
                 reference_column = cls.chat_id
+            else:
+                reference_column = None
 
-            query = (query.join(ChatModule, on=(ChatModule.chat_id == reference_column))
-                     .join(Module, on=(Module.name == ChatModule.module_id))
-                     .where(Module.active and ChatModule.module_id == module_name))
+            if reference_column:
+                query = (query.join(ChatModule, on=(ChatModule.chat_id == reference_column))
+                         .join(Module, on=(Module.name == ChatModule.module_id))
+                         .where(Module.active and ChatModule.module_id == module_name))
+
+                if chat_id:
+                    query.where(ChatModule.chat_id == chat_id)
 
         return query
 
     def is_enabled_module(self, module_name: str) -> bool:
-        return self.with_enabled_module(module_name).exists()
+        if isinstance(self, Chat):
+            chat_id = self.id
+        elif hasattr(self, 'chat_id') or hasattr(self, 'chat'):
+            chat_id = self.chat_id
+        else:
+            chat_id = None
+
+        return self.with_enabled_module(module_name, chat_id).exists()
 
     @classmethod
     def find_by_chat(cls, chat: 'Chat', only_active: bool = True):
