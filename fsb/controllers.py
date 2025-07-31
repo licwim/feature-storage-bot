@@ -135,8 +135,22 @@ class Controller:
                     area_check = area == event.ONLY_USER
                 case _:
                     area_check = False
+
         if not area_check:
-            raise ExitControllerException
+            match area:
+                case event.ONLY_USER:
+                    chat_type_name = 'личных чатов'
+                case event.ONLY_CHAT:
+                    chat_type_name = 'групповых чатов'
+                case _:
+                    chat_type_name = None
+
+            if chat_type_name:
+                message = f'Эта функция доступна только для {chat_type_name}'
+            else:
+                message = None
+
+            raise ExitControllerException(sending_message=message)
 
     def _set_wait(self, chat_id: int, value: bool):
         self._waiting_list[chat_id] = value

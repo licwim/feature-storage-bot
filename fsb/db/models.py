@@ -85,7 +85,7 @@ class BaseModel(ModelInterface):
                          .where(Module.active and ChatModule.module_id == module_name))
 
                 if chat_id:
-                    query.where(ChatModule.chat_id == chat_id)
+                    query = query.where(ChatModule.chat_id == chat_id)
 
         return query
 
