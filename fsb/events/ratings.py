@@ -80,8 +80,8 @@ class GeneralMenuRatingEvent(RatingQueryEvent):
                 Button.inline("Список рейтингов", ListRatingEvent(sender_id).save_get_id()),
             ],
             [
-                Button.inline("Создать дефолтные рейтинги", CreateRatingEvent(sender_id).save_get_id()),
-            ]
+                Button.inline("Создать дефолтные рейтинги", CreateDefaultRatingEvent(sender_id).save_get_id()),
+            ],
             [
                 Button.inline("Закрыть", CloseGeneralMenuRatingEvent(sender_id).save_get_id())
             ]
