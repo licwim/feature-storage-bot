@@ -96,11 +96,14 @@ class StatRatingCommandHandler(CommandHandler):
 
 
 class RatingsSettingsQueryHandler(MenuHandler):
+    _rating_service: RatingService
+
     async def run(self):
         await super().run()
         if not isinstance(self.query_event, RatingQueryEvent):
             return
 
+        self._rating_service = RatingService(self.client)
         query_event_type = underscore(self.query_event.__class__.__name__.replace('RatingEvent', ''))
         action = getattr(self, 'action_' + query_event_type)
         if action:
@@ -329,3 +332,14 @@ class RatingsSettingsQueryHandler(MenuHandler):
         rating.autorun = not rating.autorun
         rating.save()
         await self.action_menu()
+
+    async def action_create_default(self):
+        chat = Chat.get_by_telegram_id(self.chat.id)
+        self._rating_service.create_default_ratings(chat)
+        message = (f"Созданы рейтинги:"
+                   f" {RatingService.PIDOR_KEYWORD} (__{RatingService.PIDOR_NAME}__)"
+                   f" и {RatingService.CHAD_KEYWORD} (__{RatingService.CHAD_NAME}__)")
+        await self.client.send_message(self.chat, message)
+
+
+
