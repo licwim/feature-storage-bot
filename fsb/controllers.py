@@ -263,6 +263,8 @@ class CommandController(MessageController):
     _from_bot = True
 
     async def _init_filter(self, event: CommandEventDTO):
+        await super()._init_filter(event)
+
         if event.message.text:
             args = event.message.text.split(' ')
             command = args[0].replace(f'@{self._client._current_user.username}', '').replace(self.PREFIX, '', 1)
@@ -270,7 +272,6 @@ class CommandController(MessageController):
                 args.pop(0)
                 event.args = args
                 event.command = command
-                await super()._init_filter(event)
                 return
 
         raise ExitControllerException
