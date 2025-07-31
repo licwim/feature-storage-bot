@@ -135,22 +135,8 @@ class Controller:
                     area_check = area == event.ONLY_USER
                 case _:
                     area_check = False
-
         if not area_check:
-            match area:
-                case event.ONLY_USER:
-                    chat_type_name = 'личных чатов'
-                case event.ONLY_CHAT:
-                    chat_type_name = 'групповых чатов'
-                case _:
-                    chat_type_name = None
-
-            if chat_type_name:
-                message = f'Эта функция доступна только для {chat_type_name}'
-            else:
-                message = None
-
-            raise ExitControllerException(sending_message=message)
+            raise ExitControllerException
 
     def _set_wait(self, chat_id: int, value: bool):
         self._waiting_list[chat_id] = value
@@ -277,7 +263,6 @@ class CommandController(MessageController):
     _from_bot = True
 
     async def _init_filter(self, event: CommandEventDTO):
-        await super()._init_filter(event)
         if event.message.text:
             args = event.message.text.split(' ')
             command = args[0].replace(f'@{self._client._current_user.username}', '').replace(self.PREFIX, '', 1)
@@ -285,7 +270,9 @@ class CommandController(MessageController):
                 args.pop(0)
                 event.args = args
                 event.command = command
+                await super()._init_filter(event)
                 return
+
         raise ExitControllerException
 
     @Controller.handle_decorator
