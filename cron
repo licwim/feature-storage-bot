@@ -17,7 +17,10 @@
 #0 13 12 2 * root cd /var/app && /usr/local/bin/python -m pipenv run cli send-message '@Jeff_Richards0n Ты прожил этот год ради динозавров' 2 >> /var/log/cron/countdown.log 2>&1
 
 # New Maxim's countdown
-0 13 * * * root cd /var/app && /usr/local/bin/python -m pipenv run cli countdown '@Jeff_Richards0n Ты продолжаешь жить ради динозавров уже {left_days} {day_word}' 2025-02-12 2 >> /var/log/cron/countdown.log 2>&1
+#0 13 * * * root cd /var/app && /usr/local/bin/python -m pipenv run cli countdown '@Jeff_Richards0n Ты продолжаешь жить ради динозавров уже {left_days} {day_word}' 2025-02-12 2 >> /var/log/cron/countdown.log 2>&1
+
+# Super New Maxim's countdown
+0 13 * * * root cd /var/app && /usr/local/bin/python -m pipenv run cli countdown '@Jeff_Richards0n Ты продолжаешь жить ради НРИ уже {left_days} {day_word}' 2025-07-09 2 >> /var/log/cron/countdown.log 2>&1
 
 # Birthdays
 30 11 * * * root cd /var/app && /usr/local/bin/python -m pipenv run cli birthday congratulation >> /var/log/cron/birthday-congratulation.log 2>&1
