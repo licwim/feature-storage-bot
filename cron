@@ -1,26 +1,26 @@
 # Monthly rating
-0 11 1 * * root cd /var/app && /usr/local/bin/python -m pipenv run cli ratings month-roll >> /var/log/cron/month-rating-roll.log 2>&1
-0 12 * * * root cd /var/app && /usr/local/bin/python -m pipenv run cli ratings day-roll >> /var/log/cron/day-rating-roll.log 2>&1
-10 0 1 1 * root cd /var/app && /usr/local/bin/python -m pipenv run cli ratings year-roll >> /var/log/cron/year-rating-roll.log 2>&1
-10 11 1 * * root cd /var/app && /usr/local/bin/python -m pipenv run cli ratings natural-not-found >> /var/log/cron/natural-not-found.log 2>&1
+0 11 1 * * root cd /app && /usr/local/bin/python -m pipenv run cli ratings month-roll >> /var/log/cron/month-rating-roll.log 2>&1
+0 12 * * * root cd /app && /usr/local/bin/python -m pipenv run cli ratings day-roll >> /var/log/cron/day-rating-roll.log 2>&1
+10 0 1 1 * root cd /app && /usr/local/bin/python -m pipenv run cli ratings year-roll >> /var/log/cron/year-rating-roll.log 2>&1
+10 11 1 * * root cd /app && /usr/local/bin/python -m pipenv run cli ratings natural-not-found >> /var/log/cron/natural-not-found.log 2>&1
 
 # It is Wednesday, my dudes!
-0 10 * * 3 root cd /var/app && /usr/local/bin/python -m pipenv run cli dude-broadcast >> /var/log/cron/dude-broadcast.log 2>&1
+0 10 * * 3 root cd /app && /usr/local/bin/python -m pipenv run cli dude-broadcast >> /var/log/cron/dude-broadcast.log 2>&1
 
 # Happy New Year
-0 0 1 1 * root cd /var/app && /usr/local/bin/python -m pipenv run cli new-year-broadcast >> /var/log/cron/new-year-broadcast.log 2>&1
+0 0 1 1 * root cd /app && /usr/local/bin/python -m pipenv run cli new-year-broadcast >> /var/log/cron/new-year-broadcast.log 2>&1
 
 # Maxim's countdown
-#0 13 * * * root cd /var/app && /usr/local/bin/python -m pipenv run cli countdown '@Jeff_Richards0n Ты все еще живешь ради динозавров, у тебя осталось {left_days} {day_word}' 2025-02-12 2 >> /var/log/cron/countdown.log 2>&1
+#0 13 * * * root cd /app && /usr/local/bin/python -m pipenv run cli countdown '@Jeff_Richards0n Ты все еще живешь ради динозавров, у тебя осталось {left_days} {day_word}' 2025-02-12 2 >> /var/log/cron/countdown.log 2>&1
 
 # End of Maxim's countdown
-#0 13 12 2 * root cd /var/app && /usr/local/bin/python -m pipenv run cli send-message '@Jeff_Richards0n Ты прожил этот год ради динозавров' 2 >> /var/log/cron/countdown.log 2>&1
+#0 13 12 2 * root cd /app && /usr/local/bin/python -m pipenv run cli send-message '@Jeff_Richards0n Ты прожил этот год ради динозавров' 2 >> /var/log/cron/countdown.log 2>&1
 
 # New Maxim's countdown
-#0 13 * * * root cd /var/app && /usr/local/bin/python -m pipenv run cli countdown '@Jeff_Richards0n Ты продолжаешь жить ради динозавров уже {left_days} {day_word}' 2025-02-12 2 >> /var/log/cron/countdown.log 2>&1
+#0 13 * * * root cd /app && /usr/local/bin/python -m pipenv run cli countdown '@Jeff_Richards0n Ты продолжаешь жить ради динозавров уже {left_days} {day_word}' 2025-02-12 2 >> /var/log/cron/countdown.log 2>&1
 
 # Super New Maxim's countdown
-0 13 * * * root cd /var/app && /usr/local/bin/python -m pipenv run cli countdown '@Jeff_Richards0n Ты продолжаешь жить ради НРИ уже {left_days} {day_word}' 2025-07-09 2 >> /var/log/cron/countdown.log 2>&1
+0 13 * * * root cd /app && /usr/local/bin/python -m pipenv run cli countdown '@Jeff_Richards0n Ты продолжаешь жить ради НРИ уже {left_days} {day_word}' 2025-07-09 2 >> /var/log/cron/countdown.log 2>&1
 
 # Birthdays
-0 14 * * * root cd /var/app && /usr/local/bin/python -m pipenv run cli birthday congratulation >> /var/log/cron/birthday-congratulation.log 2>&1
+0 14 * * * root cd /app && /usr/local/bin/python -m pipenv run cli birthday congratulation >> /var/log/cron/birthday-congratulation.log 2>&1

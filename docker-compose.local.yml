@@ -4,8 +4,8 @@ services:
 #    image: licwim/feature-storage-bot:master
     build: .
     volumes:
-      - ./:/var/app
-      - /var/app/.venv/
+      - ./:/app
+      - /app/.venv/
     env_file:
       - .env
     environment:
