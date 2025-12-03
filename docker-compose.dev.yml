@@ -1,4 +1,3 @@
-name: 'fsb-dev'
 services:
   fsb-app-dev:
     image: licwim/feature-storage-bot:${TAG:-master}
