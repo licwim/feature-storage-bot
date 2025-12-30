@@ -82,7 +82,7 @@ class BaseModel(ModelInterface):
             if reference_column:
                 query = (query.join(ChatModule, on=(ChatModule.chat_id == reference_column))
                          .join(Module, on=(Module.name == ChatModule.module_id))
-                         .where(Module.active and ChatModule.module_id == module_name))
+                         .where(Module.active & (ChatModule.module_id == module_name)))
 
                 if chat_id:
                     query = query.where(ChatModule.chat_id == chat_id)

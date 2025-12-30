@@ -634,7 +634,14 @@ class BirthdayService:
         self.logger = logging.getLogger('main')
 
     async def send_message(self, chat: Chat):
-        for user in chat.users.where(Member.deleted_at.is_null() and fn.DATE_FORMAT(User.birthday, '%m-%d') == datetime.today().strftime('%m-%d')):
+        query = (User.select()
+                 .join(Member)
+                 .where((Member.chat == chat)
+                        & (Member.deleted_at.is_null())
+                        & (fn.DATE_FORMAT(User.birthday, '%m-%d') == datetime.today().strftime('%m-%d')))
+        )
+
+        for user in query:
             await self.client.send_message(chat.telegram_id, self.BIRTHDAY_MESSAGE.format(
                 name=Helper.make_member_name(await user.get_telegram_member(self.client), with_mention=True)
             ))
