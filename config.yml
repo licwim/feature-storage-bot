@@ -9,7 +9,7 @@ content:
   rating_congratulations_file: content/rating_congratulations.txt
   year_emojis_file: content/year_emojis.txt
   new_year_gif: content/new_year_gif.gif
-  new_year_film: content/new_year_film.mp4
+#  new_year_film: content/new_year_film.mp4
 
 dude:
   sticker_set_name: WednesdayFrog
