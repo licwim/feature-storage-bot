@@ -4,7 +4,7 @@ LABEL maintainer="licwimm@gmail.com"
 ENV PIPENV_IGNORE_VIRTUALENV=1
 ENV PIPENV_VENV_IN_PROJECT=1
 
-WORKDIR /var/app
+WORKDIR /app
 
 RUN apt update && apt install -y \
     vim \
@@ -26,5 +26,5 @@ RUN touch /var/log/cron.log \
 RUN mkdir /var/log/app \
     && chmod 644 -R /var/log/app
 
-RUN chmod 777 /var/app/run.sh
-CMD /var/app/run.sh
+RUN chmod 777 /app/run.sh
+CMD /app/run.sh

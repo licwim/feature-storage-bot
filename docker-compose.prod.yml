@@ -1,27 +1,21 @@
-version: '3.9'
-name: 'fsb-prod'
 services:
-  app:
+  fsb-app-prod:
     image: licwim/feature-storage-bot:${TAG:-master}
-    container_name: fsb-app-prod
-    hostname: fsb-app-prod
     volumes:
-      - /var/apps/feature-storage-bot/prod/logs/app:/var/log/app:rw
-      - /var/apps/feature-storage-bot/prod/logs/cron:/var/log/cron:rw
-      - /var/apps/feature-storage-bot/prod/content:/var/app/content
+      - /apps/feature-storage-bot/prod/logs/app:/var/log/app:rw
+      - /apps/feature-storage-bot/prod/logs/cron:/var/log/cron:rw
+      - /apps/feature-storage-bot/prod/content:/app/content
     logging:
       driver: "journald"
     labels:
       build: $BUILD_VERSION
-    networks:
-      - network
     deploy:
       restart_policy:
         condition: on-failure
         max_attempts: 10
         window: 10s
     environment:
-      - DB_HOST=$DB_HOST
+      - DB_HOST=fsb-db-prod
       - DB_NAME=$DB_NAME
       - DB_USER=$DB_USER
       - DB_PASSWORD=$DB_PASSWORD
@@ -35,14 +29,10 @@ services:
       - TZ=Europe/Moscow
       - FOOL_DAY=$FOOL_DAY
 
-  db:
+  fsb-db-prod:
     image: mysql:8.0.31
-    container_name: fsb-db-prod
-    hostname: fsb-db-prod
     volumes:
-      - db:/var/lib/mysql
-    networks:
-      - network
+      - fsb-db-data-prod:/var/lib/mysql
     restart: always
     ports:
       - "3306:3306"
@@ -50,11 +40,5 @@ services:
       - MYSQL_RANDOM_ROOT_PASSWORD=1
       - TZ=Europe/Moscow
 
-networks:
-  network:
-    driver: bridge
-
 volumes:
-  db:
-    name: feature-storage-bot_db-prod
-    external: true
+  fsb-db-data-prod:
