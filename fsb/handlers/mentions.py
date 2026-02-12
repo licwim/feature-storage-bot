@@ -13,7 +13,7 @@ class AllMentionHandler(MentionHandler):
         await super().run()
         members = await self.client.get_dialog_members(self.chat)
         members.remove(self.sender)
-        return self.get_members_mentions(members, 'allrank' in self.mentions)
+        return self.get_members_mentions(members, self.MENTION_NAME_NONE)
 
 
 class CustomMentionHandler(MentionHandler):

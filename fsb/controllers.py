@@ -4,7 +4,6 @@ import inspect
 import logging
 import re
 from asyncio import sleep
-from collections import OrderedDict
 from datetime import datetime
 from typing import Type
 
@@ -34,7 +33,7 @@ from fsb.handlers.ratings import (
     RatingsSettingsQueryHandler
 )
 from fsb.handlers.roles import RolesSettingsCommandHandler, RolesSettingsQueryHandler
-from fsb.helpers import InfoBuilder
+from fsb.helpers import InfoBuilder, Helper
 from fsb.services import ChatService
 from fsb.telegram.client import TelegramApiClient
 
@@ -385,30 +384,33 @@ class MentionController(MessageController):
     @Controller.handle_decorator
     async def mention_handle(self, event: MentionEventDTO):
         await super().handle(event)
-        members_mentions = []
-        members_mentions += await self._all_mention_handle(event)
-        members_mentions += await self._custom_mention_handle(event)
 
-        members_mentions = list(OrderedDict.fromkeys(members_mentions))
-        await self._client.send_message(
-            event.chat,
-            ' '.join(members_mentions),
-            event.message
-        )
+        if self._mention_filter('all', event):
+            members_mentions_chunks = await self._all_mention_handle(event)
+            messages = ['📣' + ''.join(members_mentions) for members_mentions in members_mentions_chunks]
+        else:
+            members_mentions_chunks = await self._custom_mention_handle(event)
+            messages = [', '.join(members_mentions) for members_mentions in members_mentions_chunks]
 
-    def _mention_filter(self, mention_list: list, event: MentionEventDTO):
-        for mention in mention_list:
+        for message in messages:
+            await self._client.send_message(
+                event.chat,
+                message,
+                event.message
+            )
+
+    def _mention_filter(self, mentions: list|str, event: MentionEventDTO):
+        mentions = [mentions] if isinstance(mentions, str) else mentions
+
+        for mention in mentions:
             if mention in event.mentions:
                 return True
         return False
 
     async def _all_mention_handle(self, event: MentionEventDTO):
-        members_mentions = []
+        mentions = await self.run_handler(event, AllMentionHandler)
 
-        if self._mention_filter(['all', 'allrank'], event):
-            members_mentions = await self.run_handler(event, AllMentionHandler)
-
-        return members_mentions
+        return Helper.split_chunks(mentions, AllMentionHandler.MESSAGE_MENTION_LIMIT)
 
     async def _custom_mention_handle(self, event: MentionEventDTO):
         if not self.check_module(event, Module.MODULE_ROLES, False):
@@ -422,7 +424,7 @@ class MentionController(MessageController):
         if self._mention_filter(mention_list, event):
             members_mentions = await self.run_handler(event, CustomMentionHandler)
 
-        return members_mentions
+        return Helper.split_chunks(members_mentions, CustomMentionHandler.MESSAGE_MENTION_LIMIT)
 
 
 class FoolCommandController(CommandController):
