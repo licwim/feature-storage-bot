@@ -378,6 +378,10 @@ class Helper:
 
         return result
 
+    @staticmethod
+    def split_chunks(items: list, chunk_size: int) -> list:
+        return [items[i:i + chunk_size] for i in range(0, len(items), chunk_size)]
+
 
 class ReturnedThread(Thread):
     TIMEOUT = 60
